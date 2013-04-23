@@ -6,3 +6,5 @@ docs/api
 test/*
 etc/run.sh
 *~
+/.classpath
+/.project
