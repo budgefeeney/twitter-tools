@@ -1,10 +1,8 @@
 package cc.twittertools.corpus.data;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-
 import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 
@@ -16,6 +14,8 @@ import com.google.gson.JsonParser;
  * Object representing a status.
  */
 public class Status {
+  private final static Logger LOG = Logger.getLogger (Status.class);
+  
   private static final JsonParser parser = new JsonParser();
 
   private long id;
@@ -24,6 +24,7 @@ public class Status {
   private String text;
   private JsonObject jsonObject;
   private String jsonString;
+  private long timestamp;
 
   protected Status() {}
   
@@ -38,17 +39,36 @@ public class Status {
   public String getCreatedAt() {
     return createdAt;
   }
+  
+  public long getTimestamp() {
+    return timestamp;
+  }
 
   public String getScreenname() {
     return screenname;
   }
 
   public JsonObject getJsonObject() {
+    if (jsonObject != null)
+      return jsonObject;
+    
+    jsonObject = new JsonObject();
+    jsonObject.addProperty ("id", id);
+    jsonObject.addProperty ("screenName", screenname);
+    jsonObject.addProperty ("text", text);
+    jsonObject.addProperty ("createdAt", createdAt);
+    jsonObject.addProperty ("timestamp", Long.toString (timestamp));
+    
     return jsonObject;
   }
 
   public String getJsonString() {
     return jsonString;
+  }
+  
+  @Override
+  public String toString() {
+    return screenname + " : " + text;
   }
 
   public static Status fromJson(String json) {
@@ -95,8 +115,18 @@ public class Status {
     org.jsoup.nodes.Document document = Jsoup.parse(html);
     Status status = new Status();
     
-    Element dateElement = document.select("div.client-and-actions span.metadata").last();
-    status.createdAt = dateElement.text();
+    Element dateElement = document.select("div.content div.stream-item-header small.time a").first();
+    status.createdAt = dateElement.attr("title");
+    
+    Element stampElement = dateElement.select("span").first();
+    String stampStr = stampElement.attr("data-time");
+    if (! (stampStr = StringUtils.trimToEmpty(stampStr)).isEmpty())
+      try
+      { status.timestamp = Long.parseLong (stampStr);
+      }
+      catch (NumberFormatException e)
+      { LOG.warn ("Can't parse time-stamp " + stampStr);
+      }
     
     Element textElement = document.select("p.js-tweet-text").first();
     status.text = textElement.text();
