@@ -25,9 +25,10 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
+import cc.twittertools.corpus.data.Status;
+
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
@@ -36,11 +37,9 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
+import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Response;
 import com.ning.http.client.extra.ThrottleRequestFilter;
-
-import cc.twittertools.corpus.data.Status;
-import cc.twittertools.download.DirectoryBrowser;
 
 public class AsyncEmbeddedJsonStatusBlockCrawler {
   private static final Logger LOG = Logger.getLogger(AsyncEmbeddedJsonStatusBlockCrawler.class);
@@ -49,6 +48,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
   public static final String JSON_END = "\">";
 
   private static final int TWEET_BLOCK_SIZE = 500;
+  
   private static final int MAX_CONNECTIONS = 100;
   private static final int CONNECTION_TIMEOUT = 10000;
   private static final int IDLE_CONNECTION_TIMEOUT = 10000;
@@ -57,10 +57,10 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
   private static final int WAIT_BEFORE_RETRY = 1000;
   private static final Timer timer = new Timer(true);
 
-  private static final JsonParser JSON_PARSER = new JsonParser();
   private static final Gson GSON = new Gson();
 
   private final File file;
+  private final String jobId;
   private final File output;
   private final File repair;
   private final AsyncHttpClient asyncHttpClient;
@@ -78,6 +78,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
       boolean noFollow) throws IOException {
     this.file = Preconditions.checkNotNull(file);
     this.noFollow = noFollow;
+    this.jobId = file.getName();
 
     if (!file.exists()) {
       throw new IOException(file + " does not exist!");
@@ -106,7 +107,10 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
         .addRequestFilter(new ThrottleRequestFilter(MAX_CONNECTIONS))
         .setConnectionTimeoutInMs(CONNECTION_TIMEOUT)
         .setIdleConnectionInPoolTimeoutInMs(IDLE_CONNECTION_TIMEOUT)
-        .setRequestTimeoutInMs(REQUEST_TIMEOUT).setMaxRequestRetry(0).build();
+        .setRequestTimeoutInMs(REQUEST_TIMEOUT)
+        .setMaxRequestRetry(0)
+        .setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
+        .build();
     this.asyncHttpClient = new AsyncHttpClient(config);
   }
 
@@ -115,7 +119,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
     return String.format("https://twitter.com/%s/status/%d", username, id);
   }
 
-  public void fetch() throws IOException {
+  public int fetch() throws IOException {
     long start = System.currentTimeMillis();
     LOG.info("Processing " + file);
 
@@ -137,7 +141,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
           cnt++;
 
           if (cnt % TWEET_BLOCK_SIZE == 0) {
-            LOG.info(cnt + " requests submitted");
+            LOG.info(jobId +":\t " + cnt + " requests submitted. " + crawl.size() + " tweets downloaded");
           }
         } catch (NumberFormatException e) { // parseLong
           continue;
@@ -150,7 +154,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
     }
 
     // Wait for the last requests to complete.
-    LOG.info("Waiting for remaining requests (" + connections.get() + ") to finish!");
+    LOG.info(jobId +":\t " + "Waiting for remaining requests (" + connections.get() + ") to finish!");
     for (int i = 0; i < 10; i++) {
       if (connections.get() == 0) {
         break;
@@ -166,10 +170,10 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
 
     long end = System.currentTimeMillis();
     long duration = end - start;
-    LOG.info("Total request submitted: " + cnt);
-    LOG.info(crawl.size() + " tweets fetched in " + duration + "ms");
+    LOG.info(jobId +":\t " + "Total request submitted: " + cnt);
+    LOG.info(jobId +":\t " + crawl.size() + " tweets fetched in " + duration + "ms");
 
-    LOG.info("Writing tweets...");
+    LOG.info(jobId +":\t " + "Writing tweets...");
     int written = 0;
 
     OutputStreamWriter out = new OutputStreamWriter(new GZIPOutputStream(
@@ -180,10 +184,10 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
     }
     out.close();
 
-    LOG.info(written + " statuses written.");
+    LOG.info(jobId +":\t " + written + " statuses written.");
 
     if (this.repair != null) {
-      LOG.info("Writing repair data file...");
+      LOG.info(jobId +":\t " + "Writing repair data file...");
       written = 0;
       out = new OutputStreamWriter(new FileOutputStream(repair), "UTF-8");
       for (Map.Entry<Long, String> entry : crawl_repair.entrySet()) {
@@ -192,10 +196,12 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
       }
       out.close();
 
-      LOG.info(written + " statuses need repair.");
+      LOG.info(jobId +":\t " + written + " statuses need repair.");
     }
 
-    LOG.info("Done!");
+    LOG.info(jobId +":\t " + "Done!");
+    
+    return crawl.size();
   }
 
   private class TweetFetcherHandler extends AsyncCompletionHandler<Response> {
@@ -231,7 +237,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
       this.httpStatus = responseStatus.getStatusCode();
       switch (this.httpStatus) {
       case 404:
-        LOG.warn("Abandoning missing page: " + url);
+        LOG.warn(jobId +":\t " + "Abandoning missing page: " + url);
         connections.decrementAndGet();
         return STATE.ABORT;
 
@@ -250,19 +256,19 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
       case 302:
         String redirect = headers.getHeaders().getFirstValue("Location");
         if (redirect.contains("protected_redirect=true")) {
-          LOG.warn("Abandoning protected account: " + url);
+          LOG.warn(jobId +":\t " + "Abandoning protected account: " + url);
           connections.decrementAndGet();
         } else if (redirect.contains("account/suspended")) {
-          LOG.warn("Abandoning suspended account: " + url);
+          LOG.warn(jobId +":\t " + "Abandoning suspended account: " + url);
           connections.decrementAndGet();
         } else if (redirect.contains("//status") || redirect.contains("login?redirect_after_login")) {
-          LOG.warn("Abandoning deleted account: " + url);
+          LOG.warn(jobId +":\t " + "Abandoning deleted account: " + url);
           connections.decrementAndGet();
         } else if (followRedirects) {
           crawlURL(redirect, new TweetFetcherHandler(id, username, redirect, numRetries,
               followRedirects, line));
         } else {
-          LOG.warn("Abandoning redirect: " + url);
+          LOG.warn(jobId +":\t " + "Abandoning redirect: " + url);
           connections.decrementAndGet();
         }
         return STATE.ABORT;
@@ -287,8 +293,8 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
 
         String html = response.getResponseBody("UTF-8");
         Status status = Status.fromHtml(html);
-        if (StringUtils.isNotBlank(status.getText()) && StringUtils.isNotBlank(status.getScreenname())) {
-          LOG.warn("Unable to parse text from this, possible change in format.. " + url);
+        if (StringUtils.isBlank(status.getText()) || StringUtils.isBlank(status.getScreenname())) {
+          LOG.warn(jobId +":\t " + "Unable to parse text from this, possible change in format.. " + url);
           retry();
           return response;
         }
@@ -303,15 +309,15 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
 
         return response;
       } catch (IOException e) {
-        LOG.warn("Error (" + e + "): " + url);
+        LOG.warn(jobId +":\t " + "Error (" + e + "): " + url + " : " + e.getMessage());
         retry();
         return response;
       } catch (JsonSyntaxException e) {
-        LOG.warn("Unable to parse embedded JSON: " + url);
+        LOG.warn(jobId +":\t " + "Unable to parse embedded JSON: " + url + " : " + e.getMessage());
         retry();
         return response;
       } catch (NullPointerException e) {
-        LOG.warn("Unexpected format for embedded JSON: " + url);
+        LOG.warn(jobId +":\t " + "Unexpected format for embedded JSON: " + url);
         retry();
         return response;
       }
@@ -324,7 +330,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
 
     private void retry() {
       if (this.numRetries >= MAX_RETRY_ATTEMPTS) {
-        LOG.warn("Abandoning after max retry attempts: " + url);
+        LOG.warn(jobId +":\t " + "Abandoning after max retry attempts: " + url);
         crawl_repair.put(id, line);
         connections.decrementAndGet();
         return;
@@ -363,7 +369,7 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
           .addHeader("Accept-Language", "en-US").execute(handler);
           
     } catch (IOException e) {
-      LOG.warn("Abandoning due to error (" + e + "): " + url);
+      LOG.warn(jobId +":\t " + "Abandoning due to error (" + e + "): " + url);
       crawl_repair.put(handler.getId(), handler.getLine());
       connections.decrementAndGet();
     }
@@ -375,10 +381,10 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
         "mODntTBvqFWEtnlsV6THQ","36a7c4104da73", dateTime, "fGPT9StUyBwOnLbJvRT3ZrRZRrg%3D","HMAC-SHA1", dateTime,"18447686-FixB8106ipARDQi1BZ9tJ8Yx17WH7r6n29bHzPMYi");
   }
 
-  private static final String DATA_OPTION = "data";
-  private static final String OUTPUT_OPTION = "output";
-  private static final String REPAIR_OPTION = "repair";
-  private static final String NOFOLLOW_OPTION = "noFollow";
+  public static final String DATA_OPTION = "data";
+  public static final String OUTPUT_OPTION = "output";
+  public static final String REPAIR_OPTION = "repair";
+  public static final String NOFOLLOW_OPTION = "noFollow";
 
   private Date currentDateTime = new Date();
 
