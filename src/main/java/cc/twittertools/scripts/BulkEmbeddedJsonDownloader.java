@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.channels.FileLock;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -142,6 +143,18 @@ public class BulkEmbeddedJsonDownloader {
 			{	LOG.info ("Skipping job as it's already been started - " + inpath);
 				return 0;
 			}
+		    
+      // Only execute on weekends and overnight, between the hours of
+      // 8pm and 8am. Check this every 15mins.
+      while (true)
+      { Calendar cal = Calendar.getInstance();
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        int day  = cal.get(Calendar.DAY_OF_WEEK);
+        if ((1 <= day && day <= 5) && (8 <= hour && hour <= 19))
+          Thread.sleep(TimeUnit.MINUTES.toMillis(15));
+        else
+          break;
+      }
 		  
 			int completedCount = 0;
 			try
