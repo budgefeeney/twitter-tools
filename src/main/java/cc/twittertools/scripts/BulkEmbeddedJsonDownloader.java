@@ -150,7 +150,7 @@ public class BulkEmbeddedJsonDownloader {
       { Calendar cal = Calendar.getInstance();
         int hour = cal.get(Calendar.HOUR_OF_DAY);
         int day  = cal.get(Calendar.DAY_OF_WEEK);
-        if ((1 <= day && day <= 5) && (8 <= hour && hour <= 19))
+        if ((Calendar.MONDAY <= day && day <= Calendar.FRIDAY) && (8 <= hour && hour <= 19))
           Thread.sleep(TimeUnit.MINUTES.toMillis(15));
         else
           break;
