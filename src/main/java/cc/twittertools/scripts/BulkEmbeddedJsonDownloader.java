@@ -22,6 +22,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 
 import com.google.common.base.Charsets;
@@ -205,17 +206,19 @@ public class BulkEmbeddedJsonDownloader
         String output    = cmdline.getOptionValue(OUTPUT_OPTION);
         String repair    = cmdline.getOptionValue(REPAIR_OPTION);
         boolean noFollow = cmdline.hasOption(NOFOLLOW_OPTION);
-        int taskCount    = Integer.parseInt (cmdline.getOptionValue(TASK_COUNT_OPTION));
+        int taskCount    = Integer.parseInt (
+            StringUtils.defaultIfBlank(
+                cmdline.getOptionValue(TASK_COUNT_OPTION),
+                "1"
+            )
+        );
         
         ExecutorService executor = Executors.newFixedThreadPool(taskCount);
-        int DEBUG_MAX_TASKS = 2;
         
         String[] inFiles = new File (data).list();
         Arrays.sort (inFiles);
         for (String inFile : inFiles)
-        {	if (DEBUG_MAX_TASKS-- == 0)
-        		break;
-        
+        {	
         	String outFile = 
         		output + File.separator
         		+ new File (inFile).getName().replaceAll ("\\.dat", ".json.gz");
