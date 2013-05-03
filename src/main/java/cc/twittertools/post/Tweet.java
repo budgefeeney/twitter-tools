@@ -9,18 +9,20 @@ import com.google.common.base.Joiner;
 public class Tweet
 {
   public static enum Sigil {
-    RETWEET ("RT:", 0),
-    ADDRESSEE ("@", 1),
-    HASH_TAG ("#", 1);
+    RETWEET (0, "RT:", "RT"),
+    ADDRESSEE (1, "@"),
+    HASH_TAG (1, "#");
     
-    private final String sigil;
+    private final String[] sigils;
     private final int paramCount;
     
-    private Sigil (String sigil, int paramCount)
-    { assert ! StringUtils.isBlank (sigil) : "Sigil String cannot be empty";
-      assert paramCount > 0                : "Param count must be non negative";
-      
-      this.sigil = sigil;
+    private Sigil (int paramCount, String... sigils)
+    { assert paramCount > 0    : "Param count must be non negative";
+      assert sigils.length > 0 : "Need to supply at least one sigil";
+      for (String sigil : sigils)
+        assert ! StringUtils.isBlank(sigil) : "Sigil cannot be null, empty or simply whitespace";
+    
+      this.sigils = sigils;
       this.paramCount = paramCount;
     }
     
@@ -31,28 +33,32 @@ public class Tweet
     private String stripFromMsg (String msg, String... params)
     { assert params.length == paramCount : "Need to provide " + paramCount + " paramters for the sigil " + this + " but only " + params.length + " were provided";
       
-      String needle = sigil + Joiner.on("").join(params);
-      
-      int nedLen = needle.length();
-      int pos = 0;
-      int[] positions = new int[1 + msg.length() / nedLen];
-      int found = 0;
-      
-      while ((pos = msg.indexOf(needle, pos)) >= 0)
-      { positions[found++] = pos;
-        pos += nedLen;
+      for (String sigil : sigils)
+      { String needle = sigil + Joiner.on("").join(params);
+        
+        int nedLen = needle.length();
+        int pos = 0;
+        int[] positions = new int[1 + msg.length() / nedLen];
+        int found = 0;
+        
+        while ((pos = msg.indexOf(needle, pos)) >= 0)
+        { positions[found++] = pos;
+          pos += nedLen;
+        }
+        
+        if (found == 0)
+          continue;
+        
+        StringBuilder sb = new StringBuilder (msg.length() - nedLen * found);
+        int start = 0;
+        for (int i = 0; i < found; i++)
+        { sb.append (msg.substring(start, positions[i]));
+          start = positions[i] + nedLen;
+        }
+        sb.append (msg.substring (start, msg.length()));
+        
+        msg = sb.toString();
       }
-      
-      if (found == 1)
-        return msg;
-      
-      StringBuilder sb = new StringBuilder (msg.length() - nedLen * found);
-      int start = 0;
-      for (int i = 0; i < found; i++)
-      { sb.append (msg.subSequence(start, positions[i]));
-        start += nedLen;
-      }
-      sb.append (msg.substring (start, msg.length()));
       
       return msg;
     }
