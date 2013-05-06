@@ -2,6 +2,7 @@ package cc.twittertools.post;
 
 import static org.junit.Assert.assertEquals;
 
+import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -20,7 +21,8 @@ public class TweetTest
       /* addresseess = */ Sets.newHashSet ("LoveKayla_xoxo"),
       /* id = */          29684302916624384L,
       /* requestedId = */ 29684302916624384L,
-      /* isRetweetFromMsg = */ true
+      /* isRetweetFromMsg = */ true,
+      /* localTime = */    new DateTime (2011, 4, 13, 17, 56)
     );
   
   }

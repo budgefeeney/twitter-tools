@@ -3,11 +3,11 @@ package cc.twittertools.post;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
-
-import com.google.common.collect.Sets;
+import org.joda.time.DateTime;
 
 public class Tweet
 {
+  private final DateTime localTime;
   private final Set<String> hashTags;
   private final String user;
   private final String msg;
@@ -19,7 +19,7 @@ public class Tweet
   
   
   public Tweet(Set<String> hashTags, String user, String msg, Set<String> addressees,
-      long id, long requestedId, boolean isRetweetFromMsg) {
+      long id, long requestedId, boolean isRetweetFromMsg, DateTime localTime) {
     super();
     assert hashTags != null            : "Hash tags set can be empty but not null";
     assert ! StringUtils.isBlank(user) : "Username can be neither blank nor null";
@@ -36,27 +36,9 @@ public class Tweet
     this.requestedId = requestedId;
     this.isRetweetFromId = id != requestedId;
     this.isRetweetFromMsg = isRetweetFromMsg;
+    this.localTime = localTime;
   }
   
-  
-  public Tweet(String user, String msg, long id, long requestedId) {
-    super();
-    assert ! StringUtils.isBlank(user) : "Username can be neither blank nor null";
-    assert ! StringUtils.isBlank(user) : "Message cannot be null or blank";
-    assert id > 0                      : "ID must be strictly positive";
-    assert requestedId > 0             : "Requested ID must be strictly positive";
-    
-    this.hashTags   = Sigil.HASH_TAG.extract (msg);
-    this.addressees = Sigil.ADDRESSEE.extract (msg);
-    this.user = user;
-    this.msg  = msg;
-    this.id   = id;
-    this.requestedId      = requestedId;
-    this.isRetweetFromId  = id != requestedId;
-    this.isRetweetFromMsg = Sigil.RETWEET.containsSigil();
-    
-  }
-
 
   public Set<String> getHashTags() {
     return hashTags;
@@ -90,6 +72,39 @@ public class Tweet
     return isRetweetFromMsg;
   }
   
+  public DateTime getTime() {
+    return localTime;
+  }
+  
+  @Override
+  public String toString()
+  { return localTime + " - @" + user + " : \t " + msg;
+  }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + (int) (id ^ (id >>> 32));
+    return result;
+  }
+
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    Tweet other = (Tweet) obj;
+    if (id != other.id)
+      return false;
+    return true;
+  }
+
+
   public String getMsgLessSigils() {
     String msg = this.msg;
     for (String addressee : addressees)

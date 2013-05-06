@@ -14,9 +14,18 @@ import com.google.gson.JsonParser;
  * Object representing a status.
  */
 public class Status {
-  private final static Logger LOG = Logger.getLogger (Status.class);
   
+  public static final String TIMESTAMP = "timestamp";
+  public static final String DATETIME = "createdAt";
+  public static final String MESSAGE = "text";
+  public static final String USER = "screenName";
+  public static final String ID = "id";
+  public static final String REQUESTED_ID = "requested_id";
+  
+  private final static Logger LOG = Logger.getLogger (Status.class);  
   private static final JsonParser parser = new JsonParser();
+   
+  
 
   private long id;
   private String screenname;
@@ -53,11 +62,11 @@ public class Status {
       return jsonObject;
     
     jsonObject = new JsonObject();
-    jsonObject.addProperty ("id", id);
-    jsonObject.addProperty ("screenName", screenname);
-    jsonObject.addProperty ("text", text);
-    jsonObject.addProperty ("createdAt", createdAt);
-    jsonObject.addProperty ("timestamp", Long.toString (timestamp));
+    jsonObject.addProperty (ID, id);
+    jsonObject.addProperty (USER, screenname);
+    jsonObject.addProperty (MESSAGE, text);
+    jsonObject.addProperty (DATETIME, createdAt);
+    jsonObject.addProperty (TIMESTAMP, Long.toString (timestamp));
     
     return jsonObject;
   }
