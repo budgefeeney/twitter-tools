@@ -117,7 +117,7 @@ public enum Sigil {
         int end = beginning + sigil.length();
         
         if (paramCount > 0)
-          while (Character.isJavaIdentifierPart(msg.charAt(end)))
+          while (end < msg.length() && Character.isJavaIdentifierPart(msg.charAt(end)))
             ++end;
         
         int len = end - beginning;
@@ -127,7 +127,7 @@ public enum Sigil {
           result[found * 2 + 1] = end;
           ++found;
           
-          if (found * 2 > result.length)
+          if (found * 2 >= result.length)
             result = Arrays.copyOf(result, result.length * 2);
         }
       }
