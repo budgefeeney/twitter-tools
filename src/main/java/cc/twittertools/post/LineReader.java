@@ -3,6 +3,7 @@ package cc.twittertools.post;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -10,6 +11,7 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.hadoop.io.IOUtils;
 
@@ -22,7 +24,7 @@ import com.google.common.collect.Lists;
  * <p>
  * GZipping is detected simply by the presence of a ".gz" suffix.
  */
-public class LineReader implements Iterator<String>
+public class LineReader implements Iterator<String>, AutoCloseable
 {
   private final Iterator<Path> paths;
   private       String         nextLine;
@@ -84,7 +86,10 @@ public class LineReader implements Iterator<String>
         { 
           if (! paths.hasNext())
             return false;
-          rdr = Files.newBufferedReader (paths.next(), Charsets.UTF_8);
+          Path path = paths.next();
+          rdr = endsWithGZ(path)
+              ? new BufferedReader (new InputStreamReader (new GZIPInputStream(Files.newInputStream(path)), Charsets.UTF_8))
+              : Files.newBufferedReader (path, Charsets.UTF_8);
         }
         
         nextLine = rdr.readLine();
@@ -99,6 +104,10 @@ public class LineReader implements Iterator<String>
       IOUtils.closeStream(rdr); // TODO Import Apache Commons IO
       return true;
     }
+  }
+  
+  private static final boolean endsWithGZ (Path path)
+  { return path.getFileName().toString().toUpperCase().endsWith(".GZ");    
   }
   
   public static <C extends Closeable> C closeAndNull (C stream) throws IOException
@@ -126,5 +135,9 @@ public class LineReader implements Iterator<String>
   { throw new UnsupportedOperationException();
   }
 
-
+  @Override
+  public void close() throws Exception
+  { if (rdr != null)
+      rdr.close();
+  }
 }

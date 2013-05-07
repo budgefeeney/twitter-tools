@@ -24,5 +24,11 @@
     <dependency org="log4j" name="log4j" rev="1.2.17" conf="*->*,!sources,!javadoc"/>
     <dependency org="log4j" name="apache-log4j-extras" rev="1.1" conf="*->*,!sources,!javadoc"/>
     <dependency org="joda-time" name="joda-time" rev="2.2" conf="*->*,!sources,!javadoc"/>
+    <dependency org="it.unimi.dsi" name="fastutil" rev="6.5.4" conf="*->*,!sources,!javadoc"/>
+    <dependency org="it.unimi.dsi" name="mg4j" rev="4.0.3" conf="*->*,!sources,!javadoc"/>
+    <dependency org="gnu.getopt" name="java-getopt" rev="1.0.13" conf="*->*,!sources,!javadoc"/>
+    <dependency org="colt" name="colt" rev="1.2.0" conf="*->*,!sources,!javadoc"/>
+    <dependency org="com.google.guava" name="guava" rev="r09" conf="*->*,!sources,!javadoc"/>
+            
   </dependencies>
 </ivy-module>
