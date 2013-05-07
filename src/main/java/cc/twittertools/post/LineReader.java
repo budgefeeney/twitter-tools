@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.zip.GZIPInputStream;
 
 import org.apache.hadoop.io.IOUtils;
+import org.apache.log4j.Logger;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
@@ -26,6 +27,8 @@ import com.google.common.collect.Lists;
  */
 public class LineReader implements Iterator<String>, AutoCloseable
 {
+  private final static Logger LOG = Logger.getLogger(LineReader.class);
+  
   private final Iterator<Path> paths;
   private       String         nextLine;
   private       Exception      nextError;
@@ -87,6 +90,7 @@ public class LineReader implements Iterator<String>, AutoCloseable
           if (! paths.hasNext())
             return false;
           Path path = paths.next();
+          LOG.debug("Opening path " + path);
           rdr = endsWithGZ(path)
               ? new BufferedReader (new InputStreamReader (new GZIPInputStream(Files.newInputStream(path)), Charsets.UTF_8))
               : Files.newBufferedReader (path, Charsets.UTF_8);
@@ -112,7 +116,7 @@ public class LineReader implements Iterator<String>, AutoCloseable
   
   public static <C extends Closeable> C closeAndNull (C stream) throws IOException
   { stream.close();
-    return stream;
+    return null;
   }
 
   @Override
@@ -123,7 +127,9 @@ public class LineReader implements Iterator<String>, AutoCloseable
       throw new RuntimeException (errorResult.getMessage(), errorResult);
     }
     
-    return nextLine;
+    String result = nextLine;
+    nextLine = null;
+    return result;
   }
 
   /**
