@@ -20,17 +20,14 @@ public class TweetTranslator implements Callable<Integer>
   private final Path inputPath;
   private final Path outputPath;
   
-  private final Path authorStatsPath;
-  private final Path hashtagStatsPath;
+  private final Path hashAuthorStatsPath;
   
   
-  public TweetTranslator(Path inputPath, Path outputPath, Path authorStatsPath,
-      Path hashtagStatsPath) {
+  public TweetTranslator(Path inputPath, Path outputPath, Path hashAuthorStatsPath) {
     super();
     this.inputPath = inputPath;
     this.outputPath = outputPath;
-    this.authorStatsPath = authorStatsPath;
-    this.hashtagStatsPath = hashtagStatsPath;
+    this.hashAuthorStatsPath = hashAuthorStatsPath;
   }
 
 
@@ -40,8 +37,7 @@ public class TweetTranslator implements Callable<Integer>
    * tweets per author / per hashtag
    */
   public Integer call() throws Exception 
-  { Counts<String> userCounts    = new Counts<>();
-    Counts<String> hashTagCounts = new Counts<>();
+  { Counts<String> hashUserStats = new Counts<>();
     int count = 0;
     
     try (
@@ -54,24 +50,38 @@ public class TweetTranslator implements Callable<Integer>
       while (tweets.hasNext())
       { Tweet tweet = tweets.next();
         ++count;
-        userCounts.inc(tweet.getUser());
+        printProgress (count);
+          
         for (String hashTag : tweet.getHashTags())
-          hashTagCounts.inc(hashTag);
+          hashUserStats.inc(hashTag + '\t' + tweet.getUser());
         //wrtr.writeTweet(tweet);
       }
       
-      userCounts.write(authorStatsPath);
-      hashTagCounts.write(hashtagStatsPath);
+      hashUserStats.write(hashAuthorStatsPath);
     }
     return count;
   }
   
-  public final static void main (String[] args)
+  private final static void printProgress (int count)
+  { if (count == 0)
+      return;
+  
+    if (count % 100000 == 0)
+    { System.out.print (" " + count + "\n");
+    }
+    else
+    { if (count % 1000 == 0)
+      System.out.print ('.');
+    }
+    System.out.flush();
+  }
+  
+  public final static void main (String[] args) throws Exception
   { Path dataDir  = Paths.get("/local/datasets/twitter/TREC/crawl");
-    Path outDir   = Paths.get("/local/datasets/twitter/TREC/crawl.fmt");
-    Path userFile = Paths.get("/local/datasets/twitter/TREC/crawl.authors.csv");
-    Path hashFile = Paths.get("/local/datasets/twitter/TREC/crawl.hashtags.csv");
+    Path outDir   = Paths.get("/local/datasets/twitter/TREC/crawl.fmt.csv");
+    Path userHashFile = Paths.get("/local/datasets/twitter/TREC/crawl.authors.hash.csv");
     
-    TweetTranslator trans = new TweetTranslator(dataDir, outDir, userFile, hashFile);
+    TweetTranslator trans = new TweetTranslator(dataDir, outDir, userHashFile);
+    System.out.println ("Processed " + trans.call() + " tweets");
   }
 }

@@ -10,7 +10,7 @@
 
     <dependency org="org.twitter4j" name="twitter4j-core" rev="3.0.3" conf="*->*,!sources,!javadoc"/>
     <dependency org="org.twitter4j" name="twitter4j-stream" rev="3.0.3" conf="*->*,!sources,!javadoc"/>
-    <dependency org="com.google.guava" name="guava" rev="13.0.1" conf="*->*,!sources,!javadoc"/>
+    <dependency org="com.google.guava" name="guava" rev="14.0.1" conf="*->*,!sources,!javadoc"/>
     <dependency org="commons-cli" name="commons-cli" rev="1.2" conf="*->*,!sources,!javadoc"/>
     <dependency org="commons-lang" name="commons-lang" rev="2.6" conf="*->*,!sources,!javadoc"/>
     <dependency org="com.ning" name="async-http-client" rev="1.7.5" conf="*->*,!sources,!javadoc"/>
@@ -28,7 +28,6 @@
     <dependency org="it.unimi.dsi" name="mg4j" rev="4.0.3" conf="*->*,!sources,!javadoc"/>
     <dependency org="gnu.getopt" name="java-getopt" rev="1.0.13" conf="*->*,!sources,!javadoc"/>
     <dependency org="colt" name="colt" rev="1.2.0" conf="*->*,!sources,!javadoc"/>
-    <dependency org="com.google.guava" name="guava" rev="r09" conf="*->*,!sources,!javadoc"/>
-            
+    
   </dependencies>
 </ivy-module>
