@@ -44,22 +44,24 @@ public class UserSpider
 
   /**
    * Keeps track of the number of requests, ensuring that we don't
-   * go over our limit.
+   * go over our limit, which by default (and according to the Twitter
+   * API) is 15 requests per 15mins
    */
   private final static class BlockingRequestCounter
-  { private final static int BASIC_REQUESTS_PER_HOUR = 140;
+  { private final static int BASIC_REQUESTS_PER_QTR_HR = 15;
+    private final static long WINDOW_MS = TimeUnit.MINUTES.toMillis(15);
 
-    private final int  requestsPerHour;
+    private final int  requestsPerQtrHr;
     private       long minInterReqTimeMs;
     private       long startTimeMs;
     private       int  requestsMade;
 
     public BlockingRequestCounter()
-    { this (BASIC_REQUESTS_PER_HOUR);
+    { this (BASIC_REQUESTS_PER_QTR_HR);
     }
     
-    public BlockingRequestCounter(int requestsPerHour)
-    { this.requestsPerHour = requestsPerHour;
+    public BlockingRequestCounter(int requestsPerQtrHr)
+    { this.requestsPerQtrHr = requestsPerQtrHr;
     
       // We set the minimum inter-request time to be the time needed for 10-times the intensity.
       // There seems to be some requirement to limit this.
@@ -73,8 +75,8 @@ public class UserSpider
      */
     public void incAndWait() throws InterruptedException
     { 
-      if (requestsMade >= requestsPerHour)
-      { Thread.sleep(TimeUnit.HOURS.toMillis(1) - (System.currentTimeMillis() - startTimeMs));
+      if (requestsMade >= requestsPerQtrHr)
+      { sleepTillWindowReopens();
         reset();
       }
       else
@@ -83,9 +85,14 @@ public class UserSpider
       ++requestsMade;
       
       // Now update the inter-request time
-      int reqsRemaining  = requestsPerHour - requestsMade;
-      long timeRemaining = (startTimeMs + TimeUnit.HOURS.toMillis(1)) - System.currentTimeMillis();
+      int reqsRemaining  = requestsPerQtrHr - requestsMade;
+      long timeRemaining = (startTimeMs + WINDOW_MS) - System.currentTimeMillis();
       minInterReqTimeMs  = timeRemaining / reqsRemaining;
+    }
+
+    private void sleepTillWindowReopens() throws InterruptedException
+    { // We wait for the allotted window time to expire, then wait another minute just to be sure.
+      Thread.sleep((WINDOW_MS - (System.currentTimeMillis() - startTimeMs)) + TimeUnit.MINUTES.toMillis(1));
     }
 
     /** Reset this counter */
@@ -205,7 +212,7 @@ public class UserSpider
             PagableResponseList<User> fetchedUsers 
               = twitter.getFriendsList(seedUser, cursor);
             
-            log.info ("Fetched " + fetchedUsers.size() + " followees for user " + seedUser + " to add to the existing " + aggregatedFetchedUsers.size());
+            log.info ("Fetched " + fetchedUsers.size() + " followees for user " + seedUser + " in category " + catgy + " to add to the existing " + aggregatedFetchedUsers.size());
             
             if (fetchedUsers.size() < STD_USER_COUNT_PER_RESPONSE)
               exhaustedUsers.add(seedUser);
