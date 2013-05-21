@@ -78,7 +78,7 @@ public class LoginTest
       .preparePost("https://twitter.com/sessions")
       .setBody (StringUtils.join(new String[] {
           "session[username_or_email]=budgefeeneyf1",
-          "session[password]=e1coli",
+          "session[password]=FIXME",
           "scribe_log=",
           "return_to_ssl=true",
           "remember_me=1",
