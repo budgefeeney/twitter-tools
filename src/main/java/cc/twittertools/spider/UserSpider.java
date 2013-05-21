@@ -87,7 +87,7 @@ public class UserSpider
       // Now update the inter-request time
       int reqsRemaining  = requestsPerQtrHr - requestsMade;
       long timeRemaining = (startTimeMs + WINDOW_MS) - System.currentTimeMillis();
-      minInterReqTimeMs  = timeRemaining / reqsRemaining;
+      minInterReqTimeMs  = timeRemaining / (reqsRemaining + 1);
     }
 
     private void sleepTillWindowReopens() throws InterruptedException
@@ -309,9 +309,9 @@ public class UserSpider
   }
   
   public static void main (String[] args) throws Exception
-  {
-    Path input  = Paths.get("/home/bfeeney/Workspace/twitter-tools/src/test/resources/seedusers.csv");
-    Path output = Paths.get("/home/bfeeney/Workspace/twitter-tools/src/test/resources/fetchedusers.csv");
+  { 
+    Path input  = Paths.get(args.length >= 1 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/seedusers.csv");
+    Path output = Paths.get(args.length >= 2 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/fetchedusers.csv");
     
     UserSpider spider = new UserSpider (output);
     spider.init(input);
