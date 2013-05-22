@@ -74,8 +74,14 @@ public class UserSpider
      * time has passed for use to execute that request.
      */
     public void incAndWait() throws InterruptedException
-    { 
-      if (requestsMade >= requestsPerQtrHr)
+    { long windowEndMs = startTimeMs + WINDOW_MS;
+      long nowMs       = System.currentTimeMillis();
+      
+      if (windowEndMs < nowMs)
+      { reset();
+        windowEndMs = startTimeMs + WINDOW_MS;
+      }
+      else if (requestsMade >= requestsPerQtrHr)
       { sleepTillWindowReopens();
         reset();
       }
@@ -86,8 +92,8 @@ public class UserSpider
       
       // Now update the inter-request time
       int reqsRemaining  = requestsPerQtrHr - requestsMade;
-      long timeRemaining = (startTimeMs + WINDOW_MS) - System.currentTimeMillis();
-      minInterReqTimeMs  = timeRemaining / (reqsRemaining + 1);
+      long timeRemaining = windowEndMs - System.currentTimeMillis();
+      minInterReqTimeMs  = Math.max(0, timeRemaining) / (reqsRemaining + 1);
     }
 
     private void sleepTillWindowReopens() throws InterruptedException
@@ -97,8 +103,9 @@ public class UserSpider
 
     /** Reset this counter */
     private void reset() {
-      this.startTimeMs     = System.currentTimeMillis();
-      this.requestsMade    = 0;
+      this.startTimeMs       = System.currentTimeMillis();
+      this.requestsMade      = 0;
+      this.minInterReqTimeMs = 0;
     }
   }
   
