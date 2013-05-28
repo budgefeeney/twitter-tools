@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -25,6 +26,7 @@ import org.joda.time.DateTime;
 
 import twitter4j.PagableResponseList;
 import twitter4j.Twitter;
+import twitter4j.TwitterException;
 import twitter4j.TwitterFactory;
 import twitter4j.User;
 import twitter4j.conf.ConfigurationBuilder;
@@ -164,9 +166,12 @@ public class UserSpider
   private final Map<String, Long> cursorsPerUser = new HashMap<>();
   private final List<FetchedUser> aggregatedFetchedUsers = new LinkedList<>();
   private final Path outputPath;
+  private final Path skippedUsersPath;
+  private int numSeedUsers;
   
-  public UserSpider(Path outputPath)
+  public UserSpider(Path outputPath, Path skippedUsersPath)
   { this.outputPath = outputPath;
+    this.skippedUsersPath = skippedUsersPath;
   }
   
   public void init (Path file) throws IOException
@@ -183,12 +188,15 @@ public class UserSpider
           aggregatedFetchedUsers.add (new FetchedUser (words[0], userName, SEED_USER_CREAT_DATE.toDate()));
       }
     }
+    numSeedUsers = aggregatedFetchedUsers.size();
   }
   
   public void fetchUsers() throws IOException
   { BlockingRequestCounter reqCounter = new BlockingRequestCounter();
     int errorCount = MAX_ERROR_COUNT;
-      
+    int accessErrorCount = numSeedUsers; // access error happens if an account is suspended / deleted
+                                         // or if our credentials fail. So if it occurs more than the
+                                         // number of accounts, then it's our credentials that are broken
     // We fill up each category, one by one
     //  - To do this we cycle through each users, asking each for 20 users
     //  - Then cycle through users again asking for another 20 users each
@@ -207,50 +215,84 @@ public class UserSpider
     
       while (numFolloweesFetched < MAX_USERS_PER_CATEGORY && seedUsers.size() != exhaustedUsers.size())
       {
-        for (String seedUser : seedUsers)
+        seedUserLoop:for (String seedUser : seedUsers)
         { if (exhaustedUsers.contains (seedUser))
             continue;
           
-          try
-          {
-            long cursor = getCursor (seedUser);
-            reqCounter.incAndWait();
-            
-            PagableResponseList<User> fetchedUsers 
-              = twitter.getFriendsList(seedUser, cursor);
-            
-            log.info ("Fetched " + fetchedUsers.size() + " followees for user " + seedUser + " in category " + catgy + " to add to the existing " + aggregatedFetchedUsers.size());
-            
-            if (fetchedUsers.size() < STD_USER_COUNT_PER_RESPONSE)
-              exhaustedUsers.add(seedUser);
-            setCursor (seedUser, fetchedUsers.getNextCursor());
-            
-            for (User fetchedUser : fetchedUsers)
-            { ++numFolloweesFetched;
-              aggregatedFetchedUsers.add (
-                new FetchedUser(
-                  catgy,
-                  fetchedUser.getScreenName(),
-                  fetchedUser.getCreatedAt(),
-                  Arrays.asList (new String[] { seedUser, fetchedUser.getName() }),
-                  cursor
-                )
-              );
-            }   
+          try 
+          { 
+            try
+            { 
+              long cursor = getCursor (seedUser);
+              reqCounter.incAndWait();
+              
+              PagableResponseList<User> fetchedUsers 
+                = twitter.getFriendsList(seedUser, cursor);
+              
+              log.info ("Fetched " + fetchedUsers.size() + " followees for user " + seedUser + " in category " + catgy + " to add to the existing " + aggregatedFetchedUsers.size());
+              
+              if (fetchedUsers.size() < STD_USER_COUNT_PER_RESPONSE)
+                exhaustedUsers.add(seedUser);
+              setCursor (seedUser, fetchedUsers.getNextCursor());
+              
+              for (User fetchedUser : fetchedUsers)
+              { ++numFolloweesFetched;
+                aggregatedFetchedUsers.add (
+                  new FetchedUser(
+                    catgy,
+                    fetchedUser.getScreenName(),
+                    fetchedUser.getCreatedAt(),
+                    Arrays.asList (new String[] { seedUser, fetchedUser.getName() }),
+                    cursor
+                  )
+                );
+              }   
+            }
+            catch (TwitterException te)
+            { if (te.getStatusCode() == 401)
+              { --accessErrorCount;
+                if (accessErrorCount < 0)
+                  throw new RuntimeException("Too many access errors (" + numSeedUsers + ") have occurred, quitting.");
+                log.error("Access error occurred downloading followers, skipping user " + seedUser + " : " + te.getMessage(), te);
+                logSkippedUser (seedUser);
+                continue seedUserLoop;
+              }
+              throw te;
+            }
           }
           catch (Exception te)
           { --errorCount;
             if (errorCount < 0)
               throw new RuntimeException("Too many errors (" + MAX_ERROR_COUNT + ") have occurred, quitting.");
-            log.error("Error occurred downloading followers " + te.getMessage(), te);
+            log.error("Error occurred downloading followers, skipping user " + seedUser + " : " + te.getMessage(), te);
             
             tryToSleepMins(30);
+            logSkippedUser (seedUser);
+            continue seedUserLoop;
           }         
         }
       }
     }
 
     writeFolloweesToFile();
+  }
+  
+  /**
+   * Appends the user name to the file given by {@link #skippedUsersPath} on a new line.
+   * Swallows all exceptions, and logs them.
+   * @param user
+   */
+  private final void logSkippedUser (String user)
+  { try (
+      BufferedWriter wtr = Files.newBufferedWriter(skippedUsersPath, Charsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+    )
+    {
+      wtr.write(user + '\n');
+    }
+    catch (Exception e)
+    { log.error ("LOGFAIL Could not write out skipped user " + user + " to skipped users file " + skippedUsersPath + " : " + e.getMessage(), e);
+    }
+    
   }
 
   /**
@@ -319,8 +361,9 @@ public class UserSpider
   { 
     Path input  = Paths.get(args.length >= 1 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/seedusers.csv");
     Path output = Paths.get(args.length >= 2 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/fetchedusers.csv");
+    Path skips  = Paths.get(args.length >= 3 ? args[2] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/skippedusers.csv");
     
-    UserSpider spider = new UserSpider (output);
+    UserSpider spider = new UserSpider (output, skips);
     spider.init(input);
     spider.fetchUsers();
   }
