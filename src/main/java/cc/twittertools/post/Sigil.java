@@ -117,7 +117,7 @@ public enum Sigil {
         int end = beginning + sigil.length();
         
         if (paramCount > 0)
-          while (end < msg.length() && Character.isJavaIdentifierPart(msg.charAt(end)))
+          while (end < msg.length() && Character.isJavaIdentifierPart(msg.charAt(end)) && msg.charAt(end) != '!')
             ++end;
         
         int len = end - beginning;
