@@ -50,6 +50,7 @@ public class UserSpider
   
   private final static Logger log = Logger.getLogger(UserSpider.class);
   
+  /* pkg */ final static String ISO8601_FMT_STR = "yyyy-MM-dd'T'HH:mm:ssZ";
   private final SimpleDateFormat ISO8601_FMT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
   private final Map<String, List<String>> seedUsersByCategory = new HashMap<>();
   private final Map<String, Long> cursorsPerUser = new HashMap<>();

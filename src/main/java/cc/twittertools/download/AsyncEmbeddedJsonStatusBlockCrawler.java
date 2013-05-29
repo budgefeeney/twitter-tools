@@ -48,12 +48,12 @@ public class AsyncEmbeddedJsonStatusBlockCrawler {
 
   private static final int TWEET_BLOCK_SIZE = 500;
   
-  private static final int MAX_CONNECTIONS = 100;
-  private static final int CONNECTION_TIMEOUT = 10000;
-  private static final int IDLE_CONNECTION_TIMEOUT = 10000;
-  private static final int REQUEST_TIMEOUT = 10000;
-  private static final int MAX_RETRY_ATTEMPTS = 2;
-  private static final int WAIT_BEFORE_RETRY = 1000;
+  public static final int MAX_CONNECTIONS = 100;
+  public static final int CONNECTION_TIMEOUT = 10000;
+  public static final int IDLE_CONNECTION_TIMEOUT = 10000;
+  public static final int REQUEST_TIMEOUT = 10000;
+  public static final int MAX_RETRY_ATTEMPTS = 2;
+  public static final int WAIT_BEFORE_RETRY = 1000;
   private static final Timer timer = new Timer(true);
 
   private static final Gson GSON = new Gson();
