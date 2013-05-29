@@ -20,7 +20,7 @@ public class DirectoryBrowser implements Iterable<String> {
   private final String outputPath;
   private int docCount = 0;
   private int currentDocIndex = 0;
-  private ArrayList docList;
+  private List<String> docList;
 
   public DirectoryBrowser(String absolutePath, String outputPath) {
     this.absolutePath = Preconditions.checkNotNull(absolutePath);

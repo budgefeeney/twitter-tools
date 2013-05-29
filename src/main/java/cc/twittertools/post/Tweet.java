@@ -4,9 +4,17 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+
+import com.google.common.collect.Sets;
 
 public class Tweet
 {
+  /* Sample is 3:37 PM - 24 Jan 11 */
+  private final static DateTimeFormatter TWITTER_FMT =
+      DateTimeFormat.forPattern("h:m a - d MMM yy");
+  
   private final DateTime localTime;
   private final Set<String> hashTags;
   private final String user;
@@ -17,6 +25,19 @@ public class Tweet
   private final boolean isRetweetFromId;
   private final boolean isRetweetFromMsg;
   
+  
+  public Tweet (long id, long reqId, String date, String user, String msg) {
+    this(
+      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
+      /* user = */         user,
+      /* msg = */          msg,
+      /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
+      /* id = */           id,
+      /* requestedId = */  reqId,
+      /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
+      /* time = */         TWITTER_FMT.parseDateTime(date)
+    );
+  }
   
   public Tweet(Set<String> hashTags, String user, String msg, Set<String> addressees,
       long id, long requestedId, boolean isRetweetFromMsg, DateTime localTime) {

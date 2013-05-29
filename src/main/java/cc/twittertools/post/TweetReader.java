@@ -4,25 +4,19 @@ import static cc.twittertools.corpus.data.Status.DATETIME;
 import static cc.twittertools.corpus.data.Status.ID;
 import static cc.twittertools.corpus.data.Status.MESSAGE;
 import static cc.twittertools.corpus.data.Status.REQUESTED_ID;
-import static cc.twittertools.corpus.data.Status.TIMESTAMP;
 import static cc.twittertools.corpus.data.Status.USER;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
-import java.util.List;
 
 import javax.annotation.Nullable;
 
 import org.apache.commons.lang.StringUtils;
-import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterators;
-import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -34,9 +28,7 @@ import com.google.gson.JsonParser;
  */
 public class TweetReader implements Iterator<Tweet>
 {
-  /* Sample is 3:37 PM - 24 Jan 11 */
-  private final DateTimeFormatter TWITTER_FMT =
-      DateTimeFormat.forPattern("h:m a - d MMM yy");
+  
   
   private final JsonParser       parser;
   private final Iterator<String> lines;
@@ -101,23 +93,10 @@ public class TweetReader implements Iterator<Tweet>
     String msg   = json.get(MESSAGE).getAsString();
     String user  = json.get(USER).getAsString();
     String date  = json.get(DATETIME).getAsString();
-    long   stamp = json.get(TIMESTAMP).getAsLong(); // relative time since it was downloaded...
+    //long   stamp = json.get(TIMESTAMP).getAsLong(); // relative time since it was downloaded...
+    long   id    = json.get(ID).getAsLong();
+    long   reqId = json.get(REQUESTED_ID).getAsLong();
     
-    Pair<String, List<String>> hashTags   = Sigil.HASH_TAG.extractSigils(msg);
-    Pair<String, List<String>> addressees = Sigil.ADDRESSEE.extractSigils(msg);
-    Pair<String, List<String>> retweets   = Sigil.RETWEET.extractSigils(msg);
-    
-    DateTime time = TWITTER_FMT.parseDateTime(date);
-    
-    return new Tweet(
-      /* hashTags = */     Sets.newHashSet(hashTags.getRight()),
-      /* user = */         user,
-      /* msg = */          msg,
-      /* addressees = */   Sets.newHashSet(addressees.getRight()),
-      /* id = */           json.get(ID).getAsLong(),
-      /* requestedId = */  json.get(REQUESTED_ID).getAsLong(),
-      /* isRetweetFromMsg = */ ! retweets.getRight().isEmpty(),
-      /* time = */         time
-    );
+    return new Tweet(id, reqId, date, user, msg);
   }
 }

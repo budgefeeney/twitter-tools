@@ -1,12 +1,15 @@
 package cc.twittertools.spider;
 
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,7 +34,6 @@ import twitter4j.TwitterFactory;
 import twitter4j.User;
 import twitter4j.conf.ConfigurationBuilder;
 
-import com.google.common.base.Charsets;
 
 /**
  * Given a map of categories to lists of "seed" users, fetch
@@ -43,6 +45,7 @@ public class UserSpider
 {
   private static final DateTime SEED_USER_CREAT_DATE = new DateTime(2012, 01, 01, 00, 01);
   private static final int STD_USER_COUNT_PER_RESPONSE = 20;
+  private static final Charset UTF8 = Charset.forName("UTF-8");
 
   /**
    * Keeps track of the number of requests, ensuring that we don't
@@ -177,7 +180,7 @@ public class UserSpider
   public void init (Path file) throws IOException
   { 
     try (
-      BufferedReader rdr = Files.newBufferedReader(file, Charsets.UTF_8)
+      BufferedReader rdr = Files.newBufferedReader(file, UTF8)
     )
     { String line = null;
       while ((line = rdr.readLine()) != null)
@@ -255,6 +258,7 @@ public class UserSpider
                   throw new RuntimeException("Too many access errors (" + numSeedUsers + ") have occurred, quitting.");
                 log.error("Access error occurred downloading followers, skipping user " + seedUser + " : " + te.getMessage(), te);
                 logSkippedUser (seedUser);
+                exhaustedUsers.add (seedUser);
                 continue seedUserLoop;
               }
               throw te;
@@ -268,6 +272,7 @@ public class UserSpider
             
             tryToSleepMins(30);
             logSkippedUser (seedUser);
+            exhaustedUsers.add (seedUser);
             continue seedUserLoop;
           }         
         }
@@ -284,7 +289,7 @@ public class UserSpider
    */
   private final void logSkippedUser (String user)
   { try (
-      BufferedWriter wtr = Files.newBufferedWriter(skippedUsersPath, Charsets.UTF_8, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+      BufferedWriter wtr = Files.newBufferedWriter(skippedUsersPath, UTF8, CREATE, APPEND);
     )
     {
       wtr.write(user + '\n');
@@ -339,7 +344,7 @@ public class UserSpider
   private void writeFolloweesToFile() throws IOException
   { 
     try (
-      BufferedWriter wtr = Files.newBufferedWriter(outputPath, Charsets.UTF_8)
+      BufferedWriter wtr = Files.newBufferedWriter(outputPath, UTF8)
     )
     {
       for (FetchedUser user : aggregatedFetchedUsers)
@@ -357,6 +362,7 @@ public class UserSpider
     log.info("Wrote out " + aggregatedFetchedUsers.size() + " users to the file " + outputPath);
   }
   
+  /* history failed */
   public static void main (String[] args) throws Exception
   { 
     Path input  = Paths.get(args.length >= 1 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/seedusers.csv");
