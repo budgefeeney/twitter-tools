@@ -10,8 +10,10 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -21,17 +23,12 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
-import org.joda.time.DateTime;
 import org.joda.time.Duration;
-import org.joda.time.Interval;
-import org.joda.time.format.ISODateTimeFormat;
 
 import cc.twittertools.post.Tweet;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.ComparisonChain;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.ProxyServer;
@@ -53,107 +50,6 @@ public class UserRanker
   private final static Logger LOG = Logger.getLogger(UserRanker.class);
   private final static int UPDATE_OUTPUT_INTERVAL = 500;
   
-  /**
-   * All the information we need about a Twitter user, with a
-   * constructor to read in the data written out by {@link UserSpider}.
-   * <p>
-   * Comparable implementation is first by category, then by creationMonthYear
-   * and finally by the recent20TweetInterval
-   */
-  private final static class TwitterUser implements Comparable<TwitterUser>
-  { private final String category;
-    private final String name;
-    private final String cursor;
-    private final List<String> ancestry;
-    private final DateTime creationDate;
-    private final int ageInMonths;
-    private Duration recent20TweetInterval = new Duration(Long.MAX_VALUE);
-    
-    public TwitterUser (String line)
-    { String[] fields = StringUtils.split(line, '\t');
-      
-      category     = fields[0];      
-      name         = fields[1];
-      creationDate = ISODateTimeFormat.basicDateTime().parseDateTime(fields[2]);
-      cursor       = fields[3];
-      
-      List<String> anc = new ArrayList<String>(Math.min(1, 4 - fields.length));
-      for (int i = 4; i < fields.length; i++)
-        if (! StringUtils.isBlank(fields[i]))
-          anc.add(fields[i]);
-      if (anc.isEmpty())
-        anc.add(name);
-      
-      ancestry = Collections.unmodifiableList(anc);
-      
-      Interval age = new Interval(creationDate, new DateTime());
-      ageInMonths  = age.toPeriod().getMonths();
-    }
-    
-    /**
-     * Return the twitter user as a tab delimited line terminated
-     * by a newline.
-     */
-    public String toTabDelimLine()
-    { 
-      StringBuilder sb = new StringBuilder (150)
-        .append (category)
-        .append ('\t')
-        .append (name)
-        .append ('\t')
-        .append (ISODateTimeFormat.basicDateTime().print(creationDate))
-        .append ('\t')
-        .append (recent20TweetInterval.getMillis());
-      
-      for (String ancestor : ancestry)
-        sb.append ('\t').append (ancestor);
-      sb.append ('\n');
-      
-      return sb.toString();
-    }
-
-    @Override
-    public int compareTo(TwitterUser that)
-    { int thisIsOlderThanSixMonths = this.ageInMonths >= 6 ? 0 : 1;
-      int thatIsOlderThanSixMonths = that.ageInMonths >= 6 ? 0 : 1;
-      
-      return ComparisonChain.start()
-        .compare(this.category, that.category)
-        .compare(thisIsOlderThanSixMonths, thatIsOlderThanSixMonths)
-        .compare(this.recent20TweetInterval, that.recent20TweetInterval)
-        .result();
-    }
-
-    public Duration getRecent20TweetInterval() {
-      return recent20TweetInterval;
-    }
-
-    public void setRecent20TweetInterval(Duration recent20TweetInterval) {
-      this.recent20TweetInterval = recent20TweetInterval;
-    }
-
-    public String getCategory() {
-      return category;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public List<String> getAncestry() {
-      return ancestry;
-    }
-
-    public DateTime getCreationDate() {
-      return creationDate;
-    }
-
-    public int getAgeInMonths() {
-      return ageInMonths;
-    }
-  }
-  
-  
   private final Path inputFile;
   private final Path outputFile;
   private final TweetsHtmlParser htmlParser;
@@ -167,12 +63,30 @@ public class UserRanker
     this.inputFile     = inputFile;
     this.outputFile    = outputFile;
     this.twitterUsers  = new LinkedList<>();
+    this.sortedUsers   = new LinkedList<>();
     this.htmlParser    = new TweetsHtmlParser();
     this.distinctUsers = new HashSet<>();
   }
   
   public void init() throws IOException
-  { try (
+  { // First look at the output file to see which users we've already worked on.
+    if (Files.exists(outputFile))
+    { try (
+        BufferedReader rdr = Files.newBufferedReader(outputFile, Charsets.UTF_8);
+      )
+      { String line = null;
+        while ((line = rdr.readLine()) != null)
+        { TwitterUser user = new TwitterUser (line);
+          if (distinctUsers.contains(user.getName()))
+            continue; // many seed users may have followed the one fetched user
+                      // this is the point where we weed those dupes out.
+          sortedUsers.add(user);
+          distinctUsers.add (user.getName());
+        }
+      }
+    }
+    
+    try (
       BufferedReader rdr = Files.newBufferedReader(inputFile, Charsets.UTF_8);
     )
     { String line = null;
@@ -181,10 +95,10 @@ public class UserRanker
         if (distinctUsers.contains(user.getName()))
           continue; // many seed users may have followed the one fetched user
                     // this is the point where we weed those dupes out.
+                    // This is also where we avoid making requests for already processed users.
         twitterUsers.add (user);
         distinctUsers.add (user.getName());
       }
-      sortedUsers = new ArrayList<TwitterUser>(twitterUsers.size());
     }
   }
   
@@ -209,10 +123,11 @@ public class UserRanker
             : new Duration(tweets.get(0).getTime(), tweets.get(19).getTime());
             
         user.setRecent20TweetInterval(interTweetDuration);
+        sortedUsers.add (user);
         Thread.sleep(interRequestWaitMs);
         
         if (userCount % UPDATE_OUTPUT_INTERVAL == 0)
-        { Collections.sort(twitterUsers);
+        { Collections.sort(sortedUsers);
           writeUsersToFile();
         }
       }
@@ -221,8 +136,7 @@ public class UserRanker
       }
     }
     
-    // Re-order by category, then age of user, then user posting intensity
-    Collections.sort(twitterUsers);
+    Collections.sort(sortedUsers);
     writeUsersToFile();
   }
   
@@ -231,7 +145,7 @@ public class UserRanker
     try (
       BufferedWriter wtr = Files.newBufferedWriter(outputFile, Charsets.UTF_8, CREATE, APPEND);
     )
-    { for (TwitterUser user : twitterUsers)
+    { for (TwitterUser user : sortedUsers)
       { wtr.write(user.toTabDelimLine());
       }
     }
@@ -247,5 +161,15 @@ public class UserRanker
       .setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
       .build();
     return new AsyncHttpClient(config);
+  }
+  
+  public static void main (String[] args) throws IOException
+  {
+    String inputFile  = args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/candidateuserlist.csv";
+    String outputFile = args.length > 1 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/rankedcandidateuserlist.csv";
+    
+    UserRanker ranker = new UserRanker(Paths.get(inputFile), Paths.get(outputFile));
+    ranker.init();
+    ranker.call();
   }
 }

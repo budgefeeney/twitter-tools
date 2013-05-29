@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * Details of a user we fetched and how we fetched them.
+ * TODO Merge this with {@link TwitterUser}
  */
 final class FetchedUser
 { private final String category;
