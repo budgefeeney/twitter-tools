@@ -10,11 +10,9 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -56,7 +54,7 @@ public class UserRanker
   private final Set<String> distinctUsers;
   private final List<TwitterUser> twitterUsers;
   private       List<TwitterUser> sortedUsers;
-  private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(5);
+  private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(2);
   
   public UserRanker(Path inputFile, Path outputFile) {
     super();
@@ -76,7 +74,10 @@ public class UserRanker
       )
       { String line = null;
         while ((line = rdr.readLine()) != null)
-        { TwitterUser user = new TwitterUser (line);
+        { if ((line = line.trim()).isEmpty() || isHeaderRow (line))
+            continue;
+        
+          TwitterUser user = new TwitterUser (line);
           if (distinctUsers.contains(user.getName()))
             continue; // many seed users may have followed the one fetched user
                       // this is the point where we weed those dupes out.
@@ -91,7 +92,10 @@ public class UserRanker
     )
     { String line = null;
       while ((line = rdr.readLine()) != null)
-      { TwitterUser user = new TwitterUser (line);
+      { if ((line = line.trim()).isEmpty() || isHeaderRow (line))
+          continue;
+        
+        TwitterUser user = new TwitterUser (line);
         if (distinctUsers.contains(user.getName()))
           continue; // many seed users may have followed the one fetched user
                     // this is the point where we weed those dupes out.
@@ -102,6 +106,10 @@ public class UserRanker
     }
   }
   
+  private final static boolean isHeaderRow (String line)
+  { return line.trim().startsWith("Topic\tUsers");
+  }
+  
   public void call() throws IOException
   { AsyncHttpClient  client = createHttpClient();
     int userCount = 0;
@@ -110,21 +118,24 @@ public class UserRanker
       try
       {
         Future<Response> resp 
-          = client.prepareGet("http://twitter.com/" + user.getName())
+          = client.prepareGet("https://twitter.com/" + user.getName())
                   .addHeader("Accept-Charset", "utf-8")
                   .addHeader("Accept-Language", "en-US")
                   .execute();
         
-        List<Tweet> tweets = htmlParser.parse(user.getName(), resp.get().getResponseBody());
+        String htmlBody = resp.get().getResponseBody();
+        List<Tweet> tweets = htmlParser.parse(user.getName(), htmlBody);
         
         // Time period covered by the most recent 20 tweets
         Duration interTweetDuration = tweets.size() < 20
             ? new Duration(Long.MAX_VALUE)
-            : new Duration(tweets.get(0).getTime(), tweets.get(19).getTime());
+            : new Duration(tweets.get(19).getTime(), tweets.get(0).getTime());
             
         user.setRecent20TweetInterval(interTweetDuration);
         sortedUsers.add (user);
         Thread.sleep(interRequestWaitMs);
+        
+        LOG.debug ("User " + user.getName() + " is " + user.getAgeInMonths() + " months old and has posted 20 tweets in " + interTweetDuration.getStandardHours());
         
         if (userCount % UPDATE_OUTPUT_INTERVAL == 0)
         { Collections.sort(sortedUsers);
@@ -159,6 +170,7 @@ public class UserRanker
       .setRequestTimeoutInMs(REQUEST_TIMEOUT)
       .setMaxRequestRetry(0)
       .setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
+      .setFollowRedirects(true)
       .build();
     return new AsyncHttpClient(config);
   }

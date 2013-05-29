@@ -38,7 +38,7 @@ final class TwitterUser implements Comparable<TwitterUser>
     
     category     = fields[0];      
     name         = fields[1];
-    creationDate = ISODateTimeFormat.basicDateTime().parseDateTime(fields[2]);
+    creationDate = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(fields[2]);
     long cursor  = Long.parseLong(fields[3]);
     
     // Here we detect the format: is this a file created by UserSpider,
@@ -56,7 +56,7 @@ final class TwitterUser implements Comparable<TwitterUser>
     }
     
     // Read in the ancestry
-    List<String> anc = new ArrayList<String>(Math.min(1, ancestryColumn - fields.length));
+    List<String> anc = new ArrayList<String>(Math.max(1, fields.length - ancestryColumn));
     for (int i = ancestryColumn; i < fields.length; i++)
       if (! StringUtils.isBlank(fields[i]))
         anc.add(fields[i]);
@@ -131,5 +131,10 @@ final class TwitterUser implements Comparable<TwitterUser>
 
   public int getAgeInMonths() {
     return ageInMonths;
+  }
+  
+  @Override
+  public String toString()
+  { return name + " (" + ageInMonths + "mths" + ")";
   }
 }
