@@ -20,7 +20,7 @@ import com.google.common.base.Preconditions;
  */
 public class TweetsHtmlParser
 {
-  public List<Tweet> parse (String user, String pageHtml)
+  public List<Tweet> parse (final String user, String pageHtml)
   { Preconditions.checkNotNull(pageHtml, "Page HTML in parse was null");
     if ((pageHtml = pageHtml.trim()).isEmpty())
       return Collections.emptyList();
