@@ -12,8 +12,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -47,118 +45,6 @@ public class UserSpider
   private static final int STD_USER_COUNT_PER_RESPONSE = 20;
   private static final Charset UTF8 = Charset.forName("UTF-8");
 
-  /**
-   * Keeps track of the number of requests, ensuring that we don't
-   * go over our limit, which by default (and according to the Twitter
-   * API) is 15 requests per 15mins
-   */
-  private final static class BlockingRequestCounter
-  { private final static int BASIC_REQUESTS_PER_QTR_HR = 15;
-    private final static long WINDOW_MS = TimeUnit.MINUTES.toMillis(15);
-
-    private final int  requestsPerQtrHr;
-    private       long minInterReqTimeMs;
-    private       long startTimeMs;
-    private       int  requestsMade;
-
-    public BlockingRequestCounter()
-    { this (BASIC_REQUESTS_PER_QTR_HR);
-    }
-    
-    public BlockingRequestCounter(int requestsPerQtrHr)
-    { this.requestsPerQtrHr = requestsPerQtrHr;
-    
-      // We set the minimum inter-request time to be the time needed for 10-times the intensity.
-      // There seems to be some requirement to limit this.
-      this.minInterReqTimeMs = 0;
-      reset();
-    }
-    
-    /**
-     * Increment the requests made counter, and wait until a suitable amount of
-     * time has passed for use to execute that request.
-     */
-    public void incAndWait() throws InterruptedException
-    { long windowEndMs = startTimeMs + WINDOW_MS;
-      long nowMs       = System.currentTimeMillis();
-      
-      if (windowEndMs < nowMs)
-      { reset();
-        windowEndMs = startTimeMs + WINDOW_MS;
-      }
-      else if (requestsMade >= requestsPerQtrHr)
-      { sleepTillWindowReopens();
-        reset();
-      }
-      else
-      { Thread.sleep (minInterReqTimeMs);        
-      }
-      ++requestsMade;
-      
-      // Now update the inter-request time
-      int reqsRemaining  = requestsPerQtrHr - requestsMade;
-      long timeRemaining = windowEndMs - System.currentTimeMillis();
-      minInterReqTimeMs  = Math.max(0, timeRemaining) / (reqsRemaining + 1);
-    }
-
-    private void sleepTillWindowReopens() throws InterruptedException
-    { // We wait for the allotted window time to expire, then wait another minute just to be sure.
-      Thread.sleep((WINDOW_MS - (System.currentTimeMillis() - startTimeMs)) + TimeUnit.MINUTES.toMillis(1));
-    }
-
-    /** Reset this counter */
-    private void reset() {
-      this.startTimeMs       = System.currentTimeMillis();
-      this.requestsMade      = 0;
-      this.minInterReqTimeMs = 0;
-    }
-  }
-  
-  
-  /**
-   * Details of a user we fetched and how we fetched them.
-   */
-  private final static class FetchedUser
-  { private final String category;
-    private final String screenName;
-    private final List<String> antecedents;
-    private final Date signupDate;
-    private final long cursor;
-    
-    public FetchedUser(String category, String screenName, Date signupDate)
-    { this (category, screenName, signupDate, Collections.<String>emptyList(), -1L);
-    }
-    
-    public FetchedUser(String category, String screenName, Date signupDate, List<String> antecedents, long cursor)
-    { super();
-      this.category = category;
-      this.screenName = screenName;
-      this.antecedents = antecedents;
-      this.cursor = cursor;
-      this.signupDate = signupDate;
-    }
-
-    public String getCategory()
-    { return category;
-    }
-
-    public String getScreenName()
-    { return screenName;
-    }
-
-    public List<String> getAntecedents()
-    { return antecedents;
-    }
-
-    public long getCursor() {
-      return cursor;
-    }
-
-    public Date getSignupDate() {
-      return signupDate;
-    }
-  }
-  
   private final static int MAX_ERROR_COUNT = 50;
   private final static int MAX_USERS_PER_CATEGORY = 1500;
   
