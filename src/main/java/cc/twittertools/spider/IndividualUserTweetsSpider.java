@@ -10,9 +10,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.BasicConfigurator;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
@@ -48,8 +48,8 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
   private final Path outputDirectory;
   private final List<String> users;
   private final AsyncHttpClient httpClient;
-  private final long eveningInterRequestWaitMs = TimeUnit.SECONDS.toMillis(2);
-  private final long dayTimeInterRequestWaitMs = TimeUnit.SECONDS.toMillis(20);
+  private final long eveningInterRequestWaitMs = 250; // TimeUnit.SECONDS.toMillis(2);
+  private final long dayTimeInterRequestWaitMs = 250; // TimeUnit.SECONDS.toMillis(20);
   private final TweetsHtmlParser htmlParser;
   private final TweetsJsonParser jsonParser;
   private final DateTime oldestTweet;
@@ -91,11 +91,14 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
          
         // continue reading until we've gone far enough back in time or we've
         // run out of tweets from the current user.
-        while (tweets.size() == UserRanker.STD_TWEETS_PER_PAGE
+        while (tweets.size() == (UserRanker.STD_TWEETS_PER_PAGE - 1)
             && lastTweet.getTime().isAfter(oldestTweet))
         { pauseBetweenRequests();
+          
           ++page;
           aggregateTweets.addAll(tweets);
+          LOG.debug("Have accumulated " + aggregateTweets.size() + " tweets for user " + user + " after processing page " + page);
+          
           resp = httpClient.prepareGet(jsonTweetsUrl(user, lastTweet.getId()))
                   .addHeader("Accept-Charset", "utf-8")
                   .addHeader("Accept-Language", "en-US")
@@ -103,13 +106,18 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
           
           tweets    = jsonParser.parse(user, resp.get().getResponseBody());
           lastTweet = tweets.isEmpty() ? null : tweets.remove(tweets.size() - 1);
+          
+          if (page % 10 == 0)
+            writeTweets (aggregateTweets);
         }
         
+        ++page;
         aggregateTweets.addAll(tweets);
         writeTweets (aggregateTweets);
       }
       catch (Exception e)
-      { LOG.error("Error downloading tweets on page " + page + " for user " + user + " : " + e.getMessage(), e);
+      { e.printStackTrace();
+        LOG.error("Error downloading tweets on page " + page + " for user " + user + " : " + e.getMessage(), e);
         try
         { writeTweets (aggregateTweets);
         }
@@ -145,6 +153,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
           + '\t' + tweet.getRequestedId()
           + '\t' + ISODateTimeFormat.basicDateTimeNoMillis().print(tweet.getTime())
           + '\t' + tweet.getMsg()
+          + '\n'
         );
       }
     }
@@ -172,10 +181,11 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
 
   public static void main (String[] args)
   { BasicConfigurator.configure();
+    Logger.getRootLogger().setLevel(Level.DEBUG);
     Path outputDir = Paths.get("/home/bfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (
-        Collections.singletonList("charlie_whiting"),
+        Collections.singletonList("FakeFernando"),
         outputDir
     );
     tweetsSpider.call();
