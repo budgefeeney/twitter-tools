@@ -12,6 +12,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
@@ -104,14 +105,20 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
           lastTweet = tweets.isEmpty() ? null : tweets.remove(tweets.size() - 1);
         }
         
-        writeTweets (tweets);
-        tweets.clear();
+        writeTweets (aggregateTweets);
       }
       catch (Exception e)
       { LOG.error("Error downloading tweets on page " + page + " for user " + user + " : " + e.getMessage(), e);
+        try
+        { writeTweets (aggregateTweets);
+        }
+        catch (Exception eio)
+        { LOG.error("Error writting tweets for user " + user + " while recovering from previous error : " + eio.getMessage(), eio);
+        }
       }
       finally
       { ++spideredUsers;
+      aggregateTweets.clear();
       }
     }
     return spideredUsers;
@@ -163,7 +170,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
   }
 
   public static void main (String[] args)
-  {
+  { BasicConfigurator.configure();
     Path outputDir = Paths.get("/home/bfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (
