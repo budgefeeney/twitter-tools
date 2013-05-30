@@ -105,6 +105,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
           lastTweet = tweets.isEmpty() ? null : tweets.remove(tweets.size() - 1);
         }
         
+        aggregateTweets.addAll(tweets);
         writeTweets (aggregateTweets);
       }
       catch (Exception e)
@@ -118,7 +119,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
       }
       finally
       { ++spideredUsers;
-      aggregateTweets.clear();
+        aggregateTweets.clear();
       }
     }
     return spideredUsers;
