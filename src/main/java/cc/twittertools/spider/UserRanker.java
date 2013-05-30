@@ -56,7 +56,7 @@ public class UserRanker
   private final Set<String> distinctUsers;
   private final List<TwitterUser> twitterUsers;
   private       List<TwitterUser> sortedUsers;
-  private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(2);
+  private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(1);
   
   public UserRanker(Path inputFile, Path outputFile) {
     super();
