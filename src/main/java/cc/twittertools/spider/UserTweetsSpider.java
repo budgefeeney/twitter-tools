@@ -5,6 +5,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,6 +49,9 @@ public class UserTweetsSpider
   
   public void init() throws IOException
   {
+    // Make sure the output directory exists
+    Files.createDirectories(outputDirectoryPath);
+    
     // Read in all the users
     try (
       BufferedReader rdr = Files.newBufferedReader (inputPath, Charsets.UTF_8)
@@ -100,5 +104,14 @@ public class UserTweetsSpider
       
       executor.submit(new IndividualUserTweetsSpider(userNames, outputDirectoryPath));
     }
+  }
+  
+  public final static void main (String[] args)
+  {
+    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resouces/rankedCandidateUserList.csv");
+    Path chosenUsersPath     = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resouces/selectedUserList.csv");
+    Path outputDirectoryPath = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resouces/spider/");   
+    
+    new UserTweetsSpider(inputPath, chosenUsersPath, outputDirectoryPath).call();
   }
 }
