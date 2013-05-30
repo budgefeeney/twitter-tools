@@ -34,40 +34,47 @@ final class TwitterUser implements Comparable<TwitterUser>
   private final int ageInMonths;
   private Duration recent20TweetInterval = new Duration(Long.MAX_VALUE);
   
-  public TwitterUser (String line)
-  { String[] fields = StringUtils.split(line, '\t');
-    
-    category     = fields[0];      
-    name         = fields[1];
-    creationDate = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(fields[2]);
-    long cursor  = Long.parseLong(fields[3]);
-    
-    // Here we detect the format: is this a file created by UserSpider,
-    // or a file created by toTabDelimLine(). The former will have a cursor
-    // identifier, the latter will have a user's age in months.
-    final int ancestryColumn;
-    if (cursor < 0 || cursor > MAX_AGE_IN_MONTHS) // UserSpider file
-    { ancestryColumn = 4; 
+  public TwitterUser (final String line)
+  { 
+    try
+    {
+      String[] fields = StringUtils.split(line, '\t');
       
+      category     = fields[0];      
+      name         = fields[1];
+      creationDate = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(fields[2]);
+      long cursor  = Long.parseLong(fields[3]);
+      
+      // Here we detect the format: is this a file created by UserSpider,
+      // or a file created by toTabDelimLine(). The former will have a cursor
+      // identifier, the latter will have a user's age in months.
+      final int ancestryColumn;
+      if (cursor < 0 || cursor > MAX_AGE_IN_MONTHS) // UserSpider file
+      { ancestryColumn = 4; 
+        
+      }
+      else // toTabDelimLine() file
+      { ancestryColumn = 5;
+        cursor = -1;
+        recent20TweetInterval = new Duration(Long.parseLong(fields[4]));
+      }
+      
+      // Read in the ancestry
+      List<String> anc = new ArrayList<String>(Math.max(1, fields.length - ancestryColumn));
+      for (int i = ancestryColumn; i < fields.length; i++)
+        if (! StringUtils.isBlank(fields[i]))
+          anc.add(fields[i]);
+      if (anc.isEmpty())
+        anc.add(name);
+      
+      ancestry = Collections.unmodifiableList(anc);
+      
+      Period age = new Interval(creationDate, new DateTime()).toPeriod();
+      ageInMonths  = age.getYears() * MONTHS_PER_YEAR + age.getMonths();
     }
-    else // toTabDelimLine() file
-    { ancestryColumn = 5;
-      cursor = -1;
-      recent20TweetInterval = new Duration(Long.parseLong(fields[4]));
+    catch (Exception e)
+    { throw new IllegalArgumentException ("Cannot parse line \"" + line + "\". Error was " + e.getMessage(), e);
     }
-    
-    // Read in the ancestry
-    List<String> anc = new ArrayList<String>(Math.max(1, fields.length - ancestryColumn));
-    for (int i = ancestryColumn; i < fields.length; i++)
-      if (! StringUtils.isBlank(fields[i]))
-        anc.add(fields[i]);
-    if (anc.isEmpty())
-      anc.add(name);
-    
-    ancestry = Collections.unmodifiableList(anc);
-    
-    Period age = new Interval(creationDate, new DateTime()).toPeriod();
-    ageInMonths  = age.getYears() * MONTHS_PER_YEAR + age.getMonths();
   }
   
   /**
