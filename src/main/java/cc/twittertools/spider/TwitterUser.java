@@ -8,6 +8,7 @@ import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.Interval;
+import org.joda.time.Period;
 import org.joda.time.format.ISODateTimeFormat;
 
 import com.google.common.collect.ComparisonChain;
@@ -65,8 +66,8 @@ final class TwitterUser implements Comparable<TwitterUser>
     
     ancestry = Collections.unmodifiableList(anc);
     
-    Interval age = new Interval(creationDate, new DateTime());
-    ageInMonths  = age.toPeriod().getMonths();
+    Period age = new Interval(creationDate, new DateTime()).toPeriod();
+    ageInMonths  = age.getYears() * MONTHS_PER_YEAR + age.getMonths();
   }
   
   /**
@@ -80,7 +81,7 @@ final class TwitterUser implements Comparable<TwitterUser>
       .append ('\t')
       .append (name)
       .append ('\t')
-      .append (ISODateTimeFormat.basicDateTime().print(creationDate))
+      .append (ISODateTimeFormat.dateTimeNoMillis().print(creationDate))
       .append ('\t')
       .append (String.valueOf (ageInMonths))
       .append ('\t')
