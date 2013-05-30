@@ -20,7 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 
 /**
- * Given a ranked list of users, grouped by category. 
+ * Given a ranked list of users, grouped by category
  */
 public class UserTweetsSpider
 {
