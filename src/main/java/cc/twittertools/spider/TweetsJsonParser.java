@@ -11,8 +11,17 @@ import com.google.gson.JsonParser;
 
 public class TweetsJsonParser
 {
-  private final TweetsHtmlParser htmlParser = new TweetsHtmlParser();
+  private final TweetsHtmlParser htmlParser;
   
+  public TweetsJsonParser()
+  { this(new TweetsHtmlParser());
+  }
+  
+  public TweetsJsonParser(TweetsHtmlParser htmlParser)
+  { super();
+    this.htmlParser = htmlParser;
+  }
+
   public List<Tweet> parse (final String user, String json)
   { Preconditions.checkNotNull(json, "JSON in parse was null");  
     if ((json = json.trim()).isEmpty())
