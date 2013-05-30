@@ -46,6 +46,8 @@ import com.ning.http.client.extra.ThrottleRequestFilter;
 public class UserRanker
 {
   private final static Logger LOG = Logger.getLogger(UserRanker.class);
+  
+  public static final int STD_TWEETS_PER_PAGE = 20;
   private final static int UPDATE_OUTPUT_INTERVAL = 500;
   
   private final Path inputFile;
@@ -106,7 +108,7 @@ public class UserRanker
     }
   }
   
-  private final static boolean isHeaderRow (String line)
+  /* pkg */ final static boolean isHeaderRow (String line)
   { return line.trim().startsWith("Topic\tUsers");
   }
   
@@ -127,7 +129,7 @@ public class UserRanker
         List<Tweet> tweets = htmlParser.parse(user.getName(), htmlBody);
         
         // Time period covered by the most recent 20 tweets
-        Duration interTweetDuration = tweets.size() < 20
+        Duration interTweetDuration = tweets.size() < STD_TWEETS_PER_PAGE
             ? new Duration(Long.MAX_VALUE)
             : new Duration(tweets.get(19).getTime(), tweets.get(0).getTime());
             
@@ -162,7 +164,7 @@ public class UserRanker
     }
   }
 
-  private AsyncHttpClient createHttpClient() 
+  /* pkg */ static AsyncHttpClient createHttpClient() 
   { AsyncHttpClientConfig config = new AsyncHttpClientConfig.Builder()
       .addRequestFilter(new ThrottleRequestFilter(MAX_CONNECTIONS))
       .setConnectionTimeoutInMs(CONNECTION_TIMEOUT)
