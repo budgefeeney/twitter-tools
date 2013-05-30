@@ -132,7 +132,7 @@ public class UserSpider
                     catgy,
                     fetchedUser.getScreenName(),
                     fetchedUser.getCreatedAt(),
-                    Arrays.asList (new String[] { seedUser, fetchedUser.getName() }),
+                    Arrays.asList (new String[] { seedUser, fetchedUser.getScreenName() }),
                     cursor
                   )
                 );
