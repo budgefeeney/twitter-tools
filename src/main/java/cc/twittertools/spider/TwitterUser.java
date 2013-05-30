@@ -40,7 +40,7 @@ final class TwitterUser implements Comparable<TwitterUser>
     {
       String[] fields = StringUtils.split(line, '\t');
       
-      category     = fields[0];      
+      category     = fields[0].intern();      
       name         = fields[1];
       creationDate = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(fields[2]);
       long cursor  = Long.parseLong(fields[3]);
