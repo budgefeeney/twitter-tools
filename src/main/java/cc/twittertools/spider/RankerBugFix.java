@@ -29,14 +29,11 @@ public class RankerBugFix
 {
   private final static int MONTHS_PER_YEAR = 12;
   
-  public static void main(String[] args) throws IOException
+  public static void patch(Path inputPath, Path outputPath) throws IOException
   { final DateTime NOW = new DateTime();
     DateTimeFormatter inputFmt  = ISODateTimeFormat.basicDateTime();
     DateTimeFormatter outputFmt = ISODateTimeFormat.dateTimeNoMillis();
-    
-    Path inputPath  = Paths.get (args.length > 0 ? args[0] : "");
-    Path outputPath = Paths.get (args.length > 1 ? args[1] : "");
-    
+        
     List<TwitterUser> users = new ArrayList<TwitterUser>(40000);
     
     try (
@@ -69,5 +66,13 @@ public class RankerBugFix
     { for (TwitterUser user : users)
         wtr.write(user.toTabDelimLine());
     }
+  }
+  
+  public static final void main (String[] args) throws IOException
+  {
+    Path input  = Paths.get(args.length > 0 ? args[0] : "/local/twitter-tools-ranker/src/test/resources/ranked.csv");
+    Path output = Paths.get(args.length > 1 ? args[1] : "/local/twitter-tools-ranker/src/test/resources/ranked-fix.csv");
+    
+    patch (input, output);
   }
 }
