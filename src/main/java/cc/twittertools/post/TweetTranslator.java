@@ -53,7 +53,7 @@ public class TweetTranslator implements Callable<Integer>
         printProgress (count);
           
         for (String hashTag : tweet.getHashTags())
-          hashUserStats.inc(hashTag + '\t' + tweet.getUser());
+          hashUserStats.inc(hashTag + '\t' + tweet.getAuthor());
         //wrtr.writeTweet(tweet);
       }
       

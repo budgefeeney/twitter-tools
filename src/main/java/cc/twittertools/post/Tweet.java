@@ -17,7 +17,7 @@ public class Tweet
   
   private final DateTime localTime;
   private final Set<String> hashTags;
-  private final String user;
+  private final String author;
   private final String msg;
   private final Set<String> addressees;
   private final long id;
@@ -25,32 +25,36 @@ public class Tweet
   private final boolean isRetweetFromId;
   private final boolean isRetweetFromMsg;
   
+
+  public Tweet (long id, long reqId, String date, String author, String msg) {
+    this(id, reqId, TWITTER_FMT.parseDateTime(date), author, msg);
+  }
   
-  public Tweet (long id, long reqId, String date, String user, String msg) {
+  public Tweet (long id, long reqId, DateTime date, String author, String msg) {
     this(
       /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
-      /* user = */         user,
+      /* author = */       author,
       /* msg = */          msg,
       /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
       /* id = */           id,
       /* requestedId = */  reqId,
       /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
-      /* time = */         TWITTER_FMT.parseDateTime(date)
+      /* time = */         date
     );
   }
   
-  public Tweet(Set<String> hashTags, String user, String msg, Set<String> addressees,
+  public Tweet(Set<String> hashTags, String author, String msg, Set<String> addressees,
       long id, long requestedId, boolean isRetweetFromMsg, DateTime localTime) {
     super();
-    assert hashTags != null            : "Hash tags set can be empty but not null";
-    assert ! StringUtils.isBlank(user) : "Username can be neither blank nor null";
-    assert msg != null                 : "Message cannot be null";
-    assert addressees != null          : "Addressees cannot be null";
-    assert id > 0                      : "ID must be strictly positive";
-    assert requestedId > 0             : "Requested ID must be strictly positive";
+    assert hashTags != null              : "Hash tags set can be empty but not null";
+    assert ! StringUtils.isBlank(author) : "Username can be neither blank nor null";
+    assert msg != null                   : "Message cannot be null";
+    assert addressees != null            : "Addressees cannot be null";
+    assert id > 0                        : "ID must be strictly positive";
+    assert requestedId > 0               : "Requested ID must be strictly positive";
     
     this.hashTags = hashTags;
-    this.user = user;
+    this.author = author;
     this.msg = msg;
     this.addressees = addressees;
     this.id = id;
@@ -65,8 +69,8 @@ public class Tweet
     return hashTags;
   }
 
-  public String getUser() {
-    return user;
+  public String getAuthor() {
+    return author;
   }
 
   public String getMsg() {
@@ -99,7 +103,7 @@ public class Tweet
   
   @Override
   public String toString()
-  { return localTime + " - @" + user + " : \t " + msg;
+  { return localTime + " - @" + author + " : \t " + msg;
   }
 
   @Override

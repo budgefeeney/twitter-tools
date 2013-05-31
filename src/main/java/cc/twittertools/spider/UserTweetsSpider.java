@@ -30,7 +30,7 @@ public class UserTweetsSpider
   private static final int THREAD_COUNT = 20;
   private static final int EXPECTED_CAT_COUNT = 70;
   private static final int EXPECTED_USER_COUNT_IN_CAT = 1100;
-  private static final int DESIRED_USER_COUNT_IN_CAT  = 100;
+  private static final int DESIRED_USER_COUNT_IN_CAT  = 200;
   
   private final Path inputPath;
   private final Path chosenUsersPath;

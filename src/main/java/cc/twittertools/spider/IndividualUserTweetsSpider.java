@@ -70,6 +70,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
   public synchronized Integer call()
   { List<Tweet> aggregateTweets = new ArrayList<>(ESTIMATED_TWEET_COUNT);
     int page;
+    String responseBody;
     for (String user : users)
     { 
       page = 1;
@@ -85,14 +86,13 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
                   .addHeader("Accept-Language", "en-US")
                   .execute();
         
-        String htmlBody = resp.get().getResponseBody();
-        List<Tweet> tweets = htmlParser.parse (user, htmlBody);
-        Tweet lastTweet    = tweets.isEmpty() ? null : tweets.remove(tweets.size() - 1);
+        responseBody = resp.get().getResponseBody();
+        List<Tweet> tweets = htmlParser.parse (responseBody);
+        Tweet lastTweet    = removeLastAuthoredTweet(user, tweets);
          
         // continue reading until we've gone far enough back in time or we've
         // run out of tweets from the current user.
-        while (tweets.size() == (UserRanker.STD_TWEETS_PER_PAGE - 1)
-            && lastTweet.getTime().isAfter(oldestTweet))
+        while (! tweets.isEmpty() && lastTweet != null && lastTweet.getTime().isAfter(oldestTweet))
         { pauseBetweenRequests();
           
           ++page;
@@ -104,22 +104,30 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
                   .addHeader("Accept-Language", "en-US")
                   .execute();
           
-          tweets    = jsonParser.parse(user, resp.get().getResponseBody());
-          lastTweet = tweets.isEmpty() ? null : tweets.remove(tweets.size() - 1);
+          responseBody = resp.get().getResponseBody();
+          tweets = jsonParser.parse(responseBody);
+          if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
+          { LOG.warn ("Only got " + tweets.size() + " tweets for the most recent request for user " + user + " on page " + page + " with ID " + lastTweet.getId());
+            //System.err.println (resp.get().getResponseBody());
+          }
+          lastTweet = removeLastAuthoredTweet(user, tweets);
           
           if (page % 10 == 0)
-            writeTweets (aggregateTweets);
+            writeTweets (user, aggregateTweets);
         }
         
         ++page;
         aggregateTweets.addAll(tweets);
-        writeTweets (aggregateTweets);
+        writeTweets (user, aggregateTweets);
+        
+        LOG.info("Finished fetching tweets for user " + user);
+        //System.err.println ("Final response body was " + responseBody);
       }
       catch (Exception e)
       { e.printStackTrace();
         LOG.error("Error downloading tweets on page " + page + " for user " + user + " : " + e.getMessage(), e);
         try
-        { writeTweets (aggregateTweets);
+        { writeTweets (user, aggregateTweets);
         }
         catch (Exception eio)
         { LOG.error("Error writting tweets for user " + user + " while recovering from previous error : " + eio.getMessage(), eio);
@@ -132,7 +140,36 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     }
     return spideredUsers;
   }
+
+  /**
+   * Working from the final tweet, removes all tweets not authored
+   * by the given user. Then removes one tweet, at the end, authored
+   * by the given user, and returns it. This is to facilitate the
+   * creation of URLs to fetch more tweets.
+   * @param author the author whose tweet we search for at the end
+   * of the given list.
+   * @param tweets the list of tweets that is <strong>TRUNCATED</strong>
+   * by this method
+   * @return the last tweet originally (but no longer) in the list of
+   * tweets to be authored by the given author
+   */
+  private Tweet removeLastAuthoredTweet(String author, List<Tweet> tweets)
+  { Tweet lastTweet = null;
+    while (! tweets.isEmpty())
+    { lastTweet = tweets.remove (tweets.size() - 1);
+      if (lastTweet.getAuthor().equals (author))
+        return lastTweet;
+    }
+    
+    return lastTweet;
+  }
   
+  /**
+   * Pause for some time to stop saturating the network. The 
+   * duration depends on whether we're currently active 
+   * during working hours or not.
+   * @throws InterruptedException
+   */
   private void pauseBetweenRequests() throws InterruptedException
   { DateTime now = new DateTime();
     if (now.getDayOfWeek() < 6 && now.getHourOfDay() >= 8 && now.getHourOfDay() < 19)
@@ -141,14 +178,21 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
       Thread.sleep(eveningInterRequestWaitMs);
   }
   
-  private void writeTweets(List<Tweet> tweets) throws IOException
-  { Path userOutputPath = outputDirectory.resolve(tweets.get(0).getUser());
+  /**
+   * Write all the tweets to a file.
+   * @param user the user we're currently considering, determines the 
+   * filename
+   * @param tweets the user's tweets.
+   * @throws IOException
+   */
+  private void writeTweets(String user, List<Tweet> tweets) throws IOException
+  { Path userOutputPath = outputDirectory.resolve(user);
     try (
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
     )
     { for (Tweet tweet : tweets)
       { wtr.write(
-          tweet.getUser()
+          tweet.getAuthor()
           + '\t' + tweet.getId()
           + '\t' + tweet.getRequestedId()
           + '\t' + ISODateTimeFormat.basicDateTimeNoMillis().print(tweet.getTime())
@@ -159,6 +203,13 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     }
   }
   
+  /**
+   * Creates the URL from which the next batch of tweets can be
+   * fetched. The returned results is in JSON.
+   * @param user
+   * @param id
+   * @return
+   */
   private final static String jsonTweetsUrl (String user, long id)
   {
     final String FMT = "https://twitter.com/i/profiles/show/%1$s/timeline/with_replies?include_available_features=1&include_entities=1&max_id=%2$d";
@@ -185,7 +236,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     Path outputDir = Paths.get("/home/bfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (
-        Collections.singletonList("FakeFernando"),
+        Collections.singletonList("SomersF1"),
         outputDir
     );
     tweetsSpider.call();

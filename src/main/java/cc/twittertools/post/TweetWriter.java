@@ -48,7 +48,7 @@ public class TweetWriter implements AutoCloseable
         Long.toString(tweet.getId()),
         Long.toString(tweet.getRequestedId()),
         tweet.getTime(),
-        tweet.getUser(),
+        tweet.getAuthor(),
         tweet.getMsg(),
         hashTags,
         addressees

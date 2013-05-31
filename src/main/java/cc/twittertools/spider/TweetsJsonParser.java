@@ -22,7 +22,7 @@ public class TweetsJsonParser
     this.htmlParser = htmlParser;
   }
 
-  public List<Tweet> parse (final String user, String json)
+  public List<Tweet> parse (String json)
   { Preconditions.checkNotNull(json, "JSON in parse was null");  
     if ((json = json.trim()).isEmpty())
       return Collections.emptyList();
@@ -30,6 +30,6 @@ public class TweetsJsonParser
     JsonObject doc = new JsonParser().parse(json).getAsJsonObject();
     
     String tweetsHtml = doc.get("items_html").getAsString();
-    return htmlParser.parse (user, tweetsHtml);
+    return htmlParser.parse (tweetsHtml);
   }
 }
