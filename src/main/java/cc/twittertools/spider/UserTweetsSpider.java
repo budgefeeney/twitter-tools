@@ -7,18 +7,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
+import javax.management.JMException;
+
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import com.j256.simplejmx.server.JmxServer;
 
 /**
  * Given a ranked list of users, grouped by category
@@ -30,7 +34,6 @@ public class UserTweetsSpider
   private static final int THREAD_COUNT = 20;
   private static final int EXPECTED_CAT_COUNT = 70;
   private static final int EXPECTED_USER_COUNT_IN_CAT = 1100;
-  private static final int DESIRED_USER_COUNT_IN_CAT  = 200;
   
   private final Path inputPath;
   private final Path chosenUsersPath;
@@ -47,12 +50,13 @@ public class UserTweetsSpider
     this.executor = Executors.newFixedThreadPool(THREAD_COUNT);
   }
   
-  public void init() throws IOException
+  public UserTweetsSpider init() throws IOException
   {
     // Make sure the output directory exists
     Files.createDirectories(outputDirectoryPath);
     
-    // Read in all the users
+    // Read in all the users, but skip those users who have never
+    // posted any tweets (users whose inter-tweet time is Long.MAX_VALUE)
     try (
       BufferedReader rdr = Files.newBufferedReader (inputPath, Charsets.UTF_8)
     )
@@ -62,6 +66,11 @@ public class UserTweetsSpider
           continue;
         
         TwitterUser user = new TwitterUser(line);
+        if (user.getRecent20TweetInterval().getMillis() == Long.MAX_VALUE)
+        { LOG.warn("User " + user.getName() + " in category " + user.getCategory() + " has never posted any tweets");
+          continue;
+        }
+        
         List<TwitterUser> catUsers = users.get(user.getCategory());
         if (catUsers == null)
         { catUsers = new ArrayList<>(EXPECTED_USER_COUNT_IN_CAT);
@@ -70,18 +79,7 @@ public class UserTweetsSpider
         catUsers.add (new TwitterUser (line));
       }
     }
-    
-    // For each category, only keep the users more than 6 months old with the most tweets
-    for (Map.Entry<String, List<TwitterUser>> entry : users.entrySet())
-    { List<TwitterUser> catUsers = entry.getValue();
-      
-      Collections.sort(catUsers);
-      while (catUsers.size() > DESIRED_USER_COUNT_IN_CAT)
-        catUsers.remove (catUsers.size() - 1);
-      
-      if (catUsers.size() < DESIRED_USER_COUNT_IN_CAT)
-        LOG.warn("Only " + catUsers.size() + " users in the category " + entry.getKey());
-    }
+   
     
     // Write out those users we've retained for logging purposes.
     try (
@@ -91,10 +89,22 @@ public class UserTweetsSpider
         for (TwitterUser user : catUsers)
           wtr.write (user.toTabDelimLine());
     }
+    
+    
+    return this;
   }
   
-  public void call()
-  {
+  public void call() throws JMException, InterruptedException
+  { 
+    JmxServer jmxServer = new JmxServer(12345);
+    jmxServer.start();
+    
+    Throttle throttle = new Throttle();
+    ProgressMonitor progress = new ProgressMonitor();
+    
+    jmxServer.register(throttle);
+    jmxServer.register(progress);
+    
     for (Map.Entry<String, List<TwitterUser>> entry : users.entrySet())
     { List<String> userNames = Lists.transform(entry.getValue(), new Function<TwitterUser, String>() {
         @Override public String apply(TwitterUser input){
@@ -102,16 +112,40 @@ public class UserTweetsSpider
         }
       });
       
-      executor.submit(new IndividualUserTweetsSpider(userNames, outputDirectoryPath));
+      IndividualUserTweetsSpider task = 
+        new IndividualUserTweetsSpider(
+          throttle,
+          progress,
+          entry.getKey(),
+          userNames,
+          outputDirectoryPath
+        );
+    
+      jmxServer.register (task);
+      executor.submit(task);
+      tryToWait(750, TimeUnit.MILLISECONDS);
+    }
+    executor.shutdown();
+    executor.awaitTermination(31, TimeUnit.DAYS);
+    jmxServer.stop();
+  }
+
+  private void tryToWait(long waitTime, TimeUnit units) {
+    try
+    { Thread.sleep(units.toMillis(waitTime));
+    }
+    catch (InterruptedException ie)
+    { LOG.warn("Got interrupted while sleeping");
     }
   }
   
-  public final static void main (String[] args)
-  {
-    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resouces/rankedCandidateUserList.csv");
-    Path chosenUsersPath     = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resouces/selectedUserList.csv");
-    Path outputDirectoryPath = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resouces/spider/");   
+  public final static void main (String[] args) throws JMException, InterruptedException, IOException
+  { BasicConfigurator.configure();
     
-    new UserTweetsSpider(inputPath, chosenUsersPath, outputDirectoryPath).call();
+    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/ranked.csv");
+    Path chosenUsersPath     = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/selectedUserList.csv");
+    Path outputDirectoryPath = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/spider/");   
+    
+    new UserTweetsSpider(inputPath, chosenUsersPath, outputDirectoryPath).init().call();
   }
 }

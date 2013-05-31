@@ -21,6 +21,11 @@ import org.joda.time.format.ISODateTimeFormat;
 import cc.twittertools.post.Tweet;
 
 import com.google.common.base.Charsets;
+import com.j256.simplejmx.common.BaseJmxSelfNaming;
+import com.j256.simplejmx.common.JmxAttributeField;
+import com.j256.simplejmx.common.JmxOperation;
+import com.j256.simplejmx.common.JmxResource;
+import com.j256.simplejmx.common.JmxSelfNaming;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.Response;
 
@@ -32,12 +37,17 @@ import com.ning.http.client.Response;
  * tweets for one user at a time, and downloading them serially.
  * <p>
  * See UserTweetsSpider for the code to set all this in motion.
- * @author bfeeney
- *
  */
-public class IndividualUserTweetsSpider implements Callable<Integer> {
+@JmxResource(description = "Category tweet download", domainName = "cc.twittertools.spider", folderNames={ "spiders" })
+public class IndividualUserTweetsSpider 
+extends BaseJmxSelfNaming
+implements JmxSelfNaming, Callable<Integer> {
   
   private final static Logger LOG = Logger.getLogger(IndividualUserTweetsSpider.class);
+  
+  private final static int MIN_USERS_SPIDERED  = 200;
+  private final static int MIN_TWEETS_PER_USER = 1000;
+  private final static int MIN_TWEETS_SPIDERED = MIN_USERS_SPIDERED * MIN_TWEETS_PER_USER;
   
   private final static int TIME_LIMIT_MONTHS     = 6;
   private final static int DAYS_PER_MONTH        = 31;
@@ -46,34 +56,67 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
   private final static int ESTIMATED_TWEET_COUNT 
     = AVG_TWEETS_PER_DAY * DAYS_PER_MONTH * TIME_LIMIT_MONTHS;
   
-  private final Path outputDirectory;
   private final List<String> users;
   private final AsyncHttpClient httpClient;
-  private final long eveningInterRequestWaitMs = 250; // TimeUnit.SECONDS.toMillis(2);
-  private final long dayTimeInterRequestWaitMs = 250; // TimeUnit.SECONDS.toMillis(20);
   private final TweetsHtmlParser htmlParser;
   private final TweetsJsonParser jsonParser;
   private final DateTime oldestTweet;
   
+  @JmxAttributeField(description = "Actively spidering users", isWritable = false)
+  private       boolean running = false;
+  
+  @JmxAttributeField(description = "Finished spidering users", isWritable = false)
+  private       boolean completed = false;
+
+  @JmxAttributeField(description = "Users Processed", isWritable = false)
+  private final Path outputDirectory;
+  
+  @JmxAttributeField(description = "Users Processed", isWritable = false)
+  private final String category;
+  
+  @JmxAttributeField(description = "Paused", isWritable = false)
   private       boolean paused = false;
+  
+  @JmxAttributeField(description = "Users Processed", isWritable = false)
   private       int spideredUsers = 0;
   
-  public IndividualUserTweetsSpider(List<String> users, Path outputDirectory)
+  @JmxAttributeField(description = "Tweets Downloaded", isWritable = false)
+  private       int tweetsDownloaded = 0;
+  
+  @JmxAttributeField(description = "Users in Category", isWritable = false)
+  private       int userCount = 0;
+  
+  private final Throttle throttle;
+  private final ProgressMonitor progress;
+  
+  
+  public IndividualUserTweetsSpider(Throttle throttle, ProgressMonitor progress, String category, List<String> users, Path outputDirectory)
   { super();
+    this.category        = category;
     this.outputDirectory = outputDirectory;
     this.users           = users;
     this.httpClient      = UserRanker.createHttpClient();
     this.htmlParser      = new TweetsHtmlParser();
     this.jsonParser      = new TweetsJsonParser(htmlParser);
     this.oldestTweet     = new DateTime().minusMonths(TIME_LIMIT_MONTHS);
+    this.userCount       = users.size();
+    this.throttle        = throttle;
+    this.progress        = progress;
+    
+    this.progress.markPending(category);
   }
   
   public synchronized Integer call()
-  { List<Tweet> aggregateTweets = new ArrayList<>(ESTIMATED_TWEET_COUNT);
+  { running = true;
+    progress.markActive(category);
+    
+    List<Tweet> aggregateTweets = new ArrayList<>(ESTIMATED_TWEET_COUNT);
     int page;
     String responseBody;
     for (String user : users)
-    { 
+    { if (spideredUsers >= MIN_USERS_SPIDERED && tweetsDownloaded >= MIN_TWEETS_SPIDERED)
+        break;
+      
       page = 1;
       try
       { // We may be paused during working hours to avoid saturating the
@@ -94,7 +137,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
         // continue reading until we've gone far enough back in time or we've
         // run out of tweets from the current user.
         while (! tweets.isEmpty() && lastTweet != null && lastTweet.getLocalTime().isAfter(oldestTweet))
-        { pauseBetweenRequests();
+        { throttle.pause();
           
           ++page;
           aggregateTweets.addAll(tweets);
@@ -136,9 +179,13 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
       }
       finally
       { ++spideredUsers;
+        tweetsDownloaded += aggregateTweets.size();
         aggregateTweets.clear();
       }
     }
+    
+    completed = true;
+    progress.markCompleted(category, tweetsDownloaded);
     return spideredUsers;
   }
 
@@ -164,20 +211,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     
     return lastTweet;
   }
-  
-  /**
-   * Pause for some time to stop saturating the network. The 
-   * duration depends on whether we're currently active 
-   * during working hours or not.
-   * @throws InterruptedException
-   */
-  private void pauseBetweenRequests() throws InterruptedException
-  { DateTime now = new DateTime();
-    if (now.getDayOfWeek() < 6 && now.getHourOfDay() >= 8 && now.getHourOfDay() < 19)
-      Thread.sleep(dayTimeInterRequestWaitMs);
-    else
-      Thread.sleep(eveningInterRequestWaitMs);
-  }
+
   
   /**
    * Write all the tweets to a file.
@@ -187,7 +221,11 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
    * @throws IOException
    */
   private void writeTweets(String user, List<Tweet> tweets) throws IOException
-  { Path userOutputPath = outputDirectory.resolve(user);
+  { Path catOutputDir   = outputDirectory.resolve(category);
+    if (! Files.exists(catOutputDir))
+      Files.createDirectories(catOutputDir);    
+    Path userOutputPath = catOutputDir.resolve(user);
+    
     try (
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
     )
@@ -206,6 +244,16 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     }
   }
   
+  @Override
+  public String getJmxNameOfObject()
+  { StringBuilder sb = new StringBuilder (category.length());
+    for (int i = 0; i < category.length(); i++)
+    { char c = category.charAt(i);
+      if (Character.isJavaIdentifierPart(c))
+        sb.append(c);
+    }
+    return this.getClass().getSimpleName() + '-' + sb.toString();
+  }
 
   /**
    * Creates the URL from which the next batch of tweets can be
@@ -220,11 +268,18 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     return String.format(FMT, user, id);
   }
   
-    
+  @JmxOperation(description = "Pause this downloader or vice versa")
+  public synchronized void togglePaused()
+  { paused = ! paused;
+    notifyAll();
+  }
+  
+  
   public synchronized boolean isPaused()
   { return paused;
   }
 
+  
   public synchronized void setPaused(boolean paused)
   { this.paused = paused;
     notifyAll();
@@ -246,6 +301,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     return String.format ("%+03d:%02d", hours, mins);
   }
   
+
   public static void main (String[] args)
   {    
     BasicConfigurator.configure();
@@ -253,7 +309,10 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     Path outputDir = Paths.get("/home/bfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (
-        Collections.singletonList("susiebubble"),
+        new Throttle(),
+        new ProgressMonitor(),
+        "misc",
+        Collections.singletonList("rtraister"),
         outputDir
     );
     tweetsSpider.call();
