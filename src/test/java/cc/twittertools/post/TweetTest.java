@@ -22,6 +22,7 @@ public class TweetTest
       /* id = */          29684302916624384L,
       /* requestedId = */ 29684302916624384L,
       /* isRetweetFromMsg = */ true,
+      /* utcTime = */      null,
       /* localTime = */    new DateTime (2011, 4, 13, 17, 56)
     );
   

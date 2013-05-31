@@ -30,7 +30,7 @@ public class TweetReaderTest
     tweet = tweets.next();
     assertEquals (29684302916624384L, tweet.getId());
     assertEquals (29684302916624384L, tweet.getRequestedId());
-    assertEquals ("dezzy_F_babyy", tweet.getUser());
+    assertEquals ("dezzy_F_babyy", tweet.getAuthor());
     assertEquals ("RT @LoveKayla_xoxo: #howareyouathug and u aint lived in the hood a day in yo life? you\u0027s a #boonykid #sitdown somewhere lol", tweet.getMsg());
     assertTrue   (tweet.isRetweetFromMsg());
     assertFalse  (tweet.isRetweetFromId());
@@ -43,7 +43,7 @@ public class TweetReaderTest
     tweet = tweets.next();
     assertEquals (29684303424131072L, tweet.getId());
     assertEquals (29684303424131072L, tweet.getRequestedId());
-    assertEquals ("maaricorreia_", tweet.getUser());
+    assertEquals ("maaricorreia_", tweet.getAuthor());
     assertEquals ("eu não sirvo pra ter unha grande, eu #vivo me arranhando :/", tweet.getMsg());
     assertFalse   (tweet.isRetweetFromMsg());
     assertFalse  (tweet.isRetweetFromId());
@@ -56,7 +56,7 @@ public class TweetReaderTest
     tweet = tweets.next();
     assertEquals (29684303671595009L, tweet.getId());
     assertEquals (29684303671595009L, tweet.getRequestedId());
-    assertEquals ("lunikxio", tweet.getUser());
+    assertEquals ("lunikxio", tweet.getAuthor());
     assertEquals ("quiero hacer gomitasss \u003eO\u003c", tweet.getMsg());
     assertFalse   (tweet.isRetweetFromMsg());
     assertFalse  (tweet.isRetweetFromId());
@@ -69,7 +69,7 @@ public class TweetReaderTest
     tweet = tweets.next();
     assertEquals (29684303671595011L, tweet.getId());
     assertEquals (29684303671595009L, tweet.getRequestedId());
-    assertEquals ("lunikxio2", tweet.getUser());
+    assertEquals ("lunikxio2", tweet.getAuthor());
     assertEquals ("", tweet.getMsg());
     assertFalse   (tweet.isRetweetFromMsg());
     assertTrue  (tweet.isRetweetFromId());

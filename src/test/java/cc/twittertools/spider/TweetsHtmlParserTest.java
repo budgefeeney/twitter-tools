@@ -59,12 +59,12 @@ public class TweetsHtmlParserTest
   @Test
   public void testParser() throws Exception
   { 
-    List<Tweet> tweets = parser.parse(USER, "  \t \n");
+    List<Tweet> tweets = parser.parse("  \t \n");
     assertThat(tweets, allOf(notNullValue(), empty()));
     
-    tweets = parser.parse(USER, samplePageHtml);
+    tweets = parser.parse(samplePageHtml);
     assertThat(tweets, allOf(notNullValue(), hasSize(20)));
-    assertEquals(tweets.get(3).getUser(), "charlie_whiting");
+    assertEquals(tweets.get(3).getAuthor(), "charlie_whiting");
     assertEquals(tweets.get(3).getMsg(), "Cool as well as lump-in-throat inducing. @RoyalAirForceUK is tweeting the signals received from the #Dambusters70 on their 70th anniv.");
     assertEquals(tweets.get(3).getMsgLessSigils(), "Cool as well as lump-in-throat inducing.  is tweeting the signals received from the  on their 70th anniv.");
     assertEquals(tweets.get(3).getAddressees(), Sets.newHashSet("RoyalAirForceUK"));
