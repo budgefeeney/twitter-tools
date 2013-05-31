@@ -47,7 +47,7 @@ public class TweetWriter implements AutoCloseable
     String line = tab.join(
         Long.toString(tweet.getId()),
         Long.toString(tweet.getRequestedId()),
-        tweet.getTime(),
+        tweet.getLocalTime(),
         tweet.getAuthor(),
         tweet.getMsg(),
         hashTags,

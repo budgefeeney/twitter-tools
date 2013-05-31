@@ -4,6 +4,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
@@ -11,11 +12,17 @@ import com.google.common.collect.Sets;
 
 public class Tweet
 {
-  /* Sample is 3:37 PM - 24 Jan 11 */
-  private final static DateTimeFormatter TWITTER_FMT =
-      DateTimeFormat.forPattern("h:m a - d MMM yy");
+  /**
+   *  Sample is 3:37 PM - 24 Jan 11 
+   *  
+   *  <p>We use the UTC time zone to avoid impossible times (e.g. 00:30 the day
+   *  the clocks move forward).
+   */
+  public final static DateTimeFormatter TWITTER_FMT =
+      DateTimeFormat.forPattern("h:m a - d MMM yy").withZone(DateTimeZone.UTC);
   
   private final DateTime localTime;
+  private final DateTime utcTime;
   private final Set<String> hashTags;
   private final String author;
   private final String msg;
@@ -27,10 +34,11 @@ public class Tweet
   
 
   public Tweet (long id, long reqId, String date, String author, String msg) {
-    this(id, reqId, TWITTER_FMT.parseDateTime(date), author, msg);
+    this(id, reqId, null, TWITTER_FMT.parseDateTime(date), author, msg);
   }
   
-  public Tweet (long id, long reqId, DateTime date, String author, String msg) {
+  
+  public Tweet (long id, long reqId, DateTime utcTime, DateTime localTime, String author, String msg) {
     this(
       /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
       /* author = */       author,
@@ -39,12 +47,13 @@ public class Tweet
       /* id = */           id,
       /* requestedId = */  reqId,
       /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
-      /* time = */         date
+      /* utcTime = */      utcTime,
+      /* localTime = */    localTime
     );
   }
   
   public Tweet(Set<String> hashTags, String author, String msg, Set<String> addressees,
-      long id, long requestedId, boolean isRetweetFromMsg, DateTime localTime) {
+      long id, long requestedId, boolean isRetweetFromMsg, DateTime utcTime, DateTime localTime) {
     super();
     assert hashTags != null              : "Hash tags set can be empty but not null";
     assert ! StringUtils.isBlank(author) : "Username can be neither blank nor null";
@@ -61,6 +70,7 @@ public class Tweet
     this.requestedId = requestedId;
     this.isRetweetFromId = id != requestedId;
     this.isRetweetFromMsg = isRetweetFromMsg;
+    this.utcTime   = utcTime;
     this.localTime = localTime;
   }
   
@@ -97,8 +107,12 @@ public class Tweet
     return isRetweetFromMsg;
   }
   
-  public DateTime getTime() {
+  public DateTime getLocalTime() {
     return localTime;
+  }
+  
+  public DateTime getUtcTime() {
+    return utcTime;
   }
   
   @Override

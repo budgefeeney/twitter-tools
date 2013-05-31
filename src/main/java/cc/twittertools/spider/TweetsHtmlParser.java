@@ -41,16 +41,18 @@ public class TweetsHtmlParser
     int numTweets = userIds.size();
     List<Tweet> result = new ArrayList<>(numTweets);
     for (int i = 0; i < numTweets; i++)
-    { Element time  = userIds.get(i).select("span._timestamp").get(0);    
+    { Element time  = userIds.get(i).select("span._timestamp").get(0);
       
       String href   = userIds.get(i).attr("href");
       String author = StringUtils.substringBefore(href.substring(1), "/");
       String idStr  = StringUtils.substringAfterLast(href, "/");
-      DateTime date = new DateTime (Long.parseLong(time.attr("data-time")) * 1000L);
       long   id     = Long.parseLong(idStr);
       String body   = bodies.get(i).text();
       
-      result.add(new Tweet (id, id, date, author, body));
+      DateTime localDate = Tweet.TWITTER_FMT.parseDateTime(userIds.get(i).attr("title"));
+      DateTime utcDate   = new DateTime (Long.parseLong(time.attr("data-time")) * 1000L);
+      
+      result.add(new Tweet (id, id, utcDate, localDate, author, body));
     }
     
     return result;

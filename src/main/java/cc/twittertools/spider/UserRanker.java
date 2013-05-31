@@ -126,12 +126,12 @@ public class UserRanker
                   .execute();
         
         String htmlBody = resp.get().getResponseBody();
-        List<Tweet> tweets = htmlParser.parse(user.getName(), htmlBody);
+        List<Tweet> tweets = htmlParser.parse(htmlBody);
         
         // Time period covered by the most recent 20 tweets
         Duration interTweetDuration = tweets.size() < STD_TWEETS_PER_PAGE
             ? new Duration(Long.MAX_VALUE)
-            : new Duration(tweets.get(19).getTime(), tweets.get(0).getTime());
+            : new Duration(tweets.get(19).getLocalTime(), tweets.get(0).getLocalTime());
             
         user.setRecent20TweetInterval(interTweetDuration);
         sortedUsers.add (user);

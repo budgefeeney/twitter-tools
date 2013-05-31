@@ -15,6 +15,7 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
+import org.joda.time.Period;
 import org.joda.time.format.ISODateTimeFormat;
 
 import cc.twittertools.post.Tweet;
@@ -92,7 +93,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
          
         // continue reading until we've gone far enough back in time or we've
         // run out of tweets from the current user.
-        while (! tweets.isEmpty() && lastTweet != null && lastTweet.getTime().isAfter(oldestTweet))
+        while (! tweets.isEmpty() && lastTweet != null && lastTweet.getLocalTime().isAfter(oldestTweet))
         { pauseBetweenRequests();
           
           ++page;
@@ -195,7 +196,9 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
           tweet.getAuthor()
           + '\t' + tweet.getId()
           + '\t' + tweet.getRequestedId()
-          + '\t' + ISODateTimeFormat.basicDateTimeNoMillis().print(tweet.getTime())
+          + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(tweet.getUtcTime())
+          + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(tweet.getLocalTime())
+          + '\t' + toTimeZoneString (new Period (tweet.getUtcTime(), tweet.getLocalTime()))
           + '\t' + tweet.getMsg()
           + '\n'
         );
@@ -203,6 +206,7 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
     }
   }
   
+
   /**
    * Creates the URL from which the next batch of tweets can be
    * fetched. The returned results is in JSON.
@@ -230,17 +234,28 @@ public class IndividualUserTweetsSpider implements Callable<Integer> {
   { return spideredUsers == users.size();
   }
 
+  public static final String toTimeZoneString (Period period)
+  {
+    
+    int hours = period.getDays() * 24 + period.getHours();
+    int mins  = period.getMinutes();
+    
+    // round minutes to the nearest 15min interval
+    mins = ((mins + 2) / 15) * 15;
+    
+    return String.format ("%+03d:%02d", hours, mins);
+  }
+  
   public static void main (String[] args)
-  { BasicConfigurator.configure();
+  {    
+    BasicConfigurator.configure();
     Logger.getRootLogger().setLevel(Level.DEBUG);
     Path outputDir = Paths.get("/home/bfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (
-        Collections.singletonList("SomersF1"),
+        Collections.singletonList("susiebubble"),
         outputDir
     );
     tweetsSpider.call();
   }
-  
-  
 }

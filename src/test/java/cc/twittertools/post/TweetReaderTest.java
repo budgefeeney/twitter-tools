@@ -36,7 +36,7 @@ public class TweetReaderTest
     assertFalse  (tweet.isRetweetFromId());
     assertEquals (Sets.newHashSet("howareyouathug", "boonykid", "sitdown"), tweet.getHashTags());
     assertEquals (Sets.newHashSet("LoveKayla_xoxo"), tweet.getAddressees());
-    assertTrue   (tweet.getTime().toString().startsWith("2011-01-24T15:37:00.000"));
+    assertTrue   (tweet.getLocalTime().toString().startsWith("2011-01-24T15:37:00.000"));
     
 
     assertTrue (tweets.hasNext());
@@ -49,7 +49,7 @@ public class TweetReaderTest
     assertFalse  (tweet.isRetweetFromId());
     assertEquals (Sets.newHashSet("vivo"), tweet.getHashTags());
     assertEquals (Sets.newHashSet(), tweet.getAddressees());
-    assertTrue   (tweet.getTime().toString().startsWith("2011-01-24T15:36:00.000"));
+    assertTrue   (tweet.getLocalTime().toString().startsWith("2011-01-24T15:36:00.000"));
     
 
     assertTrue (tweets.hasNext());
@@ -62,7 +62,7 @@ public class TweetReaderTest
     assertFalse  (tweet.isRetweetFromId());
     assertEquals (Sets.newHashSet(), tweet.getHashTags());
     assertEquals (Sets.newHashSet(), tweet.getAddressees());
-    assertTrue   (tweet.getTime().toString().startsWith("2011-01-24T15:37:00.000"));
+    assertTrue   (tweet.getLocalTime().toString().startsWith("2011-01-24T15:37:00.000"));
     
 
     assertTrue (tweets.hasNext());
@@ -75,8 +75,8 @@ public class TweetReaderTest
     assertTrue  (tweet.isRetweetFromId());
     assertEquals (Sets.newHashSet(), tweet.getHashTags());
     assertEquals (Sets.newHashSet(), tweet.getAddressees());
-    System.out.println (tweet.getTime());
-    assertTrue   (tweet.getTime().toString().startsWith("2009-07-01T02:41:00.000"));
+    System.out.println (tweet.getLocalTime());
+    assertTrue   (tweet.getLocalTime().toString().startsWith("2009-07-01T02:41:00.000"));
     
     assertFalse (tweets.hasNext());
   }
