@@ -7,9 +7,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -36,14 +39,16 @@ public class UserTweetsSpider
   private static final int EXPECTED_USER_COUNT_IN_CAT = 1100;
   
   private final Path inputPath;
+  private final Path excludedCatsPath;
   private final Path chosenUsersPath;
   private final Path outputDirectoryPath;  
   private final Map<String, List<TwitterUser>> users;
   private final ExecutorService executor;
   
   
-  public UserTweetsSpider(Path inputFile, Path chosenUsersFile, Path outputDirectory)
+  public UserTweetsSpider(Path inputFile, Path excludedCatsPath ,Path chosenUsersFile, Path outputDirectory)
   { this.inputPath           = inputFile;
+    this.excludedCatsPath    = excludedCatsPath;
     this.chosenUsersPath     = chosenUsersFile;
     this.outputDirectoryPath = outputDirectory;
     this.users    = new HashMap<>(EXPECTED_CAT_COUNT);
@@ -54,6 +59,12 @@ public class UserTweetsSpider
   {
     // Make sure the output directory exists
     Files.createDirectories(outputDirectoryPath);
+    
+    // Read in all the categories we want to exclude
+    // (e.g. they've already been read)
+    Set<String> excludedCats = excludedCatsPath == null
+      ? Collections.<String>emptySet()
+      : new HashSet<>(Files.readAllLines(excludedCatsPath, Charsets.UTF_8));
     
     // Read in all the users, but skip those users who have never
     // posted any tweets (users whose inter-tweet time is Long.MAX_VALUE)
@@ -66,6 +77,11 @@ public class UserTweetsSpider
           continue;
         
         TwitterUser user = new TwitterUser(line);
+        if (excludedCats.contains (user.getCategory()))
+        { LOG.info("Skipping user " + user + " as they're in one of the excluded categories " + user.getCategory());
+          continue;
+        }
+        
         if (user.getRecent20TweetInterval().getMillis() == Long.MAX_VALUE)
         { LOG.warn("User " + user.getName() + " in category " + user.getCategory() + " has never posted any tweets");
           continue;
@@ -143,9 +159,15 @@ public class UserTweetsSpider
   { BasicConfigurator.configure();
     
     Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/ranked.csv");
-    Path chosenUsersPath     = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/selectedUserList.csv");
-    Path outputDirectoryPath = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/spider/");   
+    Path chosenUsersPath     = Paths.get(args.length > 1 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/selectedUserList.csv");
+    Path outputDirectoryPath = Paths.get(args.length > 2 ? args[2] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/spider/");   
+    Path excludedCatsPath    = args.length > 3 ? Paths.get(args[3]) : null;
     
-    new UserTweetsSpider(inputPath, chosenUsersPath, outputDirectoryPath).init().call();
+    new UserTweetsSpider(
+      inputPath,
+      excludedCatsPath,
+      chosenUsersPath,
+      outputDirectoryPath
+    ).init().call();
   }
 }
