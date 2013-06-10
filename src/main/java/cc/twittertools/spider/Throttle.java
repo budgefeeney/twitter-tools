@@ -1,10 +1,11 @@
 package cc.twittertools.spider;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.joda.time.DateTime;
 
-import com.j256.simplejmx.common.JmxAttributeField;
+import com.j256.simplejmx.common.JmxAttributeMethod;
 import com.j256.simplejmx.common.JmxResource;
 
 /**
@@ -15,11 +16,9 @@ import com.j256.simplejmx.common.JmxResource;
 @JmxResource(description = "Limits HTTP Requests per unit time", domainName = "cc.twittertools.spider", beanName = "Throttle")
 public class Throttle
 {
-  @JmxAttributeField(description = "Inter-request time in milliseconds outside of business hours", isWritable = true)
-  private       long eveningInterRequestWaitMs = TimeUnit.SECONDS.toMillis(5);
+  private       AtomicLong eveningInterRequestWaitMs = new AtomicLong (TimeUnit.SECONDS.toMillis(3));
   
-  @JmxAttributeField(description = "Inter-request time in milliseconds outside of business hours", isWritable = true)
-  private       long dayTimeInterRequestWaitMs = TimeUnit.SECONDS.toMillis(10);
+  private       AtomicLong dayTimeInterRequestWaitMs = new AtomicLong (TimeUnit.SECONDS.toMillis(6));
 
   
   /**
@@ -31,29 +30,33 @@ public class Throttle
   public void pause() throws InterruptedException
   { DateTime now = new DateTime();
     if (now.getDayOfWeek() < 6 && now.getHourOfDay() >= 8 && now.getHourOfDay() < 19)
-      Thread.sleep(dayTimeInterRequestWaitMs);
+      Thread.sleep(dayTimeInterRequestWaitMs.get());
     else
-      Thread.sleep(eveningInterRequestWaitMs);
+      Thread.sleep(eveningInterRequestWaitMs.get());
   }
 
 
+  @JmxAttributeMethod(description = "Inter-request time in milliseconds outside of business hours")
   public long getEveningInterRequestWaitMs() {
-    return eveningInterRequestWaitMs;
+    return eveningInterRequestWaitMs.get();
   }
 
 
+  @JmxAttributeMethod(description = "Inter-request time in milliseconds outside of business hours")
   public void setEveningInterRequestWaitMs(long eveningInterRequestWaitMs) {
-    this.eveningInterRequestWaitMs = eveningInterRequestWaitMs;
+    this.eveningInterRequestWaitMs.set (eveningInterRequestWaitMs);
   }
 
 
+  @JmxAttributeMethod(description = "Inter-request time in milliseconds outside of business hours")
   public long getDayTimeInterRequestWaitMs() {
-    return dayTimeInterRequestWaitMs;
+    return dayTimeInterRequestWaitMs.get();
   }
 
 
+  @JmxAttributeMethod(description = "Inter-request time in milliseconds outside of business hours")
   public void setDayTimeInterRequestWaitMs(long dayTimeInterRequestWaitMs) {
-    this.dayTimeInterRequestWaitMs = dayTimeInterRequestWaitMs;
+    this.dayTimeInterRequestWaitMs.set (dayTimeInterRequestWaitMs);
   }
   
   
