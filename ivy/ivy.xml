@@ -29,5 +29,7 @@
     <dependency org="colt" name="colt" rev="1.2.0" conf="*->*,!sources,!javadoc"/>
     <dependency org="org.hamcrest" name="hamcrest-core" rev="1.3" conf="*->*,!sources,!javadoc"/>
     <dependency org="org.hamcrest" name="hamcrest-library" rev="1.3" conf="*->*,!sources,!javadoc"/>
+    <dependency org="com.j256.simplejmx" name="simplejmx" rev="1.1" conf="*->*,!sources,!javadoc"/>
+	<dependency org="org.apache.httpcomponents" name="httpclient" rev="4.2.5" conf="*->*,!sources,!javadoc"/>         
   </dependencies>
 </ivy-module>
