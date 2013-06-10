@@ -1,5 +1,7 @@
 package cc.twittertools.spider;
 
+import static cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler.CONNECTION_TIMEOUT;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -9,8 +11,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.Future;
 
+import org.apache.commons.httpclient.Header;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.httpclient.methods.GetMethod;
+import org.apache.commons.httpclient.params.HttpClientParams;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -26,8 +33,6 @@ import com.j256.simplejmx.common.JmxAttributeField;
 import com.j256.simplejmx.common.JmxOperation;
 import com.j256.simplejmx.common.JmxResource;
 import com.j256.simplejmx.common.JmxSelfNaming;
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.Response;
 
 /**
  * Takes a list of users, and one by one downloads their tweets, using
@@ -43,6 +48,8 @@ public class IndividualUserTweetsSpider
 extends BaseJmxSelfNaming
 implements JmxSelfNaming, Callable<Integer> {
   
+  private static final int HTTP_200_OK = 200;
+
   private final static Logger LOG = Logger.getLogger(IndividualUserTweetsSpider.class);
   
   private final static int MIN_USERS_SPIDERED  = 200;
@@ -57,7 +64,7 @@ implements JmxSelfNaming, Callable<Integer> {
     = AVG_TWEETS_PER_DAY * DAYS_PER_MONTH * TIME_LIMIT_MONTHS;
   
   private final List<String> users;
-  private final AsyncHttpClient httpClient;
+  private final HttpClient httpClient;
   private final TweetsHtmlParser htmlParser;
   private final TweetsJsonParser jsonParser;
   private final DateTime oldestTweet;
@@ -95,7 +102,7 @@ implements JmxSelfNaming, Callable<Integer> {
     this.category        = category;
     this.outputDirectory = outputDirectory;
     this.users           = users;
-    this.httpClient      = UserRanker.createHttpClient();
+    this.httpClient      = createHttpClient();
     this.htmlParser      = new TweetsHtmlParser();
     this.jsonParser      = new TweetsJsonParser(htmlParser);
     this.oldestTweet     = new DateTime().minusMonths(TIME_LIMIT_MONTHS);
@@ -123,14 +130,9 @@ implements JmxSelfNaming, Callable<Integer> {
         // network
         while (paused)
           wait();
-      
-        Future<Response> resp 
-          = httpClient.prepareGet("https://twitter.com/" + user)
-                  .addHeader("Accept-Charset", "utf-8")
-                  .addHeader("Accept-Language", "en-US")
-                  .execute();
-        
-        responseBody = resp.get().getResponseBody();
+
+        final String pageUrl = "https://twitter.com/" + user;
+        responseBody = makeHttpRequest(pageUrl);
         List<Tweet> tweets = htmlParser.parse (responseBody);
         Tweet lastTweet    = removeLastAuthoredTweet(user, tweets);
          
@@ -143,12 +145,7 @@ implements JmxSelfNaming, Callable<Integer> {
           aggregateTweets.addAll(tweets);
           LOG.debug("Have accumulated " + aggregateTweets.size() + " tweets for user " + user + " after processing page " + page);
           
-          resp = httpClient.prepareGet(jsonTweetsUrl(user, lastTweet.getId()))
-                  .addHeader("Accept-Charset", "utf-8")
-                  .addHeader("Accept-Language", "en-US")
-                  .execute();
-          
-          responseBody = resp.get().getResponseBody();
+          responseBody = makeHttpRequest (jsonTweetsUrl(user, lastTweet.getId()), pageUrl);
           tweets = jsonParser.parse(responseBody);
           if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
           { LOG.warn ("Only got " + tweets.size() + " tweets for the most recent request for user " + user + " on page " + page + " with ID " + lastTweet.getId());
@@ -174,7 +171,7 @@ implements JmxSelfNaming, Callable<Integer> {
         { writeTweets (user, aggregateTweets);
         }
         catch (Exception eio)
-        { LOG.error("Error writting tweets for user " + user + " while recovering from previous error : " + eio.getMessage(), eio);
+        { LOG.error("Error writing tweets for user " + user + " while recovering from previous error : " + eio.getMessage(), eio);
         }
       }
       finally
@@ -187,6 +184,29 @@ implements JmxSelfNaming, Callable<Integer> {
     completed = true;
     progress.markCompleted(category, tweetsDownloaded);
     return spideredUsers;
+  }
+
+  private String makeHttpRequest(String url) throws IOException, HttpException {
+    return makeHttpRequest(url, null);
+  }
+    
+  private String makeHttpRequest(String url, String refUrl) throws IOException, HttpException {
+    String responseBody;
+    GetMethod req = new GetMethod(url);
+    req.addRequestHeader(new Header("Accept-Charset", "utf-8"));
+    req.addRequestHeader(new Header("Accept-Language", "en-US,en;q=0.8"));
+    req.addRequestHeader(new Header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"));
+    req.addRequestHeader(new Header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/536.30.1 (KHTML, like Gecko) Version/6.0.5 Safari/536.30.1"));
+    if (! StringUtils.isBlank(refUrl))
+      req.addRequestHeader(new Header("Referer", refUrl));
+    req.setFollowRedirects(true);
+    
+    int respStatusCode = httpClient.executeMethod(req);
+    if (respStatusCode != HTTP_200_OK)
+      throw new IOException ("Failed to download page, received HTTP response code " + respStatusCode);
+            
+    responseBody = req.getResponseBodyAsString();
+    return responseBody;
   }
 
   /**
@@ -242,6 +262,14 @@ implements JmxSelfNaming, Callable<Integer> {
         );
       }
     }
+  }
+  
+  private HttpClient createHttpClient()
+  { HttpClientParams params = new HttpClientParams();
+    params.setConnectionManagerTimeout(CONNECTION_TIMEOUT);
+    params.setSoTimeout(CONNECTION_TIMEOUT);
+    
+    return new HttpClient (params);
   }
   
   @Override
