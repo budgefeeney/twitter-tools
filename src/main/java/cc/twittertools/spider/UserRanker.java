@@ -171,7 +171,7 @@ public class UserRanker
       .setIdleConnectionInPoolTimeoutInMs(IDLE_CONNECTION_TIMEOUT)
       .setRequestTimeoutInMs(REQUEST_TIMEOUT)
       .setMaxRequestRetry(0)
-      .setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
+//      .setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
       .setFollowRedirects(true)
       .build();
     return new AsyncHttpClient(config);
