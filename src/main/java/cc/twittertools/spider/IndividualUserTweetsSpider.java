@@ -5,8 +5,10 @@ import static cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler.CONNE
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,9 +24,8 @@ import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
-import org.joda.time.Period;
-import org.joda.time.format.ISODateTimeFormat;
 
+import cc.twittertools.post.SavedTweetReader;
 import cc.twittertools.post.Tweet;
 
 import com.google.common.base.Charsets;
@@ -42,6 +43,13 @@ import com.j256.simplejmx.common.JmxSelfNaming;
  * tweets for one user at a time, and downloading them serially.
  * <p>
  * See UserTweetsSpider for the code to set all this in motion.
+ * <p>
+ * We continue downloading tweets until we've accumulated a minimum
+ * number of tweets in total from a minimum number of users (i.e. one
+ * of these minima will likely be exceeded to meet the other).
+ * <p>
+ * Tweets written out by this should be read in using 
+ * {@link SavedTweetReader}
  */
 @JmxResource(description = "Category tweet download", domainName = "cc.twittertools.spider", folderNames={ "spiders" })
 public class IndividualUserTweetsSpider 
@@ -62,6 +70,8 @@ implements JmxSelfNaming, Callable<Integer> {
   
   private final static int ESTIMATED_TWEET_COUNT 
     = AVG_TWEETS_PER_DAY * DAYS_PER_MONTH * TIME_LIMIT_MONTHS;
+  
+  private final static long DOWNLOAD_ALL_AVAILABLE_TWEETS = -1;
   
   private final List<String> users;
   private final HttpClient httpClient;
@@ -121,12 +131,13 @@ implements JmxSelfNaming, Callable<Integer> {
     int page;
     String responseBody;
     for (String user : users)
-    { if (spideredUsers >= MIN_USERS_SPIDERED && tweetsDownloaded >= MIN_TWEETS_SPIDERED)
-        break;
-      
-      page = 1;
+    { page = 1;
       try
-      { // We may be paused during working hours to avoid saturating the
+      { long lastTweetId = readLastTweetId(user);
+        if (shouldDownloadUsersTweets(user))
+          break;
+      
+        // We may be paused during working hours to avoid saturating the
         // network
         while (paused)
           wait();
@@ -147,6 +158,7 @@ implements JmxSelfNaming, Callable<Integer> {
           
           responseBody = makeHttpRequest (jsonTweetsUrl(user, lastTweet.getId()), pageUrl);
           tweets = jsonParser.parse(responseBody);
+          tweets = removeUndesireableTweets(tweets, lastTweetId);
           if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
           { LOG.warn ("Only got " + tweets.size() + " tweets for the most recent request for user " + user + " on page " + page + " with ID " + lastTweet.getId());
             //System.err.println (resp.get().getResponseBody());
@@ -184,6 +196,23 @@ implements JmxSelfNaming, Callable<Integer> {
     completed = true;
     progress.markCompleted(category, tweetsDownloaded);
     return spideredUsers;
+  }
+
+  /**
+   * Removes tweets we don't want. In this implementation, this does nothing.
+   * @return
+   */
+  protected List<Tweet> removeUndesireableTweets(List<Tweet> tweets, long lastTweetId) {
+    return tweets;
+  }
+
+  /**
+   * Should we download user's tweets or not. In the case of this method this will only return
+   * true if we've failed either to download tweets from the minimum number of users, or failed
+   * to download the minimum number of tweets thus far.
+   */
+  protected boolean shouldDownloadUsersTweets(String user) {
+    return spideredUsers < MIN_USERS_SPIDERED || tweetsDownloaded < MIN_TWEETS_SPIDERED;
   }
 
   private String makeHttpRequest(String url) throws IOException, HttpException {
@@ -250,20 +279,73 @@ implements JmxSelfNaming, Callable<Integer> {
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
     )
     { for (Tweet tweet : tweets)
-      { wtr.write(
-          tweet.getAuthor()
-          + '\t' + tweet.getId()
-          + '\t' + tweet.getRequestedId()
-          + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(tweet.getUtcTime())
-          + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(tweet.getLocalTime())
-          + '\t' + toTimeZoneString (new Period (tweet.getUtcTime(), tweet.getLocalTime()))
-          + '\t' + tweet.getMsg()
-          + '\n'
-        );
+      { wtr.write(tweet.toShortTabDelimString());
       }
     }
   }
   
+  /**
+   * If it exists, read the most recent user file, and find the ID of their most recent
+   * tweet.
+   * @throws IOException 
+   */
+  private long readLastTweetId(String user) throws IOException
+  { Path path = newestTweetsFile (user, StandardOpenOption.READ);
+    if (! Files.exists (path))
+      return DOWNLOAD_ALL_AVAILABLE_TWEETS;
+    
+    try (
+      SavedTweetReader rdr = new SavedTweetReader (path);
+    )
+    { if (! rdr.hasNext())
+        return DOWNLOAD_ALL_AVAILABLE_TWEETS;
+      else
+        return rdr.next().getId();
+    }
+  }
+  
+  /**
+   * Returns the path from which we can either read the user's most recent
+   * tweets, or to which we can write the tweets we've just downloaded,
+   * the action specified by the third {@link OpenOption} parameter which
+   * can be READ, APPEND, or CREATE. For CREATE we create a new file, based
+   * on the old file name, with a period and then a number appended to the
+   * end of the name.
+   * @param user the user whose tweets are being read or written.
+   * @param outDir where the tweets are stored
+   * @param openOption whether the file should alreadsy exists (READ or 
+   * APPEND) or whether we should create a new file (CREATE). New files are
+   * named with number suffixes so they never overwrite exting files.
+   * @return the path to a file containing a users tweets.
+   * @throws IOException 
+   */
+  private Path newestTweetsFile(String user, StandardOpenOption openOption) throws IOException 
+  { Path catOutputDir = outputDirectory.resolve(category);
+    if (! Files.exists(catOutputDir))
+      Files.createDirectories(catOutputDir);    
+    Path userOutputPath = catOutputDir.resolve(user);
+   
+    switch (openOption)
+    {
+      case READ:
+      case APPEND:
+      { 
+        // BUG BUG NEED TO ITERATE TO MOST RECENT FILE
+        // NEED TO RETURN NULL IF FILE IS ABSENT
+        q = 3 +1;
+        return userOutputPath;
+      }
+      case CREATE:
+      { int i = 0;
+        while (Files.exists(userOutputPath))
+          userOutputPath = catOutputDir.resolve (user + '.' + (++i));
+        return userOutputPath;
+      }
+      default:
+        throw new IllegalArgumentException ("The only open options allowed are READ, APPEND and CREATE as defined in StandardOpenOption. You specified " + openOption);
+    }
+  }
+
   private HttpClient createHttpClient()
   { HttpClientParams params = new HttpClientParams();
     params.setConnectionManagerTimeout(CONNECTION_TIMEOUT);
@@ -317,17 +399,6 @@ implements JmxSelfNaming, Callable<Integer> {
   { return spideredUsers == users.size();
   }
 
-  public static final String toTimeZoneString (Period period)
-  {
-    
-    int hours = period.getDays() * 24 + period.getHours();
-    int mins  = period.getMinutes();
-    
-    // round minutes to the nearest 15min interval
-    mins = ((mins + 2) / 15) * 15;
-    
-    return String.format ("%+03d:%02d", hours, mins);
-  }
   
 
   public static void main (String[] args)

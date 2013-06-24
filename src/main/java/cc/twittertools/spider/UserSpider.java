@@ -60,8 +60,8 @@ public class UserSpider
   private int numSeedUsers;
   
   public UserSpider(Path outputPath, Path skippedUsersPath)
-  { this.outputPath = outputPath;
-    this.skippedUsersPath = skippedUsersPath;
+  { this.outputPath        = outputPath;
+    this.skippedUsersPath  = skippedUsersPath;
   }
   
   public void init (Path file) throws IOException

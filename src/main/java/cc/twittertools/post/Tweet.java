@@ -5,8 +5,10 @@ import java.util.Set;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.Period;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 import com.google.common.collect.Sets;
 
@@ -154,6 +156,55 @@ public class Tweet
       msg = Sigil.RETWEET.stripFromMsg(msg);
     
     return msg;
+  }
+  
+  /**
+   * Return a tab delimited string with all this tweets raw information
+   * terminated by a newline.
+   */
+  public String toShortTabDelimString()
+  {
+    return this.getAuthor()
+    + '\t' + this.getId()
+    + '\t' + this.getRequestedId()
+    + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getUtcTime())
+    + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getLocalTime())
+    + '\t' + toTimeZoneString (new Period (this.getUtcTime(), this.getLocalTime()))
+    + '\t' + this.getMsg()
+    + '\n';
+  }
+
+  public static final String toTimeZoneString (Period period)
+  {
+    
+    int hours = period.getDays() * 24 + period.getHours();
+    int mins  = period.getMinutes();
+    
+    // round minutes to the nearest 15min interval
+    mins = ((mins + 2) / 15) * 15;
+    
+    return String.format ("%+03d:%02d", hours, mins);
+  }
+  
+  /**
+   * Parses a line created by {@link #toShortTabDelimString()} back into
+   * a {@link Tweet}. Will throw raw exceptions if the line
+   * @param line
+   * @return
+   */
+  public static Tweet fromShortTabDelimString(String line)
+  { if ((line = StringUtils.trimToEmpty(line)).isEmpty())
+      return null;
+  
+    String[] parts = StringUtils.split(line, '\t');
+    return new Tweet (
+        Long.parseLong(parts[1]),
+        Long.parseLong(parts[2]),
+        ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[3]),
+        ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[4]),
+        parts[0],
+        parts[5]
+    );
   }
   
   

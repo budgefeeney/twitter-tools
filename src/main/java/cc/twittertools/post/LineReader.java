@@ -34,8 +34,25 @@ public class LineReader implements Iterator<String>, AutoCloseable
   private       Exception      nextError;
   private       BufferedReader rdr;
   
+  
+
   /**
-   * Creates a new JsonTweetReader
+   * Creates a new LineReader operating on the given enumeration of paths
+   * @param paths to the files to read. This will read files regardless
+   *  of whether or not they end with JSON or not
+   * @throws IOException 
+   */
+  public LineReader (Iterator<Path> paths) throws IOException
+  { this.paths = paths;
+  }
+  
+  /**
+   * Creates a new LineReader, reading in all JSON files from the given
+   * directory, or the specific file if the parameter is a specific
+   * file.
+   * <p>
+   * To read in a list of files which are not JSON pass in an 
+   * iterator of paths to the files you'd like to read.
    * @param path a path to a particular file, or a path to a directory 
    * full of files containing the ".json" or the ".json.gz" prefix 
    * (not case-sensitive)
@@ -142,7 +159,7 @@ public class LineReader implements Iterator<String>, AutoCloseable
   }
 
   @Override
-  public void close() throws Exception
+  public void close() throws IOException
   { if (rdr != null)
       rdr.close();
   }
