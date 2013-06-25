@@ -319,27 +319,33 @@ implements JmxSelfNaming, Callable<Integer> {
    * @return the path to a file containing a users tweets.
    * @throws IOException 
    */
-  private Path newestTweetsFile(String user, StandardOpenOption openOption) throws IOException 
+  protected Path newestTweetsFile(String user, StandardOpenOption openOption) throws IOException 
   { Path catOutputDir = outputDirectory.resolve(category);
     if (! Files.exists(catOutputDir))
-      Files.createDirectories(catOutputDir);    
-    Path userOutputPath = catOutputDir.resolve(user);
-   
+      Files.createDirectories(catOutputDir);   
+    
+    // Iterate until we've found the most recent pre-existing file, 
+    // and a suitable path for the next new file to create
+    //   In the special case of a first-time write existingUserPath
+    // won't actually exist.
+    Path newUserPath = catOutputDir.resolve(user);
+    Path existingUserPath = null;
+    int i = 0;
+    do
+    { existingUserPath = newUserPath;
+      newUserPath = catOutputDir.resolve (user + '.' + (++i));
+    }
+    while (Files.exists(newUserPath));
+    
+    // Return the appropriate file based on the open criteria
     switch (openOption)
     {
       case READ:
       case APPEND:
-      { 
-        // BUG BUG NEED TO ITERATE TO MOST RECENT FILE
-        // NEED TO RETURN NULL IF FILE IS ABSENT
-        q = 3 +1;
-        return userOutputPath;
+      { return existingUserPath;
       }
       case CREATE:
-      { int i = 0;
-        while (Files.exists(userOutputPath))
-          userOutputPath = catOutputDir.resolve (user + '.' + (++i));
-        return userOutputPath;
+      { return newUserPath;
       }
       default:
         throw new IllegalArgumentException ("The only open options allowed are READ, APPEND and CREATE as defined in StandardOpenOption. You specified " + openOption);
