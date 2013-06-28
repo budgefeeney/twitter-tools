@@ -38,12 +38,12 @@ public class UserTweetsSpider
   private static final int EXPECTED_CAT_COUNT = 70;
   private static final int EXPECTED_USER_COUNT_IN_CAT = 1100;
   
-  private final Path inputPath;
-  private final Path excludedCatsPath;
-  private final Path chosenUsersPath;
-  private final Path outputDirectoryPath;  
-  private final Map<String, List<TwitterUser>> users;
-  private final ExecutorService executor;
+  final Path inputPath;
+  final Path excludedCatsPath;
+  final Path chosenUsersPath;
+  final Path outputDirectoryPath;  
+  final Map<String, List<TwitterUser>> users;
+  final ExecutorService executor;
   
   
   public UserTweetsSpider(Path inputFile, Path excludedCatsPath ,Path chosenUsersFile, Path outputDirectory)
