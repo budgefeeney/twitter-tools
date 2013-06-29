@@ -312,14 +312,31 @@ implements JmxSelfNaming, Callable<Integer> {
    * on the old file name, with a period and then a number appended to the
    * end of the name.
    * @param user the user whose tweets are being read or written.
-   * @param outDir where the tweets are stored
    * @param openOption whether the file should alreadsy exists (READ or 
    * APPEND) or whether we should create a new file (CREATE). New files are
    * named with number suffixes so they never overwrite exting files.
    * @return the path to a file containing a users tweets.
    * @throws IOException 
    */
-  protected Path newestTweetsFile(String user, StandardOpenOption openOption) throws IOException 
+  protected Path newestTweetsFile(String user, StandardOpenOption openOption) throws IOException
+  { return newestTweetsFile(user, category, outputDirectory, openOption);
+  }
+  
+  /**
+   * Returns the path from which we can either read the user's most recent
+   * tweets, or to which we can write the tweets we've just downloaded,
+   * the action specified by the third {@link OpenOption} parameter which
+   * can be READ, APPEND, or CREATE. For CREATE we create a new file, based
+   * on the old file name, with a period and then a number appended to the
+   * end of the name.
+   * @param user the user whose tweets are being read or written.
+   * @param openOption whether the file should alreadsy exists (READ or 
+   * APPEND) or whether we should create a new file (CREATE). New files are
+   * named with number suffixes so they never overwrite exting files.
+   * @return the path to a file containing a users tweets.
+   * @throws IOException 
+   */
+  /* pkg */ static Path newestTweetsFile(String user, String category, Path outputDirectory, StandardOpenOption openOption) throws IOException 
   { Path catOutputDir = outputDirectory.resolve(category);
     if (! Files.exists(catOutputDir))
       Files.createDirectories(catOutputDir);   

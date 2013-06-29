@@ -155,7 +155,7 @@ public class UserTweetsSpider
     }
   }
   
-  public final static void main (String[] args) throws JMException, InterruptedException, IOException
+  public static void main (String[] args) throws JMException, InterruptedException, IOException
   { BasicConfigurator.configure();
     
     Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/ranked.csv");

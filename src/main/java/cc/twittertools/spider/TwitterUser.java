@@ -34,6 +34,17 @@ final class TwitterUser implements Comparable<TwitterUser>
   private final int ageInMonths;
   private Duration recent20TweetInterval = new Duration(Long.MAX_VALUE);
   
+  
+  
+  public TwitterUser(String name, String category) {
+    super();
+    this.category     = category;
+    this.name         = name;
+    this.ancestry     = Collections.singletonList(name);
+    this.creationDate = null;
+    this.ageInMonths  = -1;
+  }
+
   public TwitterUser (final String line)
   { 
     try
