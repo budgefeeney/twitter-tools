@@ -274,7 +274,7 @@ implements JmxSelfNaming, Callable<Integer> {
    * @throws IOException
    */
   private void writeTweets(String user, List<Tweet> tweets) throws IOException
-  { Path userOutputPath = newestTweetsFile(user, StandardOpenOption.WRITE);
+  { Path userOutputPath = newestTweetsFile(user, StandardOpenOption.CREATE);
     
     try (
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
