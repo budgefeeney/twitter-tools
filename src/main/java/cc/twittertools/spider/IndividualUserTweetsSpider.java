@@ -142,10 +142,12 @@ implements JmxSelfNaming, Callable<Integer> {
         while (paused)
           wait();
 
+        List<Tweet> tweets;
         final String pageUrl = "https://twitter.com/" + user;
         responseBody = makeHttpRequest(pageUrl);
-        List<Tweet> tweets = htmlParser.parse (responseBody);
-        Tweet lastTweet    = removeLastAuthoredTweet(user, tweets);
+        tweets = htmlParser.parse (responseBody);
+        tweets = removeUndesireableTweets (tweets, lastTweetId);
+        Tweet lastTweet = removeLastAuthoredTweet(user, tweets);
          
         // continue reading until we've gone far enough back in time or we've
         // run out of tweets from the current user.
