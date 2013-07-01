@@ -62,7 +62,9 @@ public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
   @Override
   protected boolean shouldDownloadUsersTweets(String user) {
     try
-    { return Files.exists(newestTweetsFile(user, StandardOpenOption.READ));
+    { Path mostRecentlyWrittenFile = newestTweetsFile(user, StandardOpenOption.READ);
+      return Files.exists(mostRecentlyWrittenFile)
+          && Files.size(mostRecentlyWrittenFile) >= 100L; // Quick check that a file is not full of blanks or empty
     }
     catch (IOException ioe)
     { LOG.error("Can't determine most recent saved tweets file for user \"" + user + "\" - " + ioe.getMessage(), ioe);
