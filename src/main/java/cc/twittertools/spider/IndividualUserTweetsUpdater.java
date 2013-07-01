@@ -8,6 +8,8 @@ import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import com.j256.simplejmx.common.JmxResource;
+
 import cc.twittertools.post.Tweet;
 
 /**
@@ -17,6 +19,7 @@ import cc.twittertools.post.Tweet;
  * @author bryanfeeney
  *
  */
+@JmxResource(description = "Category tweet update", domainName = "cc.twittertools.spider", folderNames={ "spiders" })
 public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
 {
   private final static Logger LOG = Logger.getLogger(IndividualUserTweetsUpdater.class);
