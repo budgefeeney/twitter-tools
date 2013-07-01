@@ -17,6 +17,7 @@ import java.util.concurrent.Callable;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
+import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.lang.StringUtils;
@@ -231,6 +232,7 @@ implements JmxSelfNaming, Callable<Integer> {
     if (! StringUtils.isBlank(refUrl))
       req.addRequestHeader(new Header("Referer", refUrl));
     req.setFollowRedirects(true);
+    req.getParams().setCookiePolicy(CookiePolicy.BROWSER_COMPATIBILITY);
     
     int respStatusCode = httpClient.executeMethod(req);
     if (respStatusCode != HTTP_200_OK)
