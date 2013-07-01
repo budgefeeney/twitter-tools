@@ -30,10 +30,13 @@ public class ProgressMonitor
   }
   
   public void markActive (String category)
-  { running.add (category);
+  { pending.remove(category);
+    running.add (category);
   }
   
   public void markCompleted (String category, int tweetCount)
-  { completed.put (category, tweetCount);
+  { pending.remove(category);
+    running.remove(category);
+    completed.put (category, tweetCount);
   }
 }
