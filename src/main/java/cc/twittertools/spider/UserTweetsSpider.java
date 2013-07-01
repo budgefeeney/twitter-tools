@@ -129,13 +129,7 @@ public class UserTweetsSpider
       });
       
       IndividualUserTweetsSpider task = 
-        new IndividualUserTweetsSpider(
-          throttle,
-          progress,
-          entry.getKey(),
-          userNames,
-          outputDirectoryPath
-        );
+        newIndividualSpider(throttle, progress, entry, userNames);
     
       jmxServer.register (task);
       executor.submit(task);
@@ -144,6 +138,17 @@ public class UserTweetsSpider
     executor.shutdown();
     executor.awaitTermination(31, TimeUnit.DAYS);
     jmxServer.stop();
+  }
+
+  protected IndividualUserTweetsSpider newIndividualSpider(Throttle throttle,
+      ProgressMonitor progress, Map.Entry<String, List<TwitterUser>> entry, List<String> userNames) {
+    return new IndividualUserTweetsSpider(
+      throttle,
+      progress,
+      entry.getKey(),
+      userNames,
+      outputDirectoryPath
+    );
   }
 
   private void tryToWait(long waitTime, TimeUnit units) {

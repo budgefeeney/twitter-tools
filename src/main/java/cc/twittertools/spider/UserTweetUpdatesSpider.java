@@ -105,12 +105,24 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
     return userFile.getFileName().toString().replaceAll("\\.\\d+$", "");
   }
   
+  @Override
+  protected IndividualUserTweetsUpdater newIndividualSpider(Throttle throttle,
+      ProgressMonitor progress, Map.Entry<String, List<TwitterUser>> entry, List<String> userNames) {
+    return new IndividualUserTweetsUpdater(
+      throttle,
+      progress,
+      entry.getKey(),
+      userNames,
+      outputDirectoryPath
+    );
+  }
+  
   public static void main (String[] args) throws JMException, InterruptedException, IOException
   { BasicConfigurator.configure();
     
-    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/ranked.csv");
-    Path chosenUsersPath     = Paths.get(args.length > 1 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/selectedUserList.csv");
-    Path outputDirectoryPath = Paths.get(args.length > 2 ? args[2] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/spider/");   
+    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
+    Path chosenUsersPath     = Paths.get(args.length > 1 ? args[1] : "/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider/updatedUserList.csv");
+    Path outputDirectoryPath = Paths.get(args.length > 2 ? args[2] : "/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");   
     Path excludedCatsPath    = args.length > 3 ? Paths.get(args[3]) : null;
     
     new UserTweetUpdatesSpider(
