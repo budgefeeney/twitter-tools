@@ -134,7 +134,7 @@ implements JmxSelfNaming, Callable<Integer> {
     { page = 1;
       try
       { long lastTweetId = readLastTweetId(user);
-        if (shouldDownloadUsersTweets(user))
+        if (! shouldDownloadUsersTweets(user))
           break;
       
         // We may be paused during working hours to avoid saturating the
@@ -270,10 +270,7 @@ implements JmxSelfNaming, Callable<Integer> {
    * @throws IOException
    */
   private void writeTweets(String user, List<Tweet> tweets) throws IOException
-  { Path catOutputDir   = outputDirectory.resolve(category);
-    if (! Files.exists(catOutputDir))
-      Files.createDirectories(catOutputDir);    
-    Path userOutputPath = catOutputDir.resolve(user);
+  { Path userOutputPath = newestTweetsFile(user, StandardOpenOption.WRITE);
     
     try (
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
