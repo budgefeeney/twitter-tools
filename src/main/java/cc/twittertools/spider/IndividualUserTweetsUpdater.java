@@ -27,7 +27,6 @@ public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
   public IndividualUserTweetsUpdater(Throttle throttle, ProgressMonitor progress, String category,
       List<String> users, Path outputDirectory) {
     super(throttle, progress, category, users, outputDirectory);
-    // TODO Auto-generated constructor stub
   }
   
   /**
@@ -63,8 +62,14 @@ public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
   protected boolean shouldDownloadUsersTweets(String user) {
     try
     { Path mostRecentlyWrittenFile = newestTweetsFile(user, StandardOpenOption.READ);
-      return Files.exists(mostRecentlyWrittenFile)
-          && Files.size(mostRecentlyWrittenFile) >= 100L; // Quick check that a file is not full of blanks or empty
+      if (Files.exists(mostRecentlyWrittenFile)
+          && Files.size(mostRecentlyWrittenFile) >= 50L) // Quick check that a file is not full of blanks or empty
+      { return true;
+      }
+      else
+      { LOG.info("Won't download new tweets for user " + user);
+        return false;
+      }
     }
     catch (IOException ioe)
     { LOG.error("Can't determine most recent saved tweets file for user \"" + user + "\" - " + ioe.getMessage(), ioe);
