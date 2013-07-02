@@ -132,9 +132,11 @@ implements JmxSelfNaming, Callable<Integer> {
     int page;
     String responseBody;
     for (String user : users)
-    { page = 1;
+    { Path userOutputPath = null;
+      page = 1;
       try
-      { long lastTweetId = readLastTweetId(user);
+      { userOutputPath = newestTweetsFile(user, StandardOpenOption.CREATE);
+        long lastTweetId = readLastTweetId(user);
         if (! shouldDownloadUsersTweets(user))
           break;
       
@@ -169,12 +171,12 @@ implements JmxSelfNaming, Callable<Integer> {
           lastTweet = removeLastAuthoredTweet(user, tweets);
           
           if (page % 10 == 0)
-            writeTweets (user, aggregateTweets);
+            writeTweets (userOutputPath, aggregateTweets);
         }
         
         ++page;
         aggregateTweets.addAll(tweets);
-        writeTweets (user, aggregateTweets);
+        writeTweets (userOutputPath, aggregateTweets);
         
         LOG.info("Finished fetching tweets for user " + user);
         //System.err.println ("Final response body was " + responseBody);
@@ -183,7 +185,8 @@ implements JmxSelfNaming, Callable<Integer> {
       { e.printStackTrace();
         LOG.error("Error downloading tweets on page " + page + " for user " + user + " : " + e.getMessage(), e);
         try
-        { writeTweets (user, aggregateTweets);
+        { if (userOutputPath != null)
+            writeTweets (userOutputPath, aggregateTweets);
         }
         catch (Exception eio)
         { LOG.error("Error writing tweets for user " + user + " while recovering from previous error : " + eio.getMessage(), eio);
@@ -222,15 +225,15 @@ implements JmxSelfNaming, Callable<Integer> {
     return makeHttpRequest(url, null);
   }
     
-  private String makeHttpRequest(String url, String refUrl) throws IOException, HttpException {
+  private String makeHttpRequest(String url, String referrerUrl) throws IOException, HttpException {
     String responseBody;
     GetMethod req = new GetMethod(url);
     req.addRequestHeader(new Header("Accept-Charset", "utf-8"));
     req.addRequestHeader(new Header("Accept-Language", "en-US,en;q=0.8"));
     req.addRequestHeader(new Header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"));
     req.addRequestHeader(new Header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/536.30.1 (KHTML, like Gecko) Version/6.0.5 Safari/536.30.1"));
-    if (! StringUtils.isBlank(refUrl))
-      req.addRequestHeader(new Header("Referer", refUrl));
+    if (! StringUtils.isBlank(referrerUrl))
+      req.addRequestHeader(new Header("Referer", referrerUrl));
     req.setFollowRedirects(true);
     req.getParams().setCookiePolicy(CookiePolicy.BROWSER_COMPATIBILITY);
     
@@ -273,10 +276,8 @@ implements JmxSelfNaming, Callable<Integer> {
    * @param tweets the user's tweets.
    * @throws IOException
    */
-  private void writeTweets(String user, List<Tweet> tweets) throws IOException
-  { Path userOutputPath = newestTweetsFile(user, StandardOpenOption.CREATE);
-    
-    try (
+  private void writeTweets(Path userOutputPath, List<Tweet> tweets) throws IOException
+  { try (
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
     )
     { for (Tweet tweet : tweets)
