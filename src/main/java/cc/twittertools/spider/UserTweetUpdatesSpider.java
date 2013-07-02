@@ -89,7 +89,7 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
    * the value to that list.
    */
   private <K, V> void addToMultimap(Map<K, List<V>> multimap, K key, V value) {
-    List<V> valueList = multimap.get(value);
+    List<V> valueList = multimap.get(key);
     if (valueList == null)
     { valueList = new ArrayList<>();
       multimap.put (key, valueList);
