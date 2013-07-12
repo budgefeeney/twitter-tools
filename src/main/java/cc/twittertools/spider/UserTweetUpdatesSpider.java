@@ -6,7 +6,6 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -74,7 +73,7 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
     { try (
         BufferedWriter wtr = Files.newBufferedWriter(chosenUsersPath, Charsets.UTF_8);
       )
-      { for (List<TwitterUser> catUsers : users.values())
+      { for (Set<TwitterUser> catUsers : users.values())
           for (TwitterUser user : catUsers)
             wtr.write (user.toTabDelimLine());
       }
@@ -88,10 +87,10 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
    * does the tedious job of creating the list if necessary before adding
    * the value to that list.
    */
-  private <K, V> void addToMultimap(Map<K, List<V>> multimap, K key, V value) {
-    List<V> valueList = multimap.get(key);
+  private <K, V> void addToMultimap(Map<K, Set<V>> multimap, K key, V value) {
+    Set<V> valueList = multimap.get(key);
     if (valueList == null)
-    { valueList = new ArrayList<>();
+    { valueList = new HashSet<>();
       multimap.put (key, valueList);
     }
     valueList.add(value);
@@ -107,11 +106,11 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
   
   @Override
   protected IndividualUserTweetsUpdater newIndividualSpider(Throttle throttle,
-      ProgressMonitor progress, Map.Entry<String, List<TwitterUser>> entry, List<String> userNames) {
+      ProgressMonitor progress, String category, List<String> userNames) {
     return new IndividualUserTweetsUpdater(
       throttle,
       progress,
-      entry.getKey(),
+      category,
       userNames,
       outputDirectoryPath
     );

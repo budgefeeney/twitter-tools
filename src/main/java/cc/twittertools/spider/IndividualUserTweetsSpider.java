@@ -23,8 +23,9 @@ import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import cc.twittertools.post.SavedTweetReader;
 import cc.twittertools.post.Tweet;
@@ -59,7 +60,7 @@ implements JmxSelfNaming, Callable<Integer> {
   
   private static final int HTTP_200_OK = 200;
 
-  private final static Logger LOG = Logger.getLogger(IndividualUserTweetsSpider.class);
+  private final static Logger LOG = LoggerFactory.getLogger(IndividualUserTweetsSpider.class);
   
   private final static int MIN_USERS_SPIDERED  = 200;
   private final static int MIN_TWEETS_PER_USER = 1000;
@@ -429,7 +430,7 @@ implements JmxSelfNaming, Callable<Integer> {
   public static void main (String[] args)
   {    
     BasicConfigurator.configure();
-    Logger.getRootLogger().setLevel(Level.DEBUG);
+    org.apache.log4j.Logger.getRootLogger().setLevel(Level.DEBUG);
     Path outputDir = Paths.get("/home/bfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (

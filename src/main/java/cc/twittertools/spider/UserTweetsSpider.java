@@ -42,7 +42,7 @@ public class UserTweetsSpider
   final Path excludedCatsPath;
   final Path chosenUsersPath;
   final Path outputDirectoryPath;  
-  final Map<String, List<TwitterUser>> users;
+  final Map<String, Set<TwitterUser>> users;
   final ExecutorService executor;
   
   
@@ -87,9 +87,9 @@ public class UserTweetsSpider
           continue;
         }
         
-        List<TwitterUser> catUsers = users.get(user.getCategory());
+        Set<TwitterUser> catUsers = users.get(user.getCategory());
         if (catUsers == null)
-        { catUsers = new ArrayList<>(EXPECTED_USER_COUNT_IN_CAT);
+        { catUsers = new HashSet<>(EXPECTED_USER_COUNT_IN_CAT);
           users.put (user.getCategory(), catUsers);
         }
         catUsers.add (new TwitterUser (line));
@@ -101,7 +101,7 @@ public class UserTweetsSpider
     try (
       BufferedWriter wtr = Files.newBufferedWriter(chosenUsersPath, Charsets.UTF_8);
     )
-    { for (List<TwitterUser> catUsers : users.values())
+    { for (Set<TwitterUser> catUsers : users.values())
         for (TwitterUser user : catUsers)
           wtr.write (user.toTabDelimLine());
     }
@@ -121,31 +121,33 @@ public class UserTweetsSpider
     jmxServer.register(throttle);
     jmxServer.register(progress);
     
-    for (Map.Entry<String, List<TwitterUser>> entry : users.entrySet())
-    { List<String> userNames = Lists.transform(entry.getValue(), new Function<TwitterUser, String>() {
+    for (Map.Entry<String, Set<TwitterUser>> entry : users.entrySet())
+    { List<String> userNames = Lists.transform(new ArrayList<>(entry.getValue()), new Function<TwitterUser, String>() {
         @Override public String apply(TwitterUser input){
           return input.getName();
         }
       });
       
       IndividualUserTweetsSpider task = 
-        newIndividualSpider(throttle, progress, entry, userNames);
+        newIndividualSpider(throttle, progress, entry.getKey(), userNames);
     
       jmxServer.register (task);
       executor.submit(task);
       tryToWait(750, TimeUnit.MILLISECONDS);
     }
+    
+    
     executor.shutdown();
     executor.awaitTermination(31, TimeUnit.DAYS);
     jmxServer.stop();
   }
 
   protected IndividualUserTweetsSpider newIndividualSpider(Throttle throttle,
-      ProgressMonitor progress, Map.Entry<String, List<TwitterUser>> entry, List<String> userNames) {
+      ProgressMonitor progress, String category, List<String> userNames) {
     return new IndividualUserTweetsSpider(
       throttle,
       progress,
-      entry.getKey(),
+      category,
       userNames,
       outputDirectoryPath
     );

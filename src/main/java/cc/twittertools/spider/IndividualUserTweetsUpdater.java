@@ -6,11 +6,12 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 
-import org.apache.log4j.Logger;
-
-import com.j256.simplejmx.common.JmxResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import cc.twittertools.post.Tweet;
+
+import com.j256.simplejmx.common.JmxResource;
 
 /**
  * Very similar to the superclass, {@link IndividualUserTweetsSpider} except that this
@@ -22,7 +23,7 @@ import cc.twittertools.post.Tweet;
 @JmxResource(description = "Category tweet update", domainName = "cc.twittertools.spider", folderNames={ "spiders" })
 public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
 {
-  private final static Logger LOG = Logger.getLogger(IndividualUserTweetsUpdater.class);
+  private final static Logger LOG = LoggerFactory.getLogger(IndividualUserTweetsUpdater.class);
   
   public IndividualUserTweetsUpdater(Throttle throttle, ProgressMonitor progress, String category,
       List<String> users, Path outputDirectory) {
