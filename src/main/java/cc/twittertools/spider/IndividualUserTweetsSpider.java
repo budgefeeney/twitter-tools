@@ -136,8 +136,10 @@ implements JmxSelfNaming, Callable<Integer> {
     { Path userOutputPath = null;
       page = 1;
       try
-      { userOutputPath = newestTweetsFile(user, StandardOpenOption.CREATE);
+      { LOG.info ("Launching spider for user " + user + " in category " + category);
+        userOutputPath = newestTweetsFile(user, StandardOpenOption.CREATE);
         long lastTweetId = readLastTweetId(user);
+        LOG.debug("Last tweet ID for user " + user + " in category " + category + " is " + lastTweetId);
         if (! shouldDownloadUsersTweets(user))
           break;
       
@@ -160,13 +162,13 @@ implements JmxSelfNaming, Callable<Integer> {
           
           ++page;
           aggregateTweets.addAll(tweets);
-          LOG.debug("Have accumulated " + aggregateTweets.size() + " tweets for user " + user + " after processing page " + page);
+          LOG.debug("Have accumulated " + aggregateTweets.size() + " tweets for user " + user + " in category " + category + " after processing page " + page);
           
           responseBody = makeHttpRequest (jsonTweetsUrl(user, lastTweet.getId()), pageUrl);
           tweets = jsonParser.parse(responseBody);
           tweets = removeUndesireableTweets(tweets, lastTweetId);
           if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
-          { LOG.warn ("Only got " + tweets.size() + " tweets for the most recent request for user " + user + " on page " + page + " with ID " + lastTweet.getId());
+          { LOG.warn ("Only got " + tweets.size() + " tweets for the most recent request for user " + user + " in category " + category + " on page " + page + " with ID " + lastTweet.getId());
             //System.err.println (resp.get().getResponseBody());
           }
           lastTweet = removeLastAuthoredTweet(user, tweets);
@@ -177,25 +179,28 @@ implements JmxSelfNaming, Callable<Integer> {
         
         ++page;
         aggregateTweets.addAll(tweets);
-        writeTweets (userOutputPath, aggregateTweets);
         
-        LOG.info("Finished fetching tweets for user " + user);
+        LOG.info("Finished fetching tweets for user " + user + " in category " + category);
         //System.err.println ("Final response body was " + responseBody);
       }
       catch (Exception e)
       { e.printStackTrace();
-        LOG.error("Error downloading tweets on page " + page + " for user " + user + " : " + e.getMessage(), e);
-        try
-        { if (userOutputPath != null)
-            writeTweets (userOutputPath, aggregateTweets);
-        }
-        catch (Exception eio)
-        { LOG.error("Error writing tweets for user " + user + " while recovering from previous error : " + eio.getMessage(), eio);
-        }
+        LOG.error("Error downloading tweets on page " + page + " for user " + user + " in category " + category + " : " + e.getMessage(), e);
+        
       }
       finally
       { ++spideredUsers;
         tweetsDownloaded += aggregateTweets.size();
+
+        try
+        { if (! aggregateTweets.isEmpty() && userOutputPath != null)
+            writeTweets (userOutputPath, aggregateTweets);
+          if (aggregateTweets.isEmpty())
+            LOG.warn("Found no tweets for user " + user + " in category " + category);
+        }
+        catch (Exception eio)
+        { LOG.error("Error writing tweets for user " + user + " in category " + category + " while recovering from previous error : " + eio.getMessage(), eio);
+        }
         aggregateTweets.clear();
       }
     }
@@ -284,6 +289,7 @@ implements JmxSelfNaming, Callable<Integer> {
     { for (Tweet tweet : tweets)
       { wtr.write(tweet.toShortTabDelimString());
       }
+      LOG.info("Wrote " + tweets.size() + " tweets to file " + userOutputPath.toFile().getName() + " in directory " + userOutputPath.toFile().getParentFile().getName());
     }
   }
   
@@ -355,7 +361,7 @@ implements JmxSelfNaming, Callable<Integer> {
     { existingUserPath = newUserPath;
       newUserPath = catOutputDir.resolve (user + '.' + (++i));
     }
-    while (Files.exists(newUserPath));
+    while (Files.exists(newUserPath) && Files.size(newUserPath) > 10); // basically the file shouldn't be empty, but there may be UTF markers and a stray newline there...
     
     // Return the appropriate file based on the open criteria
     switch (openOption)

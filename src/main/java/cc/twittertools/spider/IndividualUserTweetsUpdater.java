@@ -58,13 +58,18 @@ public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
    * Should we download user's tweets or not. In the case of this method this will only return
    * true if we've failed either to download tweets from the minimum number of users, or failed
    * to download the minimum number of tweets thus far.
+   * <p>
+   * Note that if the files are user.1, user.2, user.3, user.4 and files 3 and 4 are empty,
+   * then {@link #newestTweetsFile(String, StandardOpenOption)} will return user.2 as the
+   * last most recent tweets file. Thus the limit is really that there was at least one run 
+   * where we  succeeded in downloading tweets and writing them to a file.
    */
   @Override
   protected boolean shouldDownloadUsersTweets(String user) {
     try
     { Path mostRecentlyWrittenFile = newestTweetsFile(user, StandardOpenOption.READ);
       if (Files.exists(mostRecentlyWrittenFile)
-          && Files.size(mostRecentlyWrittenFile) >= 50L) // Quick check that a file is not full of blanks or empty
+          && Files.size(mostRecentlyWrittenFile) >= 10L) // Quick check that a file is not full of blanks or empty
       { return true;
       }
       else
