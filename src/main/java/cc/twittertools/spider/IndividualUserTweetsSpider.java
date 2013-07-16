@@ -141,7 +141,7 @@ implements JmxSelfNaming, Callable<Integer> {
         long lastTweetId = readLastTweetId(user);
         LOG.debug("Last tweet ID for user " + user + " in category " + category + " is " + lastTweetId);
         if (! shouldDownloadUsersTweets(user))
-          break;
+          continue;
       
         // We may be paused during working hours to avoid saturating the
         // network
@@ -150,10 +150,10 @@ implements JmxSelfNaming, Callable<Integer> {
 
         List<Tweet> tweets;
         final String pageUrl = "https://twitter.com/" + user;
-        responseBody = makeHttpRequest(pageUrl);
+        responseBody = makeHttpRequest (pageUrl);
         tweets = htmlParser.parse (responseBody);
         tweets = removeUndesireableTweets (tweets, lastTweetId);
-        Tweet lastTweet = removeLastAuthoredTweet(user, tweets);
+        Tweet lastTweet = removeLastAuthoredTweet (user, tweets);
          
         // continue reading until we've gone far enough back in time or we've
         // run out of tweets from the current user.
@@ -186,7 +186,6 @@ implements JmxSelfNaming, Callable<Integer> {
       catch (Exception e)
       { e.printStackTrace();
         LOG.error("Error downloading tweets on page " + page + " for user " + user + " in category " + category + " : " + e.getMessage(), e);
-        
       }
       finally
       { ++spideredUsers;
