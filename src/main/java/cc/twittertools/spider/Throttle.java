@@ -16,9 +16,9 @@ import com.j256.simplejmx.common.JmxResource;
 @JmxResource(description = "Limits HTTP Requests per unit time", domainName = "cc.twittertools.spider", beanName = "Throttle")
 public class Throttle
 {
-  private       AtomicLong eveningInterRequestWaitMs = new AtomicLong (TimeUnit.SECONDS.toMillis(3));
+  private final AtomicLong eveningInterRequestWaitMs = new AtomicLong (TimeUnit.SECONDS.toMillis(3));
   
-  private       AtomicLong dayTimeInterRequestWaitMs = new AtomicLong (TimeUnit.SECONDS.toMillis(6));
+  private final AtomicLong dayTimeInterRequestWaitMs = new AtomicLong (TimeUnit.SECONDS.toMillis(6));
 
   
   /**
