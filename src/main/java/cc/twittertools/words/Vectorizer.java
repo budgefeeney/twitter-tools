@@ -21,9 +21,9 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Version;
 
-import ucl.bryan.feeney.iters.Mapper;
-
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.google.common.base.Function;
 
 /**
  * Converts text into vectors, it's as simple as that.
@@ -104,11 +104,17 @@ public class Vectorizer {
 	 * enumerations over words. This is lazily evaluated. See {@link #toWords(String)}
 	 */
 	public Iterator<Iterator<String>> toWords (Iterator<String> corpus)
-	{	return new Mapper<String, Iterator<String>>(corpus)
-		{	public Iterator<String> map (String input)
-			{	return toWords(input);
+	{	return Iterators.transform(corpus, new Function<String, Iterator<String>>() {
+			public Iterator<String> apply (String input) {
+				return toWords (input);
 			}
-		};
+		});
+//		
+//		return new Mapper<String, Iterator<String>>(corpus)
+//		{	public Iterator<String> map (String input)
+//			{	return toWords(input);
+//			}
+//		};
 	}
 	
 	/**

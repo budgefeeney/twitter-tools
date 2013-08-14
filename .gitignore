@@ -10,3 +10,4 @@ etc/run.sh
 /.project
 /bin
 /.settings/
+/target
