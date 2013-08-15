@@ -1,10 +1,17 @@
 package cc.twittertools.scripts;
 
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Callable;
 
-import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.chrono.ISOChronology;
+import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.Option;
 
 /**
  * Main entry-point to the application. Parses paramaters and (statically) hands over to the
@@ -16,9 +23,10 @@ import org.joda.time.chrono.ISOChronology;
  * TODO This will require defining instance variables and flags for almost all other
  * scripts, which will be messy.
  * <p>
- * TODO The use of objects will fail horrible if the getters are called, the getters are
- * mainly there to help args4j infer the datatype.
+ * TODO It turns out the latest version of args4j can decorate fields instead of getters
+ * and setters, which means the getters and setters could be deleted....
  * @author bryanfeeney
+ * 
  *
  */
 public class Main implements Callable<Integer>
@@ -31,6 +39,8 @@ public class Main implements Callable<Integer>
   
   // The command to be executed and the files where the input should be found
   // and the output written.
+  private boolean showHelp = false;
+  
   private Command command;
   private String inPath;
   private String outPath;
@@ -66,12 +76,86 @@ public class Main implements Callable<Integer>
   private boolean monthOfYearInFeatures   = false;
   private boolean addresseeInFeatures     = false;
   private boolean rtInFeatures            = false;
-  private boolean intercepInFeatures      = false ;
+  private boolean intercepInFeatures      = false;
   
+  @Argument
+  private List<String> arguments = new ArrayList<String>();
   
+  /**
+   * Program entry point.
+   */
+  public static void main (String[] args) throws Exception
+  {	Main main = new Main();
+  	main.parseArguments(args);
+  	main.call();
+  }
+  
+  /**
+   * Called after arguments have been parsed, this delegate to the appropriate
+   * method for the given command.
+   */
   public Integer call() throws Exception
   {
+	switch (command)
+	{
+	case spider_trec: throw new UnsupportedOperationException("Code for new TREC spidering CLI not yet ready");
+	case spider_users: throw new UnsupportedOperationException("Code for new user spidering CLI not yet ready");
+	case encode:
+	  doEncode();
+	  break;
+	default: throw new IllegalStateException("The command " + command + " is unknown. This is a programmer error");
+	}
     return 0;
+  }
+   
+  /** Parses the arguments */
+  private void parseArguments(String[] args)
+  {	CmdLineParser parser = null;
+  	try
+  	{ parser = new CmdLineParser(this);
+  	  parser.parseArgument(args);
+  	
+  	  if (showHelp)
+  	  { System.out.println("Help for this command:");
+  		showHelp (System.out, parser);
+  		System.exit(0);
+  	  }
+  	  
+  	  if (arguments.isEmpty())
+  	    die ("You must specify a command. Commands are " + Arrays.toString (Command.values()));
+  	  
+  	  if (arguments.size() > 1)
+  		die ("You should only specify one command. You specified many: " + arguments.toString());
+  	}
+  	catch (CmdLineException e)
+  	{ System.err.println (e.getMessage());
+  	  showHelp (System.err, parser);
+  	}
+	  
+  }
+  
+  /** Shows the help message to the given stream. Needs the parser object to say what the options are. */
+  private void showHelp(PrintStream out, CmdLineParser parser)
+  {	out.println ("Usage: java -jar JARNAME.jar <command> <options>");
+	out.println ("       where <command> is one of " + Arrays.toString (Command.values()));
+	if (parser != null)
+	  parser.printUsage(out);
+  }
+  
+  /** Prints the given messsage to stderr and quits the app */
+  private void die(String msg)
+  { System.err.println (msg);
+	System.exit(-1);
+  }
+
+  
+  /**
+   * Launches the job for encoding tweets and their associated features into vectors bundled up
+   * into matrices.
+   */
+  private void doEncode()
+  {
+	  
   }
   
   public Command getCommand() {
@@ -323,5 +407,16 @@ public class Main implements Callable<Integer>
   @Option(name="--feat-intercept", usage="Include an always-one intercept feature in the side-information.", metaVar=" ")
   public void setIntercepInFeatures(boolean intercepInFeatures) {
     this.intercepInFeatures = intercepInFeatures;
+  }
+
+  public boolean isShowHelp() {
+	return showHelp;
+  }
+
+  @Option(name="-h", aliases="--help", usage="Show this help message.", metaVar=" ")
+   public void setShowHelp(boolean showHelp) {
+	this.showHelp = showHelp;
   } 
+  
+  
 }
