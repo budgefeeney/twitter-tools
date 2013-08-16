@@ -57,7 +57,7 @@ public class Tweet
     this(id, reqId, null, TWITTER_FMT.parseDateTime(date), author, msg);
   }
   
-  public Tweet (String account, long id, long reqId, String date, String author, String msg) {
+  public Tweet (String account, long id, long reqId, DateTime utcTime, DateTime localTime, String author, String msg) {
   	this(
 	      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
 	      /* account = */      account,
@@ -67,8 +67,8 @@ public class Tweet
 	      /* id = */           id,
 	      /* requestedId = */  reqId,
 	      /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
-	      /* utcTime = */      null,
-	      /* localTime = */    TWITTER_FMT.parseDateTime(date)
+	      /* utcTime = */      utcTime,
+	      /* localTime = */    localTime
 	    );
   }
   
