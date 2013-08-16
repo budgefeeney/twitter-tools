@@ -51,6 +51,13 @@ public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
   }
   
   private final LineReader lines;
+  
+  // this breaks the LineReader encapsulation, but we need access to the current
+  // filename to know the current user account, as the file contents just
+  // contains authors (see Tweet class for more on this)
+  private       Path       currentFile;
+  private       String     currentAccount;
+  
   private       Tweet      nextTweet = null;
   private       Exception  nextError = null;
   
@@ -78,8 +85,14 @@ public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
     try
     { while (nextError == null && nextTweet == null && lines.hasNext())
       { String line = lines.next();
+      	
+      	if (currentFile != lines.getCurrentFile())
+      	{	currentFile    = lines.getCurrentFile();
+      		currentAccount = Tweet.userNameFromFile(currentFile);
+      	}
+      
         if (line != null)
-          nextTweet = Tweet.fromShortTabDelimString(line);
+          nextTweet = Tweet.fromShortTabDelimString(currentAccount, line);
       }
     
       return nextTweet != null;

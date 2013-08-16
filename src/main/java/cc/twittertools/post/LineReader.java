@@ -33,6 +33,7 @@ public class LineReader implements Iterator<String>, AutoCloseable
   private       String         nextLine;
   private       Exception      nextError;
   private       BufferedReader rdr;
+  private       Path           currentFile;
   
   
 
@@ -106,11 +107,11 @@ public class LineReader implements Iterator<String>, AutoCloseable
         { 
           if (! paths.hasNext())
             return false;
-          Path path = paths.next();
-          LOG.debug("Opening path " + path);
-          rdr = endsWithGZ(path)
-              ? new BufferedReader (new InputStreamReader (new GZIPInputStream(Files.newInputStream(path)), Charsets.UTF_8))
-              : Files.newBufferedReader (path, Charsets.UTF_8);
+          currentFile = paths.next();
+          LOG.debug("Opening path " + currentFile);
+          rdr = endsWithGZ(currentFile)
+              ? new BufferedReader (new InputStreamReader (new GZIPInputStream(Files.newInputStream(currentFile)), Charsets.UTF_8))
+              : Files.newBufferedReader (currentFile, Charsets.UTF_8);
         }
         
         nextLine = rdr.readLine();
@@ -163,4 +164,10 @@ public class LineReader implements Iterator<String>, AutoCloseable
   { if (rdr != null)
       rdr.close();
   }
+
+	public Path getCurrentFile()
+	{	return currentFile;
+	}
+  
+  
 }

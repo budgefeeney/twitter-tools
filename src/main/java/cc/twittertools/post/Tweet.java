@@ -1,6 +1,9 @@
 package cc.twittertools.post;
 
+import java.nio.file.Path;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
@@ -35,6 +38,8 @@ public class Tweet
   public final static DateTimeFormatter TWITTER_FMT =
       DateTimeFormat.forPattern("h:m a - d MMM yy").withZone(DateTimeZone.UTC);
   
+	private static final Pattern ENDS_WITH_DIGITS = Pattern.compile("\\.\\d+$");
+  
   private final DateTime localTime;
   private final DateTime utcTime;
   private final Set<String> hashTags;
@@ -50,6 +55,21 @@ public class Tweet
 
   public Tweet (long id, long reqId, String date, String author, String msg) {
     this(id, reqId, null, TWITTER_FMT.parseDateTime(date), author, msg);
+  }
+  
+  public Tweet (String account, long id, long reqId, String date, String author, String msg) {
+  	this(
+	      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
+	      /* account = */      account,
+	      /* author = */       author,
+	      /* msg = */          msg,
+	      /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
+	      /* id = */           id,
+	      /* requestedId = */  reqId,
+	      /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
+	      /* utcTime = */      null,
+	      /* localTime = */    TWITTER_FMT.parseDateTime(date)
+	    );
   }
   
   
@@ -226,12 +246,13 @@ public class Tweet
    * @param line
    * @return
    */
-  public static Tweet fromShortTabDelimString(String line)
+  public static Tweet fromShortTabDelimString(String account, String line)
   { if ((line = StringUtils.trimToEmpty(line)).isEmpty())
       return null;
   
     String[] parts = StringUtils.split(line, '\t');
     return new Tweet (
+    		account,
         Long.parseLong(parts[1]),
         Long.parseLong(parts[2]),
         ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[3]),
@@ -241,5 +262,18 @@ public class Tweet
     );
   }
   
+
+  /**
+   * Given a tweets file determins what the username should be.
+   * @param file
+   * @return
+   */
+  public static String userNameFromFile(Path file)
+	{	String fileName = file.getFileName().toString();
+		Matcher m = ENDS_WITH_DIGITS.matcher(fileName);
+		return m.find()
+		 ? fileName.substring (0, m.start())
+		 : fileName;
+	}
   
 }

@@ -1,5 +1,6 @@
 package cc.twittertools.post;
 
+import static cc.twittertools.post.Tweet.userNameFromFile;
 import it.unimi.dsi.fastutil.ints.Int2ShortMap;
 import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
 
@@ -12,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -44,7 +43,6 @@ public class TweetFeatureExtractor implements Callable<Integer>
   private static final int MAX_USERS = 21000;
 	private static final int MAX_EXTRA_ADDRESSEES = 39000;
 	
-	private static final Pattern ENDS_WITH_DIGITS = Pattern.compile("\\.\\d+$");
 	
 	private final static Logger LOG = LoggerFactory.getLogger(TweetFeatureExtractor.class);
 
@@ -166,20 +164,6 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		
 		return map;
 	}
-
-  /**
-   * Given a tweets file determins what the username should be.
-   * @param file
-   * @return
-   */
-  private String userNameFromFile(Path file)
-	{	String fileName = file.getFileName().toString();
-		Matcher m = ENDS_WITH_DIGITS.matcher(fileName);
-		return m.find()
-		 ? fileName.substring (0, m.start())
-		 : fileName;
-	}
-
 
 
 	/**
@@ -318,6 +302,11 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		if (featSpec.isHourOfDayInFeatures())
 		{	eventFeatures.put (step + tweet.getLocalTime().getHourOfDay(), one);
 			step += dim.getHourOfDayDim();
+		}
+		
+		if (featSpec.isWeekOfYearInFeatures())
+		{	eventFeatures.put(step + weeks, one);
+			step += dim.getWeekOfYearDim();
 		}
 		
 		if (featSpec.isMonthOfYearInFeatures())
