@@ -12,6 +12,18 @@ import org.joda.time.format.ISODateTimeFormat;
 
 import com.google.common.collect.Sets;
 
+/**
+ * All the records of a tweet from twitter. Generally the fields should be
+ * fairly obvious. However there is one issue which is the distrinction
+ * between "author" and "account". The author is the username of the person
+ * who <em>originally</em> wrote the tweet. The "account" is the username
+ * of the person from whose feed we found the tweet. These two fields will
+ * differ in the case of retweets, the account is the name of the person
+ * who retweeted the tweet, the author is the name of the person who
+ * orignially wrote it.
+ * @author bryanfeeney
+ *
+ */
 public class Tweet
 {
   /**
@@ -27,6 +39,7 @@ public class Tweet
   private final DateTime utcTime;
   private final Set<String> hashTags;
   private final String author;
+  private final String account;
   private final String msg;
   private final Set<String> addressees;
   private final long id;
@@ -56,6 +69,22 @@ public class Tweet
   
   public Tweet(Set<String> hashTags, String author, String msg, Set<String> addressees,
       long id, long requestedId, boolean isRetweetFromMsg, DateTime utcTime, DateTime localTime) {
+  	 this(
+  	      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
+  	      /* account = */      author, // <--- This is the extra field handled by this constructor
+  	      /* author = */       author,
+  	      /* msg = */          msg,
+  	      /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
+  	      /* id = */           id,
+  	      /* requestedId = */  requestedId,
+  	      /* isRetweetFromMsg = */ isRetweetFromMsg,
+  	      /* utcTime = */      utcTime,
+  	      /* localTime = */    localTime
+  	    );
+  }
+  
+  public Tweet(Set<String> hashTags, String account, String author, String msg, Set<String> addressees,
+      long id, long requestedId, boolean isRetweetFromMsg, DateTime utcTime, DateTime localTime) {
     super();
     assert hashTags != null              : "Hash tags set can be empty but not null";
     assert ! StringUtils.isBlank(author) : "Username can be neither blank nor null";
@@ -64,13 +93,14 @@ public class Tweet
     assert id > 0                        : "ID must be strictly positive";
     assert requestedId > 0               : "Requested ID must be strictly positive";
     
-    this.hashTags = hashTags;
-    this.author = author;
-    this.msg = msg;
+    this.hashTags   = hashTags;
+    this.author     = author;
+    this.account    = account;
+    this.msg        = msg;
     this.addressees = addressees;
-    this.id = id;
-    this.requestedId = requestedId;
-    this.isRetweetFromId = id != requestedId;
+    this.id         = id;
+    this.requestedId      = requestedId;
+    this.isRetweetFromId  = id != requestedId;
     this.isRetweetFromMsg = isRetweetFromMsg;
     this.utcTime   = utcTime;
     this.localTime = localTime;
@@ -83,6 +113,10 @@ public class Tweet
 
   public String getAuthor() {
     return author;
+  }
+
+  public String getAccount() {
+    return account;
   }
 
   public String getMsg() {

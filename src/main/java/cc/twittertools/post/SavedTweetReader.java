@@ -12,7 +12,6 @@ import cc.twittertools.spider.IndividualUserTweetsSpider;
  * This is a slightly different format to that used by {@link TweetWriter}, and
  * also definitely different to the JSON format parsed by {@link TweetReader}
  * @author bryanfeeney
- *
  */
 public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
 {
@@ -49,15 +48,18 @@ public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
     public void remove() {
       throw new UnsupportedOperationException();
     }
-    
   }
   
   private final LineReader lines;
   private       Tweet      nextTweet = null;
   private       Exception  nextError = null;
   
+  public SavedTweetReader (Iterator<Path> files) throws IOException
+  { lines = new LineReader (files);
+  }
+  
   public SavedTweetReader (Path directory, String username) throws IOException
-  { lines = new LineReader (new TweetsFileIterator(directory, username));
+  { this (new TweetsFileIterator(directory, username));
   }
 
   public SavedTweetReader (Path tweetsFile) throws IOException

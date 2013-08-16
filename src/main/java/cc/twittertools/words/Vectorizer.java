@@ -109,12 +109,6 @@ public class Vectorizer {
 				return toWords (input);
 			}
 		});
-//		
-//		return new Mapper<String, Iterator<String>>(corpus)
-//		{	public Iterator<String> map (String input)
-//			{	return toWords(input);
-//			}
-//		};
 	}
 	
 	/**

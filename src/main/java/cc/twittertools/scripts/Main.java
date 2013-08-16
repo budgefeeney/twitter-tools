@@ -13,6 +13,8 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
+import cc.twittertools.post.FeatureSpecification;
+
 /**
  * Main entry-point to the application. Parses paramaters and (statically) hands over to the
  * other scripts bundled in the app
@@ -65,18 +67,10 @@ public class Main implements Callable<Integer>
   private int     maxWordLen     = 80; // to strip e.g. emails etc.
   private boolean numbersAllowed = false;
   private int     minWordCount   = 5; // words occuring less often than this will be skipped
+  private int     dictSize       = 30000;
   
   // Options for encoding of non-text features
-  private boolean authorInFeatures        = false;
-  private boolean dayOfWeekInFeatures     = false;
-  private boolean hourOfDayInFeatures     = false;
-  private boolean dayHourOfWeekInFeatures = false;
-  private boolean dayOfYearInFeatures     = false;
-  private boolean weekOfYearInFeatures    = false;
-  private boolean monthOfYearInFeatures   = false;
-  private boolean addresseeInFeatures     = false;
-  private boolean rtInFeatures            = false;
-  private boolean intercepInFeatures      = false;
+  FeatureSpecification featSpec;
   
   @Argument
   private List<String> arguments = new ArrayList<String>();
@@ -319,104 +313,113 @@ public class Main implements Callable<Integer>
     this.minWordCount = minWordCount;
   }
 
-  public boolean getAuthorInFeatures() {
-    return authorInFeatures;
+  public boolean isAuthorInFeatures() {
+    return featSpec.isAuthorInFeatures();
   }
 
   @Option(name="--feat-author", usage="Use author as a feature in the side-information.", metaVar=" ")
   public void setAuthorInFeatures(boolean authorInFeatures) {
-    this.authorInFeatures = authorInFeatures;
+    featSpec.setAuthorInFeatures(authorInFeatures);
   }
 
-  public boolean getDayOfWeekInFeatures() {
-    return dayOfWeekInFeatures;
+  public boolean isDayOfWeekInFeatures() {
+    return featSpec.isDayOfWeekInFeatures();
   }
 
   @Option(name="--feat-dow", usage="Use day of week as a feature in the side-information.", metaVar=" ")
   public void setDayOfWeekInFeatures(boolean dayOfWeekInFeatures) {
-    this.dayOfWeekInFeatures = dayOfWeekInFeatures;
+    featSpec.setDayOfWeekInFeatures(dayOfWeekInFeatures);
   }
 
-  public boolean getHourOfDayInFeatures() {
-    return hourOfDayInFeatures;
+  public boolean isHourOfDayInFeatures() {
+    return featSpec.isHourOfDayInFeatures();
   }
 
   @Option(name="--feat-hod", usage="Use hour of day as a feature in the side-information.", metaVar=" ")
   public void setHourOfDayInFeatures(boolean hourOfDayInFeatures) {
-    this.hourOfDayInFeatures = hourOfDayInFeatures;
+    featSpec.setHourOfDayInFeatures(hourOfDayInFeatures);
   }
 
-  public boolean getDayHourOfWeekInFeatures() {
-    return dayHourOfWeekInFeatures;
+  public boolean isDayHourOfWeekInFeatures() {
+    return featSpec.isDayHourOfWeekInFeatures();
   }
 
   @Option(name="--feat-how", usage="Use hour of week as a feature in the side-information.", metaVar=" ")
   public void setDayHourOfWeekInFeatures(boolean dayHourOfWeekInFeatures) {
-    this.dayHourOfWeekInFeatures = dayHourOfWeekInFeatures;
+    featSpec.setDayHourOfWeekInFeatures(dayHourOfWeekInFeatures);
   }
 
-  public boolean getDayOfYearInFeatures() {
-    return dayOfYearInFeatures;
+  public boolean isDayOfYearInFeatures() {
+    return featSpec.isDayOfYearInFeatures();
   }
 
   @Option(name="--feat-doy", usage="Use day of year as a feature in the side-information.", metaVar=" ")
   public void setDayOfYearInFeatures(boolean dayOfYearInFeatures) {
-    this.dayOfYearInFeatures = dayOfYearInFeatures;
+    featSpec.setDayOfYearInFeatures(dayOfYearInFeatures);
   }
 
   public boolean getWeekOfYearInFeatures() {
-    return weekOfYearInFeatures;
+    return featSpec.isWeekOfYearInFeatures();
   }
 
   @Option(name="--feat-woy", usage="Use week of year as a feature in the side-information.", metaVar=" ")
   public void setWeekOfYearInFeatures(boolean weekOfYearInFeatures) {
-    this.weekOfYearInFeatures = weekOfYearInFeatures;
+    featSpec.setWeekOfYearInFeatures(weekOfYearInFeatures);
   }
 
-  public boolean getMonthOfYearInFeatures() {
-    return monthOfYearInFeatures;
+  public boolean isMonthOfYearInFeatures() {
+    return featSpec.isMonthOfYearInFeatures();
   }
 
   @Option(name="--feat-moy", usage="Use month of year as a feature in the side-information.", metaVar=" ")
   public void setMonthOfYearInFeatures(boolean monthOfYearInFeatures) {
-    this.monthOfYearInFeatures = monthOfYearInFeatures;
+    featSpec.setMonthOfYearInFeatures(monthOfYearInFeatures);
   }
 
-  public boolean getAddresseeInFeatures() {
-    return addresseeInFeatures;
+  public boolean isAddresseeInFeatures() {
+    return featSpec.isAddresseeInFeatures();
   }
 
   @Option(name="--feat-addressee", usage="Use addressee as a feature in the side-information.", metaVar=" ")
   public void setAddresseeInFeatures(boolean addresseeInFeatures) {
-    this.addresseeInFeatures = addresseeInFeatures;
+    featSpec.setAddresseeInFeatures(addresseeInFeatures);
   }
 
-  public boolean getRtInFeatures() {
-    return rtInFeatures;
+  public boolean isRtInFeatures() {
+    return featSpec.isRtInFeatures();
   }
 
   @Option(name="--feat-rt", usage="Use whether a tweet is an original or retweet as a feature in the side-information.", metaVar=" ")
   public void setRtInFeatures(boolean rtInFeatures) {
-    this.rtInFeatures = rtInFeatures;
+    featSpec.setRtInFeatures(rtInFeatures);
   }
 
-  public boolean getIntercepInFeatures() {
-    return intercepInFeatures;
+  public boolean isIntercepInFeatures() {
+    return featSpec.isInterceptInFeatures();
   }
 
   @Option(name="--feat-intercept", usage="Include an always-one intercept feature in the side-information.", metaVar=" ")
   public void setIntercepInFeatures(boolean intercepInFeatures) {
-    this.intercepInFeatures = intercepInFeatures;
+    featSpec.setInterceptInFeatures(intercepInFeatures);
   }
 
   public boolean isShowHelp() {
-	return showHelp;
+  	return showHelp;
   }
 
   @Option(name="-h", aliases="--help", usage="Show this help message.", metaVar=" ")
-   public void setShowHelp(boolean showHelp) {
-	this.showHelp = showHelp;
-  } 
+  public void setShowHelp(boolean showHelp) {
+  	this.showHelp = showHelp;
+  }
+
+	public int getDictSize()
+	{	return dictSize;
+	}
+
+	@Option(name="--dict-size", aliases="--help", usage="Maximum number of words in dictionary, all subsequent words are dropped.", metaVar=" ")
+  public void setDictSize(int dictSize)
+	{	this.dictSize = dictSize;
+	} 
   
   
 }

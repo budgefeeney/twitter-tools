@@ -11,8 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
 
-import javax.annotation.Nullable;
-
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.base.Predicate;
@@ -42,7 +40,7 @@ public class TweetReader implements Iterator<Tweet>
     lines  = Iterators.filter (
       jsonIter,
       new Predicate<String>() {
-        @Override public boolean apply(@Nullable String arg) {
+        @Override public boolean apply(String arg) {
           return ! StringUtils.isBlank(arg);
         }
       }

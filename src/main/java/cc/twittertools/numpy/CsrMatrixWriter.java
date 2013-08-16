@@ -16,6 +16,8 @@ import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
+import static cc.twittertools.util.PathUtils.appendFileNameSuffix;
+
 
 /**
  * A slightly hacky class that writes out a sparse matrix to disk in a numpy compatible
@@ -128,14 +130,6 @@ class CsrMatrixWriter implements AutoCloseable
 		return new BufferedOutputStream (Files.newOutputStream (path));
 	}
 
-	/**
-	 * Assuming the given path is meant to resolve to a file, creates a new path
-	 * which resolves to a file with the same name except that a suffix has been
-	 * added, so "/home/bfeeney/dat", ".txt" becomes "/home/bfeeney/dat.txt"
-	 */
-	private Path appendFileNameSuffix(Path path, String suffix) {
-		return path.getParent().resolve(path.getFileName().toString() + suffix);
-	}
 	
 	/**
 	 * Writes out the three data-structures required of a sparse scipy array and
