@@ -218,13 +218,14 @@ public class Tweet
    */
   public String toShortTabDelimString()
   {
-    return this.getAuthor()
-    + '\t' + this.getId()
-    + '\t' + this.getRequestedId()
-    + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getUtcTime())
-    + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getLocalTime())
-    + '\t' + toTimeZoneString (new Period (this.getUtcTime(), this.getLocalTime()))
-    + '\t' + this.getMsg()
+    return 
+    /* 0 */          this.getAuthor()
+    /* 1 */ + '\t' + this.getId()
+    /* 2 */ + '\t' + this.getRequestedId()
+    /* 3 */ + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getUtcTime())
+    /* 4 */ + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getLocalTime())
+    /* 5 */ + '\t' + toTimeZoneString (new Period (this.getUtcTime(), this.getLocalTime()))
+    /* 6 */ + '\t' + this.getMsg()
     + '\n';
   }
 
@@ -258,7 +259,7 @@ public class Tweet
         ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[3]),
         ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[4]),
         parts[0],
-        parts[5]
+        parts[6]
     );
   }
   
