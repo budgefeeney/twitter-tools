@@ -50,80 +50,90 @@ public class FeatureSpecification
 	{ return authorInFeatures;
 	}
 	
-	public void setAuthorInFeatures(boolean authorInFeatures)
+	public FeatureSpecification setAuthorInFeatures(boolean authorInFeatures)
 	{ this.authorInFeatures = authorInFeatures;
+		return this;
 	}
 	
 	public boolean isDayOfWeekInFeatures()
 	{ return dayOfWeekInFeatures;
 	}
 	
-	public void setDayOfWeekInFeatures(boolean dayOfWeekInFeatures)
+	public FeatureSpecification setDayOfWeekInFeatures(boolean dayOfWeekInFeatures)
 	{ this.dayOfWeekInFeatures = dayOfWeekInFeatures;
+		return this;
 	}
 	
 	public boolean isHourOfDayInFeatures()
 	{ return hourOfDayInFeatures;
 	}
 	
-	public void setHourOfDayInFeatures(boolean hourOfDayInFeatures)
+	public FeatureSpecification setHourOfDayInFeatures(boolean hourOfDayInFeatures)
 	{ this.hourOfDayInFeatures = hourOfDayInFeatures;
+		return this;
 	}
 	
 	public boolean isDayHourOfWeekInFeatures()
 	{ return dayHourOfWeekInFeatures;
 	}
 	
-	public void setDayHourOfWeekInFeatures(boolean dayHourOfWeekInFeatures)
+	public FeatureSpecification setDayHourOfWeekInFeatures(boolean dayHourOfWeekInFeatures)
 	{ this.dayHourOfWeekInFeatures = dayHourOfWeekInFeatures;
+		return this;
 	}
 	
 	public boolean isDayOfYearInFeatures()
 	{ return dayOfYearInFeatures;
 	}
 	
-	public void setDayOfYearInFeatures(boolean dayOfYearInFeatures)
+	public FeatureSpecification setDayOfYearInFeatures(boolean dayOfYearInFeatures)
 	{ this.dayOfYearInFeatures = dayOfYearInFeatures;
+		return this;
 	}
 	
 	public boolean isWeekOfYearInFeatures()
 	{ return weekOfYearInFeatures;
 	}
 	
-	public void setWeekOfYearInFeatures(boolean weekOfYearInFeatures)
+	public FeatureSpecification setWeekOfYearInFeatures(boolean weekOfYearInFeatures)
 	{ this.weekOfYearInFeatures = weekOfYearInFeatures;
+	return this;
 	}
 	
 	public boolean isMonthOfYearInFeatures()
 	{ return monthOfYearInFeatures;
 	}
 	
-	public void setMonthOfYearInFeatures(boolean monthOfYearInFeatures)
+	public FeatureSpecification setMonthOfYearInFeatures(boolean monthOfYearInFeatures)
 	{ this.monthOfYearInFeatures = monthOfYearInFeatures;
+		return this;	
 	}
 	
 	public boolean isAddresseeInFeatures()
 	{ return addresseeInFeatures;
 	}
 	
-	public void setAddresseeInFeatures(boolean addresseeInFeatures)
+	public FeatureSpecification setAddresseeInFeatures(boolean addresseeInFeatures)
 	{ this.addresseeInFeatures = addresseeInFeatures;
+		return this;
 	}
 	
 	public boolean isRtInFeatures()
 	{ return rtInFeatures;
 	}
 	
-	public void setRtInFeatures(boolean rtInFeatures)
+	public FeatureSpecification setRtInFeatures(boolean rtInFeatures)
 	{ this.rtInFeatures = rtInFeatures;
+		return this;
 	}
 	
 	public boolean isInterceptInFeatures()
 	{ return interceptInFeatures;
 	}
 	
-	public void setInterceptInFeatures(boolean intercepInFeatures)
+	public FeatureSpecification setInterceptInFeatures(boolean intercepInFeatures)
 	{ this.interceptInFeatures = intercepInFeatures;
+		return this;
 	}
 
 	/**
