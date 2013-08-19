@@ -5,8 +5,11 @@ import it.unimi.dsi.fastutil.ints.Int2ShortMap;
 import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -42,6 +45,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   private static final int MAX_WORDS_PER_TWEET = 70;
   private static final int MAX_USERS = 21000;
 	private static final int MAX_EXTRA_ADDRESSEES = 39000;
+	private static final int MAX_CORRUPTED_TWEETS_PER_FILE = 5;
 	
 	
 	private final static Logger LOG = LoggerFactory.getLogger(TweetFeatureExtractor.class);
@@ -122,7 +126,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   public Integer call() throws Exception
   {	int tweetCount = 0;
   	
-  	if (aggregateByAuthor)
+  	if (aggregateByAuthor) // run several instances on subgroups of files based on author
   	{	Map<String, List<Path>> filesByUser = groupFilesByUser (inputDir);
   		for (Map.Entry<String, List<Path>> entry : filesByUser.entrySet())
   		{	String user = entry.getKey();
@@ -132,7 +136,15 @@ public class TweetFeatureExtractor implements Callable<Integer>
   				outputDir.resolve(user + "-side")
   			);
   		}
-  	}
+  	} // for unit testing only, allow this to run on a single file if that file is less than a minute old.
+  	  // The time restriction to just to try to avoid accidental use
+  	else if (! Files.isDirectory(inputDir) && isCreatedLessThanOneMinuteAgo(inputDir))
+  	{	tweetCount = extractAndWriteFeatures (
+  			Collections.singleton(inputDir).iterator(),
+  			outputDir.resolve("words"),
+  			outputDir.resolve("side")
+  		);
+  	} // the standard approach, process all files together in a single batch run.
   	else
   	{ try (FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(inputDir); )
 	  	{ tweetCount = extractAndWriteFeatures(
@@ -145,6 +157,12 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	
   	return tweetCount;
   }
+
+
+
+	private boolean isCreatedLessThanOneMinuteAgo(Path file) throws IOException
+	{	return Files.readAttributes(file, BasicFileAttributes.class).creationTime().toMillis() >= (System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1));
+	}
   
   /**
    * Read all files into memory, then group them by user, using the files' names
@@ -202,29 +220,49 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	eventFeatures.defaultReturnValue((short) 0);
   	int tweetCount = 0;
   	
-  	while (tweetFiles.hasNext())
+  	
+  	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
+  	// file. For this reason the next-file loop is labelled.
+  	filesLoop:while (tweetFiles.hasNext())
 	  {	
-			try (SavedTweetReader rdr = new SavedTweetReader(tweetFiles.next()); )
+  		int corruptedTweetCount = 0;
+  		Path currentFile = tweetFiles.next();
+  		LOG.info ("Processing tweets in file: " + currentFile);
+  		
+			try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
 			{	
 				while (rdr.hasNext())
-		  	{	Tweet tweet = rdr.next();
+		  	{	
+					try
+					{	Tweet tweet = rdr.next();
 		  		
-		  		// Do we include this tweet, or do we skip it.
-		  		if (stripRetweets && tweet.isRetweetFromId() || tweet.isRetweetFromMsg())
-		  			continue;
-		  		if (tweet.getLocalTime().isBefore(minDateIncl))
-		  			continue;
-		  		if (maxDateExcl.isBefore(tweet.getLocalTime()))
-		  			continue;
-		  		
-		  		// TODO need some sort of "last-date" idea for when we have no date.
-		  	
-		  		++tweetCount;
-		  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
-		  		
-		  		wordMatrix.addRow(wordFeatures);
-		  		eventMatrix.addRow(eventFeatures);
+			  		// Do we include this tweet, or do we skip it.
+			  		if (stripRetweets && isRetweet(tweet))
+			  			continue;
+			  		if (tweet.getLocalTime().isBefore(minDateIncl))
+			  			continue;
+			  		if (maxDateExcl.isBefore(tweet.getLocalTime()))
+			  			continue;
+			  		
+			  		// TODO need some sort of "most-recent-date" idea for when we have an,
+			  		// incorrect date, which is something that occurs with retweets.
+			  	
+			  		++tweetCount;
+			  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
+			  		
+			  		wordMatrix.addRow(wordFeatures);
+			  		eventMatrix.addRow(eventFeatures);
+					}
+					catch (Exception e)
+					{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
+						if (++corruptedTweetCount >= MAX_CORRUPTED_TWEETS_PER_FILE)
+						{	LOG.warn ("Encountered " + corruptedTweetCount + " corrupted tweets in the current file, so skipping it. The current file is " + currentFile);
+							continue filesLoop; // skip this file.
+						}
+					}
 		  	}
+			
+				LOG.info ("Total tweets processed thus far : " + tweetCount);
 			}
 	  }
 	
@@ -236,6 +274,18 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	
   	return tweetCount;
   }
+
+
+  /**
+   * Checks is this a retweet. Uses three methods to infer this
+   * <ul><li>If the request ID and the tweet ID don't match, it's a retweet
+   *     <li>If the account (inferred from the filename) and the author don't match, it's retweet
+   *     <li>If the message contains a retweet marker ("RT") it's a retweet
+   * </ul>
+   */
+	private boolean isRetweet(Tweet tweet)
+	{	return tweet.isRetweetFromId() || tweet.isRetweetFromMsg() || ! tweet.getAccount().equals(tweet.getAuthor());
+	}
 
 
   /**
