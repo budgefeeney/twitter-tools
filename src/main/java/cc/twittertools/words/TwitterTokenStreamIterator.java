@@ -1,19 +1,25 @@
 package cc.twittertools.words;
 
 import java.util.Iterator;
+import java.util.Set;
 
-import org.apache.lucene.analysis.PorterStemFilter;
 import org.apache.lucene.analysis.StopAnalyzer;
-import org.apache.lucene.analysis.StopFilter;
 import org.apache.lucene.util.Version;
+import org.tartarus.snowball.ext.PorterStemmer;
 
 import com.twitter.common.text.token.TokenStream;
+import com.twitter.common.text.token.TokenStream2LuceneTokenizerWrapper;
 import com.twitter.common.text.token.attribute.CharSequenceTermAttribute;
+import com.twitter.common.text.token.attribute.TokenType;
+import com.twitter.common.text.token.attribute.TokenTypeAttribute;
 
 /**
  * Represents a Twitter implementation of {@link TokenStream} as an iterator
  * over strings, essentially presenting a unified facade to token streams
  * (see {@link TokenStreamIterator} for Lucene).
+ * <p>
+ * Due to the failure of {@link TokenStream2LuceneTokenizerWrapper} I've
+ * implemented most of the filtering logic in this class.
  * @author bryanfeeney
  *
  */
@@ -21,16 +27,39 @@ public class TwitterTokenStreamIterator implements Iterator<String>
 {
 	private final TokenStream toks;
 	private final CharSequenceTermAttribute charTermAttribute;
+	private final TokenTypeAttribute tokenAttr;
+
+	private final boolean stem ;
+	private final boolean stop ;
+	private final boolean lowerCase;
+	private final int     minLengthIncl;
+	private final int     maxLengthExcl;
+	
+	@SuppressWarnings("unchecked")
+	private final Set<String> stops = (Set<String>) StopAnalyzer.ENGLISH_STOP_WORDS_SET;
+	private final PorterStemmer stemmer = new PorterStemmer();
 	
 	private boolean hasNext;
+	private String term;
 	private RuntimeException e;
 
-	public TwitterTokenStreamIterator(TokenStream tokenStream)
-	{	super();
-		this.toks = tokenStream;
-		this.charTermAttribute = tokenStream.getAttribute(CharSequenceTermAttribute.class);
+	
+	
+	public TwitterTokenStreamIterator(TokenStream toks, boolean stem,
+			boolean stop, boolean lowerCase, int minLengthIncl,
+			int maxLengthExcl) {
+		super();
+		this.toks = toks;
+		this.stem = stem;
+		this.stop = stop;
+		this.lowerCase = lowerCase;
+		this.minLengthIncl = minLengthIncl;
+		this.maxLengthExcl = maxLengthExcl;
+		this.charTermAttribute = toks.getAttribute(CharSequenceTermAttribute.class);
+		this.tokenAttr = toks.getAttribute(TokenTypeAttribute.class);
 		moveToNextToken();
 	}
+	
 
 	/**
 	 * Moves to the next token. Should that throw an Exception, stores
@@ -41,7 +70,30 @@ public class TwitterTokenStreamIterator implements Iterator<String>
 	private void moveToNextToken()
 	{
 		try
-		{	hasNext = toks.incrementToken();
+		{	while ((hasNext = toks.incrementToken()))
+			{	term = charTermAttribute.getTermString();
+				if (lowerCase)
+				{	term = term.toLowerCase();
+				}
+				if (tokenAttr.getType() != TokenType.TOKEN)
+				{	break; // it's a hashtag, or an addressee, or a stock
+				}          // or something else that doesn't need stemming etc.
+				if (stop && stops.contains (term))
+				{	continue;
+				}
+				if (term.length() < minLengthIncl)
+				{	continue;
+				}
+				if (term.length() >= maxLengthExcl)
+				{	continue;
+				}
+				if (stem)
+				{	stemmer.setCurrent(term);
+					if (stemmer.stem())
+						term = stemmer.getCurrent();
+				}
+				break;
+			}
 		}
 		catch (Exception ioe)
 		{	e = new RuntimeException (ioe.getMessage(), ioe);
@@ -57,19 +109,17 @@ public class TwitterTokenStreamIterator implements Iterator<String>
 	@Override
 	public String next()
 	{	
-		StopAnalyzer stopFilter = new StopAnalyzer(Version.LUCENE_36);
-		PorterStemFilter stemmer = new Porter
-		
-		
 		if (e != null)
 		{	RuntimeException t = e;
 			e = null;
 			throw t;
 		}
 	
-		String word = charTermAttribute.getTermString();
+		String result = term;
 		moveToNextToken();
-		return word;
+		
+		System.out.println ("---> " + result);
+		return result;
 	}
 
 	/**

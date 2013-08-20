@@ -224,7 +224,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
   	// file. For this reason the next-file loop is labelled.
   	filesLoop:while (tweetFiles.hasNext())
-	  {	
+	{	
   		int corruptedTweetCount = 0;
   		Path currentFile = tweetFiles.next();
   		LOG.info ("Processing tweets in file: " + currentFile);
@@ -232,7 +232,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
 			{	
 				while (rdr.hasNext())
-		  	{	
+				{	
 					try
 					{	Tweet tweet = rdr.next();
 		  		
@@ -260,7 +260,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 							continue filesLoop; // skip this file.
 						}
 					}
-		  	}
+				}
 			
 				LOG.info ("Total tweets processed thus far : " + tweetCount);
 			}
@@ -392,6 +392,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		Pair<String, List<String>> textAndAddressees =
 				Sigil.ADDRESSEE.extractSigils(text);
 		
+		// TODO implement this in the tokenizer?
 		if (stripAddresseesFromText)
 			text = textAndAddressees.getLeft();
 		if (stripHashTagsFromText)

@@ -3,9 +3,11 @@ package cc.twittertools.words;
 import java.io.StringReader;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -31,8 +33,7 @@ import com.twitter.common.text.combiner.StockTokenCombiner;
 import com.twitter.common.text.combiner.URLTokenCombiner;
 import com.twitter.common.text.combiner.UserNameTokenCombiner;
 import com.twitter.common.text.filter.PunctuationFilter;
-import com.twitter.common.text.filter.TokenFilter;
-import com.twitter.common.text.token.attribute.CharSequenceTermAttribute;
+import com.twitter.common.text.token.attribute.TokenType;
 import com.twitter.common.text.tokenizer.LatinTokenizer;
 
 /**
@@ -40,14 +41,14 @@ import com.twitter.common.text.tokenizer.LatinTokenizer;
  */
 public class Vectorizer {
 	
+//	private final static Logger LOG = LoggerFactory.getLogger(Vectorizer.class);
+	
 	/** The different kinds of input text this tokenizer can operate on */
 	public static enum InputType { STANDARD_TEXT, TWITTER };
 	
 	private final Pattern DIGIT_REGEXP = Pattern.compile("[0-9]");
-	private final Pattern HASH_TAG = Pattern.compile ("#(\\S)");
-	private final Pattern ADDRESSEE = Pattern.compile ("@(\\S)");
 	
-	private Dictionary dict;
+	private Map<TokenType, Dictionary> dicts = new EnumMap<>(TokenType.class);
 	private boolean stemEnabled = true;
 	private boolean stopElimEnabled = true;
 	private int minWordLength = 2;
@@ -58,7 +59,12 @@ public class Vectorizer {
 	private InputType inputType = InputType.STANDARD_TEXT;
 	
 	public Vectorizer(Dictionary dict) {
-		this.dict = dict;
+		for (TokenType type : TokenType.values())
+			dicts.put(type, dict);
+	}
+	
+	public Vectorizer(Map<TokenType, Dictionary> dicts) {
+		dicts.putAll (dicts);
 	}
 	
 	/**
@@ -70,7 +76,7 @@ public class Vectorizer {
 	 */
 	public void seal()
 	{	sealed = true;
-		if (dict != null)
+		for (Dictionary dict : dicts.values())
 			dict.seal();
 	}
 	
@@ -97,10 +103,11 @@ public class Vectorizer {
 	 * @return an iterator over words read (lazily) from the text
 	 */
 	public Iterator<String> toWords (String text)
-	{
+	{	TokenStream tok;
 		switch (inputType)
 		{	case STANDARD_TEXT:
-			{ TokenStream tok = new StandardTokenizer(Version.LUCENE_36, new StringReader (text));
+			{ 	tok = new StandardTokenizer(Version.LUCENE_36, new StringReader (text));
+			
 				tok = new LowerCaseFilter(Version.LUCENE_36, tok);
 				tok = new EnglishPossessiveFilter(Version.LUCENE_36, tok);
 				tok = new LengthFilter(true, tok, minWordLength, maxWordLength);
@@ -116,33 +123,39 @@ public class Vectorizer {
 				return new TokenStreamIterator(tok, charTermAttribute);
 			}
 			case TWITTER:
-			{ // The better way to do this is amend standard tokenier, but it's not
-				// particularly easy to amend. So in the mean-time we do the brutal
-				// substituation approach.
-				com.twitter.common.text.token.TokenStream tok = 
+			{ 	// TODO The twitter API allows the re-use of tokenizers once they're
+				// created. This would appear to be better than the Lucene approach,
+				// look into how we'd take advantage of this.
+				// TODO default contains the dot combiner. we probably don't want that.
+				com.twitter.common.text.token.TokenStream twitterTok = 
+				    // Remove punctuation not already used in entities below
 					new PunctuationFilter(
-						new PossessiveContractionTokenCombiner (
-							new EmoticonTokenCombiner(
-								new StockTokenCombiner(
-									new HashtagTokenCombiner(
-										new UserNameTokenCombiner(
-											new URLTokenCombiner(
-												new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))));
+					  // combine stock symbol
+				      new StockTokenCombiner(
+				        // combine emoticon like :) :-D
+				        new EmoticonTokenCombiner(
+				          // combine possessive form (e.g., apple's)
+				          new PossessiveContractionTokenCombiner(
+				            // combine URL
+				            new URLTokenCombiner(
+				              // combine # + hashtag
+				              new HashtagTokenCombiner(
+				                // combine @ + user name
+				                new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))));
 				
-				if (stopElimEnabled)
-					tok = new TokenFilter(tok)
-					{	private final StopFilter stopAnalyzer = new StopFilter(Version.LUCENE_36);
-						private final CharSequenceTermAttribute charAttr;
-					
-						@Override public boolean acceptToken()
-						{	return stopAnalyzer.
-						}
-					};
+				twitterTok.reset(text);
+				return new TwitterTokenStreamIterator (
+					twitterTok,
+					stemEnabled,
+					stopElimEnabled,
+					/* lower-case = */ true,
+					minWordLength,
+					maxWordLength
+				);
 			}
 		default:
-				throw new IllegalStateException ("Don't know how to tokenizer and filter inputs of type " + inputType);
+			throw new IllegalStateException ("Don't know how to tokenizer and filter inputs of type " + inputType);
 		}
-		
 
 	}
 	
@@ -187,7 +200,7 @@ public class Vectorizer {
 	 * too rarely
 	 * @return an int array corresponding to the words in the text
 	 */
-	private int[] toIntsInternal (String text, Collection<String> infrequentWords)
+	private int[] toIntsInternal (String text, Map<TokenType, Set<String>> infrequentWords)
 	{	int[] result = new int[text.length() / 5];
 		int numWords = 0;
 		Iterator<String> words = toWords(text);
@@ -236,7 +249,7 @@ public class Vectorizer {
 	 */
 	public int[][] toInts (Iterator<String> corpus, int sizeHint)
 	{	if (minWordCount <= 1)
-			return toInts (corpus, Collections.<String>emptySet(), sizeHint);
+			return toInts (corpus, Collections.<TokenType, Set<String>>emptyMap(), sizeHint);
 	
 		// need to buffer the corpus and dictionary as we're taking two passes thru it
 		List<String> corpusCopy = Lists.newArrayList(corpus);
@@ -246,7 +259,7 @@ public class Vectorizer {
 		dict = backup;          // reference passed in, in case it gets referenced
 		backup = swap;          // outside of this method.
 		
-		int[][] firstRun = toInts (corpusCopy.iterator(), Collections.<String>emptySet(), sizeHint);
+		int[][] firstRun = toInts (corpusCopy.iterator(), Collections.<TokenType, Set<String>>emptyMap(), sizeHint);
 		int[] wordCounts = new int[dict.size()];
 		for (int[] document : firstRun)
 			for (int wordId : document)
@@ -270,7 +283,7 @@ public class Vectorizer {
 	 * number of elements in the iterator, to save on wasted memory allocation
 	 * with the arrays.
 	 */
-	private int[][] toInts (Iterator<String> corpus, Set<String> infrequentWords, int sizeHint)
+	private int[][] toInts (Iterator<String> corpus, Map<TokenType, Set<String>> infrequentWords, int sizeHint)
 	{	
 		int[][] corpusInts = new int[sizeHint][];
 		int numDocs = 0;
@@ -287,13 +300,13 @@ public class Vectorizer {
 	
 	
 
-	public Dictionary getDict() {
-		return dict;
+	public Map<TokenType, Dictionary> getDicts() {
+		return dicts;
 	}
 
-	public void setDict(Dictionary dict) {
+	public void setDict(Map<TokenType, Dictionary> dicts) {
 		checkSeal();
-		this.dict = dict;
+		this.dicts = dicts;
 	}
 
 	public boolean isStemEnabled() {
