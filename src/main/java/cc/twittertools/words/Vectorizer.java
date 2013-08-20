@@ -21,16 +21,31 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Version;
 
+import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.google.common.base.Function;
+import com.twitter.common.text.combiner.EmoticonTokenCombiner;
+import com.twitter.common.text.combiner.HashtagTokenCombiner;
+import com.twitter.common.text.combiner.PossessiveContractionTokenCombiner;
+import com.twitter.common.text.combiner.StockTokenCombiner;
+import com.twitter.common.text.combiner.URLTokenCombiner;
+import com.twitter.common.text.combiner.UserNameTokenCombiner;
+import com.twitter.common.text.filter.PunctuationFilter;
+import com.twitter.common.text.filter.TokenFilter;
+import com.twitter.common.text.token.attribute.CharSequenceTermAttribute;
+import com.twitter.common.text.tokenizer.LatinTokenizer;
 
 /**
  * Converts text into vectors, it's as simple as that.
  */
 public class Vectorizer {
 	
+	/** The different kinds of input text this tokenizer can operate on */
+	public static enum InputType { STANDARD_TEXT, TWITTER };
+	
 	private final Pattern DIGIT_REGEXP = Pattern.compile("[0-9]");
+	private final Pattern HASH_TAG = Pattern.compile ("#(\\S)");
+	private final Pattern ADDRESSEE = Pattern.compile ("@(\\S)");
 	
 	private Dictionary dict;
 	private boolean stemEnabled = true;
@@ -40,10 +55,10 @@ public class Vectorizer {
 	private boolean numbersAllowed = true;
 	private int minWordCount = 5; // words occuring less often than this will be skipped
 	private boolean sealed = false;
+	private InputType inputType = InputType.STANDARD_TEXT;
 	
 	public Vectorizer(Dictionary dict) {
 		this.dict = dict;
-		
 	}
 	
 	/**
@@ -83,20 +98,52 @@ public class Vectorizer {
 	 */
 	public Iterator<String> toWords (String text)
 	{
-		TokenStream tok = new StandardTokenizer(Version.LUCENE_36, new StringReader (text));
-		tok = new LowerCaseFilter(Version.LUCENE_36, tok);
-		tok = new EnglishPossessiveFilter(Version.LUCENE_36, tok);
-		tok = new LengthFilter(true, tok, minWordLength, maxWordLength);
+		switch (inputType)
+		{	case STANDARD_TEXT:
+			{ TokenStream tok = new StandardTokenizer(Version.LUCENE_36, new StringReader (text));
+				tok = new LowerCaseFilter(Version.LUCENE_36, tok);
+				tok = new EnglishPossessiveFilter(Version.LUCENE_36, tok);
+				tok = new LengthFilter(true, tok, minWordLength, maxWordLength);
+				
+				if (stopElimEnabled)
+					tok = new StopFilter(Version.LUCENE_36, tok, StopAnalyzer.ENGLISH_STOP_WORDS_SET);
+				if (stemEnabled)
+					tok = new PorterStemFilter(tok);
+				
+				CharTermAttribute charTermAttribute = 
+						tok.addAttribute(CharTermAttribute.class);
+				
+				return new TokenStreamIterator(tok, charTermAttribute);
+			}
+			case TWITTER:
+			{ // The better way to do this is amend standard tokenier, but it's not
+				// particularly easy to amend. So in the mean-time we do the brutal
+				// substituation approach.
+				com.twitter.common.text.token.TokenStream tok = 
+					new PunctuationFilter(
+						new PossessiveContractionTokenCombiner (
+							new EmoticonTokenCombiner(
+								new StockTokenCombiner(
+									new HashtagTokenCombiner(
+										new UserNameTokenCombiner(
+											new URLTokenCombiner(
+												new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))));
+				
+				if (stopElimEnabled)
+					tok = new TokenFilter(tok)
+					{	private final StopFilter stopAnalyzer = new StopFilter(Version.LUCENE_36);
+						private final CharSequenceTermAttribute charAttr;
+					
+						@Override public boolean acceptToken()
+						{	return stopAnalyzer.
+						}
+					};
+			}
+		default:
+				throw new IllegalStateException ("Don't know how to tokenizer and filter inputs of type " + inputType);
+		}
 		
-		if (stopElimEnabled)
-			tok = new StopFilter(Version.LUCENE_36, tok, StopAnalyzer.ENGLISH_STOP_WORDS_SET);
-		if (stemEnabled)
-			tok = new PorterStemFilter(tok);
-		
-		CharTermAttribute charTermAttribute = 
-				tok.addAttribute(CharTermAttribute.class);
-		
-		return new TokenStreamIterator(tok, charTermAttribute);
+
 	}
 	
 	/**
@@ -141,7 +188,7 @@ public class Vectorizer {
 	 * @return an int array corresponding to the words in the text
 	 */
 	private int[] toIntsInternal (String text, Collection<String> infrequentWords)
-	{	int[] result = new int[500];
+	{	int[] result = new int[text.length() / 5];
 		int numWords = 0;
 		Iterator<String> words = toWords(text);
 		while (words.hasNext())
@@ -301,6 +348,14 @@ public class Vectorizer {
 	public void setMinWordCount(int minWordCount) {
 		checkSeal();
 		this.minWordCount = minWordCount;
+	}
+
+	public InputType getInputType()
+	{	return inputType;
+	}
+
+	public void setInputType(InputType inputType)
+	{	this.inputType = inputType;
 	}
 	
 	

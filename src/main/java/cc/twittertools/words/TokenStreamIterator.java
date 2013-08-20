@@ -15,8 +15,10 @@ import org.apache.lucene.util.Version;
  *
  */
 public class TokenStreamIterator implements Iterator<String>
-{	private final TokenStream toks;
+{	
+	private final TokenStream toks;
 	private final CharTermAttribute charTermAttribute;
+	
 	private boolean hasNext;
 	private RuntimeException e;
 
