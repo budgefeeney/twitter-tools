@@ -3,6 +3,7 @@ package cc.twittertools.words;
 import java.util.Iterator;
 import java.util.Set;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.StopAnalyzer;
 import org.apache.lucene.util.Version;
 import org.tartarus.snowball.ext.PorterStemmer;
@@ -23,7 +24,7 @@ import com.twitter.common.text.token.attribute.TokenTypeAttribute;
  * @author bryanfeeney
  *
  */
-public class TwitterTokenStreamIterator implements Iterator<String>
+public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, String>>
 {
 	private final TokenStream toks;
 	private final CharSequenceTermAttribute charTermAttribute;
@@ -107,7 +108,7 @@ public class TwitterTokenStreamIterator implements Iterator<String>
 	}
 
 	@Override
-	public String next()
+	public Pair<TokenType, String> next()
 	{	
 		if (e != null)
 		{	RuntimeException t = e;
@@ -119,7 +120,7 @@ public class TwitterTokenStreamIterator implements Iterator<String>
 		moveToNextToken();
 		
 		System.out.println ("---> " + result);
-		return result;
+		return Pair.of (tokenAttr.getType(), result);
 	}
 
 	/**

@@ -4,17 +4,20 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.util.Iterator;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Version;
+
+import com.twitter.common.text.token.attribute.TokenType;
 
 /**
  * Adaptor to provide an Iterator interface to a TokenStream
  * @author bryanfeeney
  *
  */
-public class TokenStreamIterator implements Iterator<String>
+public class TokenStreamIterator implements Iterator<Pair<TokenType, String>>
 {	
 	private final TokenStream toks;
 	private final CharTermAttribute charTermAttribute;
@@ -65,7 +68,7 @@ public class TokenStreamIterator implements Iterator<String>
 	}
 
 	@Override
-	public String next()
+	public Pair<TokenType, String> next()
 	{	if (e != null)
 		{	RuntimeException t = e;
 			e = null;
@@ -74,7 +77,7 @@ public class TokenStreamIterator implements Iterator<String>
 	
 		String word = charTermAttribute.toString();
 		moveToNextToken();
-		return word;
+		return Pair.of (TokenType.TOKEN, word);
 	}
 
 	/**

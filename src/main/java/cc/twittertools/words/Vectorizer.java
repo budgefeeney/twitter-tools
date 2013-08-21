@@ -3,7 +3,6 @@ package cc.twittertools.words;
 import java.io.StringReader;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -12,6 +11,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.LengthFilter;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.PorterStemFilter;
@@ -48,7 +48,7 @@ public class Vectorizer {
 	
 	private final Pattern DIGIT_REGEXP = Pattern.compile("[0-9]");
 	
-	private Map<TokenType, Dictionary> dicts = new EnumMap<>(TokenType.class);
+	private final TokenDictionary dict;
 	private boolean stemEnabled = true;
 	private boolean stopElimEnabled = true;
 	private int minWordLength = 2;
@@ -58,13 +58,14 @@ public class Vectorizer {
 	private boolean sealed = false;
 	private InputType inputType = InputType.STANDARD_TEXT;
 	
-	public Vectorizer(Dictionary dict) {
-		for (TokenType type : TokenType.values())
-			dicts.put(type, dict);
+	public Vectorizer(TokenDictionary dict) {
+		this.dict = dict;
 	}
 	
 	public Vectorizer(Map<TokenType, Dictionary> dicts) {
-		dicts.putAll (dicts);
+		this.dict = new TokenDictionary(TokenType.TOKEN);
+		for (Map.Entry<TokenType, Dictionary> entry : dicts.entrySet())
+			this.dict.addDictionary(entry.getKey(), entry.getValue());
 	}
 	
 	/**
@@ -75,9 +76,8 @@ public class Vectorizer {
 	 * compatible with the model.
 	 */
 	public void seal()
-	{	sealed = true;
-		for (Dictionary dict : dicts.values())
-			dict.seal();
+	{	dict.seal();
+		sealed = true;
 	}
 	
 	/**
@@ -102,7 +102,7 @@ public class Vectorizer {
 	 * @param text
 	 * @return an iterator over words read (lazily) from the text
 	 */
-	public Iterator<String> toWords (String text)
+	public Iterator<Pair<TokenType, String>> toWords (String text)
 	{	TokenStream tok;
 		switch (inputType)
 		{	case STANDARD_TEXT:
@@ -163,9 +163,9 @@ public class Vectorizer {
 	 * Takes a corpus, i.e. an enumeration of Strings, and returns a list of
 	 * enumerations over words. This is lazily evaluated. See {@link #toWords(String)}
 	 */
-	public Iterator<Iterator<String>> toWords (Iterator<String> corpus)
-	{	return Iterators.transform(corpus, new Function<String, Iterator<String>>() {
-			public Iterator<String> apply (String input) {
+	public Iterator<Iterator<Pair<TokenType, String>>> toWords (Iterator<String> corpus)
+	{	return Iterators.transform(corpus, new Function<String, Iterator<Pair<TokenType, String>>>() {
+			public Iterator<Pair<TokenType, String>> apply (String input) {
 				return toWords (input);
 			}
 		});
@@ -185,7 +185,7 @@ public class Vectorizer {
 	{	if (minWordCount > 1)
 			throw new IllegalStateException ("Can't enabled infrequent word-filtering (minWordCount=" + minWordCount + ") and process files one at a time. For infrequenct word-filtering to work, the corpus needs to be vectorized all at once.");
 	
-		return toIntsInternal(text, Collections.<String>emptySet());
+		return toIntsInternal(text, Collections.<TokenType, Set<String>>emptyMap());
 	}
 	
 	/**
@@ -203,10 +203,10 @@ public class Vectorizer {
 	private int[] toIntsInternal (String text, Map<TokenType, Set<String>> infrequentWords)
 	{	int[] result = new int[text.length() / 5];
 		int numWords = 0;
-		Iterator<String> words = toWords(text);
+		Iterator<Pair<TokenType, String>> words = toWords(text);
 		while (words.hasNext())
-		{	String word = words.next();
-			if (infrequentWords.contains(word))
+		{	Pair<TokenType, String> wordToken = words.next();
+			if (contains(infrequentWords, wordToken))
 				continue;
 			if (! numbersAllowed && DIGIT_REGEXP.matcher(word).find())
 				continue;
@@ -222,6 +222,12 @@ public class Vectorizer {
 		return result.length == numWords
 			? result
 			: ArrayUtils.subarray(result, 0, numWords);
+	}
+
+	private boolean contains(Map<TokenType, Set<String>> infrequentWords, Pair<TokenType, String> wordToken) {
+		Set<String> infrequentWordSet = infrequentWords.get(wordToken.getKey());
+		return infrequentWords != null && infrequentWords.contains (word)
+		return .contains(wordToken.getValue());
 	}
 	
 	
