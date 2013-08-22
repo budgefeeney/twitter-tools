@@ -50,11 +50,6 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	
 	private final static Logger LOG = LoggerFactory.getLogger(TweetFeatureExtractor.class);
 
-	/** Remove all addressee tokens. Otherwise they get encoded in the BOW vector like any word (albeit with the addressee marker still included) */
-  private boolean stripAddresseesFromText = false;
-  
-  /** If true remove all hashtags from text */
-  private boolean stripHashTagsFromText   = false;
   
   /** If true remove all retweet markers from text */
   private boolean stripRtMarkersFromText  = false;
@@ -238,11 +233,13 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		  		
 			  		// Do we include this tweet, or do we skip it.
 			  		if (stripRetweets && isRetweet(tweet))
+			  		{	LOG.info("Skipping tweet from " + tweet.getAuthor() + " as its a retweet");
 			  			continue;
-			  		if (tweet.getLocalTime().isBefore(minDateIncl))
+			  		}
+			  		if (tweet.getLocalTime().isBefore(minDateIncl) || maxDateExcl.isBefore(tweet.getLocalTime()))
+			  		{	LOG.info("Skipping tweet posted on " + tweet.getLocalTime() + " as it's outside the set time-range");
 			  			continue;
-			  		if (maxDateExcl.isBefore(tweet.getLocalTime()))
-			  			continue;
+			  		}
 			  		
 			  		// TODO need some sort of "most-recent-date" idea for when we have an,
 			  		// incorrect date, which is something that occurs with retweets.
@@ -393,10 +390,6 @@ public class TweetFeatureExtractor implements Callable<Integer>
 				Sigil.ADDRESSEE.extractSigils(text);
 		
 		// TODO implement this in the tokenizer?
-		if (stripAddresseesFromText)
-			text = textAndAddressees.getLeft();
-		if (stripHashTagsFromText)
-			text = Sigil.HASH_TAG.stripFromMsg(text);
 		if (stripRtMarkersFromText)
 			text = Sigil.RETWEET.stripFromMsg(null);
 		
@@ -422,22 +415,6 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	private void inc(Int2ShortMap map, int key)
 	{	map.put (key, (short) (map.get(key) + 1));
 	}
-
-	public boolean isStripAddresseesFromText() {
-    return stripAddresseesFromText;
-  }
-
-  public void setStripAddresseesFromText(boolean stripAddresseesFromText) {
-    this.stripAddresseesFromText = stripAddresseesFromText;
-  }
-
-  public boolean isStripHashTagsFromText() {
-    return stripHashTagsFromText;
-  }
-
-  public void setStripHashTagsFromText(boolean stripHashTagsFromText) {
-    this.stripHashTagsFromText = stripHashTagsFromText;
-  }
 
   public boolean isStripRtMarkersFromText() {
     return stripRtMarkersFromText;

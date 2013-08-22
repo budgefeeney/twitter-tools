@@ -3,7 +3,7 @@ package cc.twittertools.words;
 import java.io.StringReader;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -48,24 +48,26 @@ public class Vectorizer {
 	
 	private final Pattern DIGIT_REGEXP = Pattern.compile("[0-9]");
 	
-	private final TokenDictionary dict;
-	private boolean stemEnabled = true;
-	private boolean stopElimEnabled = true;
-	private int minWordLength = 2;
-	private int maxWordLength = 80; // emails, web-addresses etc.
-	private boolean numbersAllowed = true;
-	private int minWordCount = 5; // words occuring less often than this will be skipped
-	private boolean sealed = false;
-	private InputType inputType = InputType.STANDARD_TEXT;
+	private TokenDictionary dict;
+	private boolean         stemEnabled     = true;
+	private boolean         stopElimEnabled = true;
+	private int             minWordLength   = 2;
+	private int             maxWordLength   = 80; // emails, web-addresses etc.
+	private boolean         numbersAllowed  = true;
+	private int             minWordCount    = 5; // words occuring less often than this will be skipped
+	private boolean         sealed          = false;
+	private InputType       inputType       = InputType.STANDARD_TEXT;
 	
 	public Vectorizer(TokenDictionary dict) {
 		this.dict = dict;
 	}
 	
 	public Vectorizer(Map<TokenType, Dictionary> dicts) {
-		this.dict = new TokenDictionary(TokenType.TOKEN);
+		CompoundTokenDictionary compound = new CompoundTokenDictionary(TokenType.TOKEN);
 		for (Map.Entry<TokenType, Dictionary> entry : dicts.entrySet())
-			this.dict.addDictionary(entry.getKey(), entry.getValue());
+			compound.addDictionary(entry.getKey(), entry.getValue());
+		
+		this.dict = compound;
 	}
 	
 	/**
@@ -206,12 +208,15 @@ public class Vectorizer {
 		Iterator<Pair<TokenType, String>> words = toWords(text);
 		while (words.hasNext())
 		{	Pair<TokenType, String> wordToken = words.next();
+			TokenType tokenType = wordToken.getKey();
+			String    word      = wordToken.getValue();
+		
 			if (contains(infrequentWords, wordToken))
 				continue;
-			if (! numbersAllowed && DIGIT_REGEXP.matcher(word).find())
+			if (tokenType == TokenType.TOKEN && ! numbersAllowed && DIGIT_REGEXP.matcher(word).find())
 				continue;
 			
-			int wordId = dict.toInt(word);
+			int wordId = dict.toInt(tokenType, word);
 			if (wordId == Dictionary.UNMAPPABLE_WORD)
 				continue;
 			
@@ -226,8 +231,7 @@ public class Vectorizer {
 
 	private boolean contains(Map<TokenType, Set<String>> infrequentWords, Pair<TokenType, String> wordToken) {
 		Set<String> infrequentWordSet = infrequentWords.get(wordToken.getKey());
-		return infrequentWords != null && infrequentWords.contains (word)
-		return .contains(wordToken.getValue());
+		return infrequentWordSet != null && infrequentWordSet.contains (wordToken.getValue());
 	}
 	
 	
@@ -257,28 +261,33 @@ public class Vectorizer {
 	{	if (minWordCount <= 1)
 			return toInts (corpus, Collections.<TokenType, Set<String>>emptyMap(), sizeHint);
 	
-		// need to buffer the corpus and dictionary as we're taking two passes thru it
+		// need to buffer the corpus and backup the dictionary as we're taking two
+		// passes through it
 		List<String> corpusCopy = Lists.newArrayList(corpus);
-		Dictionary backup = dict.clone();
+		TokenDictionary backup = dict.clone();
 		
-		Dictionary swap = dict; // make sure we preserve the original dict
-		dict = backup;          // reference passed in, in case it gets referenced
-		backup = swap;          // outside of this method.
+		TokenDictionary swap = dict; // make sure we preserve the original dict
+		dict   = backup;  // reference passed in, in case it gets referenced
+		backup = swap;    // outside of this method.
 		
+		// Do one run through the data, converting it to ints, to get counts of
+		// how often each token occurs.
 		int[][] firstRun = toInts (corpusCopy.iterator(), Collections.<TokenType, Set<String>>emptyMap(), sizeHint);
-		int[] wordCounts = new int[dict.size()];
+		int[] wordCounts = new int[dict.capacity()];
 		for (int[] document : firstRun)
 			for (int wordId : document)
 				++wordCounts[wordId];
 		
-		Set<String> infrequentWords = new HashSet<String>();
+		Map<TokenType, Set<String>> infrequentWords = new HashMap<>();
 		for (int wordId = 0; wordId < dict.size(); wordId++)
 		{	if (wordCounts[wordId] < minWordCount)
-			{	final String word = dict.toWord (wordId);
-				infrequentWords.add (word);
+			{	Pair<TokenType, String> wordToken = dict.toWordToken (wordId);
+				infrequentWords.get(wordToken.getKey()).add(wordToken.getValue());
 			}
 		}
 		
+		// Restore the backup, and use the derived list of infrequent words to
+		// convert it to a list of integers
 		dict = backup;
 		return toInts (corpusCopy.iterator(), infrequentWords, sizeHint);
 	}
@@ -304,15 +313,9 @@ public class Vectorizer {
 			: ArrayUtils.subarray(corpusInts, 0, numDocs);
 	}
 	
-	
 
-	public Map<TokenType, Dictionary> getDicts() {
-		return dicts;
-	}
-
-	public void setDict(Map<TokenType, Dictionary> dicts) {
-		checkSeal();
-		this.dicts = dicts;
+	public TokenDictionary getDict() {
+		return dict;
 	}
 
 	public boolean isStemEnabled() {

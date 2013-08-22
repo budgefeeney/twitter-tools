@@ -5,7 +5,6 @@ import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.lucene.analysis.StopAnalyzer;
-import org.apache.lucene.util.Version;
 import org.tartarus.snowball.ext.PorterStemmer;
 
 import com.twitter.common.text.token.TokenStream;
@@ -117,10 +116,11 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 		}
 	
 		String result = term;
+		TokenType token = tokenAttr.getType();
 		moveToNextToken();
 		
-		System.out.println ("---> " + result);
-		return Pair.of (tokenAttr.getType(), result);
+//		System.out.println (token + " ---> " + result);
+		return Pair.of (token, result);
 	}
 
 	/**

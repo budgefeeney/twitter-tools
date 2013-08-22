@@ -1,6 +1,8 @@
 package cc.twittertools.scripts;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -8,12 +10,24 @@ import java.util.concurrent.Callable;
 
 import org.joda.time.DateTime;
 import org.joda.time.chrono.ISOChronology;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 import cc.twittertools.post.FeatureSpecification;
+import cc.twittertools.post.TweetFeatureExtractor;
+import cc.twittertools.words.CompoundTokenDictionary;
+import cc.twittertools.words.Dictionary;
+import cc.twittertools.words.LookupDictionary;
+import cc.twittertools.words.NullDictionary;
+import cc.twittertools.words.SigilStrippingDictionary;
+import cc.twittertools.words.Vectorizer;
+import cc.twittertools.words.Vectorizer.InputType;
+
+import com.twitter.common.text.token.attribute.TokenType;
 
 /**
  * Main entry-point to the application. Parses paramaters and (statically) hands over to the
@@ -49,8 +63,6 @@ public class Main implements Callable<Integer>
   
   // Options for processing lists of tweets - uses objects as default values are
   // defined in the class itself.
-  private boolean stripAddresseesFromText = false;
-  private boolean stripHashTagsFromText   = false;
   private boolean stripRtMarkersFromText  = false;
   private boolean stripRetweets           = false;
   private boolean treatHashTagsAsWords    = false;
@@ -67,13 +79,21 @@ public class Main implements Callable<Integer>
   private int     maxWordLen     = 80; // to strip e.g. emails etc.
   private boolean numbersAllowed = false;
   private int     minWordCount   = 5; // words occuring less often than this will be skipped
-  private int     dictSize       = 30000;
+  
+	private int numAddressees = 100000;
+	private int numUrls       = 100000;
+	private int numWords      = 50000;
+	private int numStocks     = 50000;
+	private int numEmoticons  = 500;
+	private int numHashTags   = 50000;
   
   // Options for encoding of non-text features
-  FeatureSpecification featSpec;
+  FeatureSpecification featSpec = new FeatureSpecification();
   
   @Argument
   private List<String> arguments = new ArrayList<String>();
+  
+  private final DateTimeFormatter dateFormat = ISODateTimeFormat.basicDate();
   
   /**
    * Program entry point.
@@ -146,10 +166,69 @@ public class Main implements Callable<Integer>
   /**
    * Launches the job for encoding tweets and their associated features into vectors bundled up
    * into matrices.
+   * @throws IOException 
    */
-  private void doEncode()
+  private void doEncode() throws Exception
   {
-	  
+  	TweetFeatureExtractor tfe = newTweetFeatExtractor();
+		tfe.call();
+  }
+
+	public TweetFeatureExtractor newTweetFeatExtractor() throws IOException
+	{
+		Vectorizer vec = newVectorizer();
+		TweetFeatureExtractor tfe = new TweetFeatureExtractor(Paths.get(inPath), Paths.get(outPath), vec, featSpec);
+		
+		tfe.setMinDateIncl(minDateIncl);
+		tfe.setMaxDateExcl(maxDateExcl);
+		
+		tfe.setStripRetweets(stripRetweets);
+		tfe.setStripRtMarkersFromText(stripRtMarkersFromText);
+		
+		
+		return tfe;
+	}
+
+	public Vectorizer newVectorizer()
+	{
+		CompoundTokenDictionary dict = tokenDictionary();
+		Vectorizer vec = new Vectorizer(dict);
+		vec.setStemEnabled(stem);
+		vec.setStopElimEnabled(elimStopWords);
+		vec.setMinWordLength(minWordLen);
+		vec.setMaxWordLength(maxWordLen);
+		vec.setMinWordCount(minWordCount);
+		vec.setNumbersAllowed(numbersAllowed);
+		vec.setInputType(InputType.TWITTER);
+		return vec;
+	}
+
+	private CompoundTokenDictionary tokenDictionary()
+	{
+		CompoundTokenDictionary dict = new CompoundTokenDictionary(null);
+		
+		if (treatHashTagsAsWords)
+		{	if (numWords == 0)
+				throw new IllegalStateException ("Cannot set dict-size-words = 0 and also require hashtags to be treated as words.");
+			if (numHashTags == 0)
+				throw new IllegalStateException ("Must set dict-size-tags = 0 and dict-size-words to a non-zero value when you treat hashtags as words");
+		}
+		
+		Dictionary wordDict = dictionary(numWords);	
+		dict.addDictionary(TokenType.USERNAME, dictionary(numAddressees));
+		dict.addDictionary(TokenType.URL,      dictionary(numUrls));
+		dict.addDictionary(TokenType.TOKEN,    wordDict);
+		dict.addDictionary(TokenType.STOCK,    dictionary(numStocks));
+		dict.addDictionary(TokenType.EMOTICON, dictionary(numEmoticons));
+		dict.addDictionary(TokenType.HASHTAG,  treatHashTagsAsWords
+			? new SigilStrippingDictionary('#', wordDict)
+			: dictionary(numHashTags));
+		
+		return dict;
+	}
+  
+  private final static Dictionary dictionary(int size)
+  {	return size == 0 ? NullDictionary.INSTANCE : new LookupDictionary(size);
   }
   
   public Command getCommand() {
@@ -178,23 +257,6 @@ public class Main implements Callable<Integer>
     this.outPath = outPath;
   }
   
-  public boolean isStripAddresseesFromText() {
-    return stripAddresseesFromText;
-  }
-  
-  @Option(name="--strip-addressees", usage="Remove all addressees from input tweets", metaVar=" ")
-  public void setStripAddresseesFromText(boolean stripAddresseesFromText) {
-    this.stripAddresseesFromText = stripAddresseesFromText;
-  }
-  
-  public boolean isStripHashTagsFromText() {
-    return stripHashTagsFromText;
-  }
-  
-  @Option(name="--strip-hash-tags", usage="Remove all hashtags from input tweets", metaVar=" ")
-  public void setStripHashTagsFromText(boolean stripHashTagsFromText) {
-    this.stripHashTagsFromText = stripHashTagsFromText;
-  }
   
   public boolean isStripRtMarkersFromText() {
     return stripRtMarkersFromText;
@@ -232,31 +294,22 @@ public class Main implements Callable<Integer>
     this.aggregateByAuthor = aggregateByAuthor;
   }
   
-  public DateTime getMinDateIncl() {
-    return minDateIncl;
+  public String getMinDateIncl() {
+    return dateFormat.print(minDateIncl);
   }
   
   @Option(name="--start-date", usage="Only tweets on or after this date will be processed and included in the output", metaVar=" ")
-  public void setMinDateIncl(DateTime minDateIncl) {
-    this.minDateIncl = minDateIncl;
+  public void setMinDateIncl(String minDateIncl) {
+    this.minDateIncl = dateFormat.parseDateTime(minDateIncl);
   }
   
-  public DateTime getMaxDateExcl() {
-    return maxDateExcl;
+  public String getMaxDateExcl() {
+    return dateFormat.print(maxDateExcl);
   }
   
   @Option(name="--end-date", usage="Only tweets before this date will be processed and included in the output", metaVar=" ")
-  public void setMaxDateExcl(DateTime maxDateExcl) {
-    this.maxDateExcl = maxDateExcl;
-  }
-
-  public Boolean getStripAddresseesFromText() {
-    return stripAddresseesFromText;
-  }
-
-  @Option(name="--strip-addressees", usage="Only tweets on or after this date will be processed and included in the output", metaVar=" ")
-  public void setStripAddresseesFromText(Boolean stripAddresseesFromText) {
-    this.stripAddresseesFromText = stripAddresseesFromText;
+  public void setMaxDateExcl(String maxDateExcl) {
+    this.maxDateExcl = dateFormat.parseDateTime(maxDateExcl);
   }
 
   public boolean getStem() {
@@ -412,14 +465,57 @@ public class Main implements Callable<Integer>
   	this.showHelp = showHelp;
   }
 
-	public int getDictSize()
-	{	return dictSize;
+	public int getNumAddressees()
+	{	return numAddressees;
 	}
 
-	@Option(name="--dict-size", aliases="--help", usage="Maximum number of words in dictionary, all subsequent words are dropped.", metaVar=" ")
-  public void setDictSize(int dictSize)
-	{	this.dictSize = dictSize;
-	} 
-  
-  
+	@Option(name="--dict-size-addrs", aliases="--help", usage="Maximum number of addressees in dictionary, all subsequent words are dropped.", metaVar=" ")
+	public void setNumAddressees(int numAddressees)
+	{	this.numAddressees = numAddressees;
+	}
+
+	public int getNumUrls()
+	{	return numUrls;
+	}
+
+	@Option(name="--dict-size-urls", aliases="--help", usage="Maximum number of URLs in dictionary, all subsequent URLs are dropped.", metaVar=" ")
+	public void setNumUrls(int numUrls)
+	{	this.numUrls = numUrls;
+	}
+
+	public int getNumWords()
+	{	return numWords;
+	}
+
+	@Option(name="--dict-size-words", aliases="--help", usage="Maximum number of words in dictionary, all subsequent words are dropped.", metaVar=" ")
+	public void setNumWords(int numWords)
+	{	this.numWords = numWords;
+	}
+
+	public int getNumStocks()
+	{	return numStocks;
+	}
+
+	@Option(name="--dict-size-stocks", aliases="--help", usage="Maximum number of stocks in dictionary, all subsequent stocks are dropped.", metaVar=" ")
+	public void setNumStocks(int numStocks)
+	{	this.numStocks = numStocks;
+	}
+
+	public int getNumEmoticons()
+	{	return numEmoticons;
+	}
+
+	@Option(name="--dict-size-smileys", aliases="--help", usage="Maximum number of emoticons (\"smileys\") in dictionary, all subsequent emoticons are dropped.", metaVar=" ")
+	public void setNumEmoticons(int numEmoticons)
+	{	this.numEmoticons = numEmoticons;
+	}
+
+	public int getNumHashTags()
+	{	return numHashTags;
+	}
+
+	@Option(name="--dict-size-tags", aliases="--help", usage="Maximum number of hashtags in dictionary, all subsequent hashtags are dropped.", metaVar=" ")
+	public void setNumHashTags(int numHashTags)
+	{	this.numHashTags = numHashTags;
+	}
 }

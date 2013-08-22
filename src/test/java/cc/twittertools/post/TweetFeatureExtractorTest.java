@@ -2,22 +2,29 @@ package cc.twittertools.post;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
 import org.apache.log4j.BasicConfigurator;
-import org.joda.time.DateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import cc.twittertools.words.LookupDictionary;
-import cc.twittertools.words.Vectorizer;
-import cc.twittertools.words.Vectorizer.InputType;
+import cc.twittertools.scripts.Main;
 
 public class TweetFeatureExtractorTest
 {
+	private static final int NUM_ADDRESSEES = 100000;
+	private static final int NUM_URLS       = 100000;
+	private static final int NUM_WORDS      = 50000;
+	private static final int NUM_STOCKS     = 50000;
+	private static final int NUM_EMOTICONS  = 500;
+	private static final int NUM_HASHTAGS   = 50000;
+
 	private final static String SAMPLE =
 	   "AnaColinaF1\t351740397812334593\t351740397812334593\t2013-07-01T17:33:40+01:00\t2013-07-01T09:33:00Z\t-07:00\t@charlie_whiting He presses that button. Yes, that button. #silverstone #F1 pic.twitter.com/VK7vGlwy33\n"
 	 + "AnaColinaF1\t351733844300410881\t351733844300410881\t2013-07-01T17:07:38+01:00\t2013-07-01T09:07:00Z\t-07:00\tWe're Charlie's Angels ;-) RT @nicholegalicia: @AnaColinaF1 @charlie_whiting Nothing compares to a good fake. I'm team fake @charlie_whiting!\n"
@@ -28,7 +35,7 @@ public class TweetFeatureExtractorTest
 	 + "charlie_whiting\t351464916168871937\t351464916168871937\t2013-06-30T23:19:00+01:00\t2013-06-30T15:19:00Z\t-07:00\t@LJ_Pritchard This \"blame Pirelli\" stuff is utter nonsense. They're doing the best they can in a horrid environment.\n"
 	 + "charlie_whiting\t351463924866097153\t351463924866097153\t2013-06-30T23:15:04+01:00\t2013-06-30T15:15:00Z\t-07:00\tAnd around the planet. RT @AussieGrit: Really couldn't believe the reception I received on the podium today. #special #passionatefans\n"
 	 + "charlie_whiting\t351463813096292352\t351463813096292352\t2013-06-30T23:14:37+01:00\t2013-06-30T15:14:00Z\t-07:00\t@LJ_Pritchard I think part of the problem is that the teams don't know what they're getting now either. Both sides need to test together.\n"
-	 + "charlie_whiting\t351461280646828033\t351461280646828033\t2013-06-30T23:04:33+01:00\t2013-06-30T15:04:00Z\t-07:00\t@PaulF1B @formula1blog Thank God.";
+	 + "charlie_whiting\t351461280646828033\t351461280646828033\t2013-06-28T23:04:33+01:00\t2013-06-30T15:04:00Z\t-07:00\t@PaulF1B @formula1blog Thank God.";
 
 	private final static String[] NAMES = new String[] {
 		"AnaColinaF1",
@@ -81,28 +88,48 @@ public class TweetFeatureExtractorTest
 	
 	@Test
 	public void testFeatures() throws Exception
-	{	Vectorizer vec = new Vectorizer(new LookupDictionary(/* maxVocab = */ 30000));
-		vec.setStemEnabled(true);
-		vec.setStopElimEnabled(false);
-		vec.setMaxWordLength(80);
-		vec.setMinWordCount(1); /* need some sort of smiley handler */
-		vec.setNumbersAllowed(true);
-		vec.setInputType(InputType.TWITTER);
+	{	// Startin configuring the feature extraction
+		Main main = new Main();
 		
-		FeatureSpecification featSpec = new FeatureSpecification()
-				.setAuthorInFeatures(true)
-				.setDayOfYearInFeatures(true);
+		// Side information features
+		main.setAuthorInFeatures(true);
+		main.setDayOfYearInFeatures(true);
+		main.setMonthOfYearInFeatures(true);
 		
-		TweetFeatureExtractor tfe = new TweetFeatureExtractor(
-			tweetsFile.toPath(), // so this test relies on undoc behaviour, that if path is to a file, we'll just operate on that file alone.
-			tweetsFile.getParentFile().toPath(),
-			vec,
-			featSpec
-		);
-		tfe.setStripRetweets(true);
-		tfe.setMinDateIncl (new DateTime(2013,  7,  1,  9,  0,  0));
-		tfe.setMaxDateExcl (new DateTime(2013, 12, 30, 23, 59, 59));
+		// Word features
+		main.setNumAddressees(NUM_ADDRESSEES);
+		main.setNumEmoticons(NUM_EMOTICONS);
+		main.setNumHashTags(NUM_HASHTAGS);
+		main.setNumStocks(NUM_STOCKS);
+		main.setNumUrls(NUM_URLS);
+		main.setNumWords(NUM_WORDS);
 		
+		main.setStem(true);
+		main.setElimStopWords(true);
+		main.setMinWordLen(1);
+		main.setMaxWordLen(80);
+		main.setMinWordCount(1);
+		main.setNumbersAllowed(true);
+		
+		// Input and output files.
+		main.setInPath(tweetsFile.getAbsolutePath());
+		main.setOutPath(tweetsFile.getParent());
+		
+		// Acceptable tweets
+		// TODO Need to deal with partial versus full retweets, as illustrated above by tweet 351463924866097153
+		main.setStripRetweets(true);
+		main.setMinDateIncl("20130630");
+		main.setMaxDateExcl("20131230");
+		
+		// Create the feature extractor and call it.
+		TweetFeatureExtractor tfe = main.newTweetFeatExtractor();
 		tfe.call();
+		
+//		Path filename = tfe.getOutputDir().resolve("dicts.py");
+//		try (BufferedWriter writer = Files.newBufferedWriter(filename, Charsets.UTF_8))
+//		{	writer.write("# -*- coding: utf-8 -*-\n\n");
+//			tfe.getVectorizer().getDict().writeAsPythonDict (filename);
+//		}
 	}
+
 }
