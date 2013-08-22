@@ -1,5 +1,8 @@
 package cc.twittertools.words;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+
 /**
  * For twitter use, strips a learing sigil from a word before passing it down
  * to the wrapped dictionary.
@@ -41,9 +44,18 @@ public class SigilStrippingDictionary implements Dictionary
 	public int capacity()
 	{	return dict.capacity();
 	}
+	
+	@Override
+	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
+	{	dict.writeAsPythonList(pyVarName, writer);
+	}
 
 	@Override
 	public SigilStrippingDictionary clone()
 	{	return new SigilStrippingDictionary(sigil, dict);
+	}
+
+	public Dictionary getDictionary()
+	{	return dict;
 	}
 }

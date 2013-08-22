@@ -1,5 +1,8 @@
 package cc.twittertools.words;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+
 /**
  * Interface for class's which maps words to ints and optionally back again.
  * Use {@link #toInt(String)} to map a word to an integer.
@@ -50,6 +53,14 @@ public interface Dictionary {
 	 * arrive.
 	 */
 	public int capacity();
+	
+	/**
+	 * Writes out this dictionary in the format of a Python literal variable
+	 * declaration. The literal is an array of dictionary keys, ordered according
+	 * to the associated integer. The name of this literal is given by
+	 * <tt>pyVarName</tt>
+	 */
+	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException;
 	
 	/** 
 	 * A deep copy of this dictionary

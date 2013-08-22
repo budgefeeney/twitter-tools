@@ -125,11 +125,11 @@ public class TweetFeatureExtractorTest
 		TweetFeatureExtractor tfe = main.newTweetFeatExtractor();
 		tfe.call();
 		
-//		Path filename = tfe.getOutputDir().resolve("dicts.py");
-//		try (BufferedWriter writer = Files.newBufferedWriter(filename, Charsets.UTF_8))
-//		{	writer.write("# -*- coding: utf-8 -*-\n\n");
-//			tfe.getVectorizer().getDict().writeAsPythonDict (filename);
-//		}
+		Path filename = tfe.getOutputDir().resolve("dicts.py");
+		try (BufferedWriter writer = Files.newBufferedWriter(filename, Charsets.UTF_8))
+		{	writer.write("# -*- coding: utf-8 -*-\n\n");
+			tfe.getVectorizer().getDict().writeAsPythonList ("dict", writer);
+		}
 	}
 
 }

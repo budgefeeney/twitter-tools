@@ -1,5 +1,8 @@
 package cc.twittertools.words;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+
 import org.apache.commons.lang3.tuple.Pair;
 
 import com.twitter.common.text.token.attribute.TokenType;
@@ -53,6 +56,11 @@ public class NullDictionary implements TokenDictionary
 	{	return 0;
 	}
 
+	@Override
+	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
+	{	writer.write (pyVarName + " = []\n\n");
+	}
+	
 	@Override
 	public NullDictionary clone()
 	{	return this;

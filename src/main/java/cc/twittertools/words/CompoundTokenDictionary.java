@@ -1,9 +1,14 @@
 package cc.twittertools.words;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.velocity.util.StringUtils;
+
+import cc.twittertools.post.Sigil;
 
 import com.twitter.common.text.token.attribute.TokenType;
 
@@ -146,6 +151,36 @@ public class CompoundTokenDictionary implements TokenDictionary
 	public CompoundTokenDictionary clone()
 	{	return new CompoundTokenDictionary(this);
 	}
+	
+	@Override
+	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
+	{	String[] dictNames = new String[numDicts];
+		for (int tokenId = 0; tokenId < numDicts; tokenId++)
+		{	dictNames[tokenId] = pyVarName + StringUtils.capitalizeFirstLetter(tokens[tokenId].toString().toLowerCase());
+		}
+		
+		for (int tokenId = 0; tokenId < numDicts; tokenId++)
+		{	// find out if the same dictionary object is being used for more
+			// than one token type.
+			int dictRef = 0;
+			while (dictRef < tokenId)
+				if (dicts[dictRef] == dicts[tokenId] 
+						|| (dicts[dictRef] instanceof SigilStrippingDictionary 
+								&& ((SigilStrippingDictionary) dicts[dictRef]).getDictionary() == dicts[tokenId]))
+					break;
+				else
+					dictRef++;
+			
+			// If this is just a reference to the previously written dictionary object,
+			// just write out in Python a reference to the previously written object, 
+			// otherwise write out the new dictionary from scratch
+			if (dictRef != tokenId)
+				writer.write(dictNames[tokenId] + " = " + dictNames[dictRef]);
+			else
+				dicts[tokenId].writeAsPythonList(dictNames[tokenId], writer);
+		}
+	}
+
 
 	/**
 	 * Dictionaries and their capacity are stored in arrays. This maps a

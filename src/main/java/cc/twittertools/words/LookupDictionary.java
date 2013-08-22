@@ -1,9 +1,12 @@
 package cc.twittertools.words;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringEscapeUtils;
 
 
 
@@ -91,6 +94,21 @@ public class LookupDictionary extends AbstractDictionary
 	@Override
 	public int size() {
 		return words.size();
+	}
+	
+	@Override
+	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
+	{	int size = size();
+		if (size == 0)
+		{	writer.write (pyVarName + " = [ ]\n");
+			return;
+		}
+		
+		writer.write (pyVarName + " = [ \\\n");
+		for (int wordId = 0; wordId < size; wordId++)
+		{	writer.write ("\t\"" + StringEscapeUtils.escapeJava(toWord(wordId)) + "\" \\\n");
+		}
+		writer.write ("\t]\n\n");
 	}
 	
 	@Override
