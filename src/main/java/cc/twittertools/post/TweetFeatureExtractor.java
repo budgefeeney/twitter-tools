@@ -215,11 +215,10 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	eventFeatures.defaultReturnValue((short) 0);
   	int tweetCount = 0;
   	
-  	
   	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
   	// file. For this reason the next-file loop is labelled.
   	filesLoop:while (tweetFiles.hasNext())
-	{	
+  	{	
   		int corruptedTweetCount = 0;
   		Path currentFile = tweetFiles.next();
   		LOG.info ("Processing tweets in file: " + currentFile);
@@ -233,7 +232,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		  		
 			  		// Do we include this tweet, or do we skip it.
 			  		if (stripRetweets && isRetweet(tweet))
-			  		{	LOG.info("Skipping tweet from " + tweet.getAuthor() + " as its a retweet");
+			  		{	LOG.info("Skipping tweet from " + tweet.getAuthor() + " as it's a retweet");
 			  			continue;
 			  		}
 			  		if (tweet.getLocalTime().isBefore(minDateIncl) || maxDateExcl.isBefore(tweet.getLocalTime()))
@@ -391,7 +390,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		
 		// TODO implement this in the tokenizer?
 		if (stripRtMarkersFromText)
-			text = Sigil.RETWEET.stripFromMsg(null);
+			text = Sigil.RETWEET.stripFromMsg(text);
 		
 		if (treatHashTagsAsWords)
 			text = text.replace ('#', ' ');
