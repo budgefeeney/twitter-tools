@@ -37,7 +37,7 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 			{	filesInCurrentFolderIter = nextFolder();
 			}
 		
-			return filesInCurrentFolder != null; // the lopp above implies hasNext = true
+			return filesInCurrentFolderIter != null; // the lopp above implies hasNext = true
 		}
 		catch (Exception e)
 		{	error = e;
