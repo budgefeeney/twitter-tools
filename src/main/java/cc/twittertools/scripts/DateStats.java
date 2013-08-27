@@ -152,8 +152,9 @@ public class DateStats implements Callable<Integer>
 				}
 		  }
 		}
-		
-		writeStatistics();
+		finally
+		{	writeStatistics();
+		}
 		
 		return tweetCount;
 	}
