@@ -156,7 +156,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 	
 	@Override
 	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
-	{	String[] dictNames = new String[numDicts];
+	{	String[] dictNames = new String[numDicts + 1];
 		for (int tokenId = 1; tokenId <= numDicts; tokenId++)
 		{	dictNames[tokenId] = pyVarName + StringUtils.capitalizeFirstLetter(tokens[tokenId].toString().toLowerCase());
 		}
