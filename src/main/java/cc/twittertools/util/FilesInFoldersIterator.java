@@ -28,6 +28,7 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 			}
 		});
 		foldersIter = folders.iterator();
+		filesInCurrentFolderIter = nextFolder();
 	}
 	
 	public boolean hasNext()
@@ -62,7 +63,7 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 			return null;
 	
 		Path folder = foldersIter.next();
-		if (filesInCurrentFolder == null)
+		if (filesInCurrentFolder != null)
 			filesInCurrentFolder.close();
 		
 		filesInCurrentFolder = Files.newDirectoryStream(folder, new DirectoryStream.Filter<Path>()
@@ -75,6 +76,7 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 	
 	public void close() throws Exception
 	{	folders.close();
-		filesInCurrentFolder.close();
+		if (filesInCurrentFolder != null)
+			filesInCurrentFolder.close();
 	}
 }
