@@ -33,7 +33,7 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 	
 	public boolean hasNext()
 	{	try
-		{	while (filesInCurrentFolder != null && ! filesInCurrentFolderIter.hasNext())
+		{	while (filesInCurrentFolderIter != null && ! filesInCurrentFolderIter.hasNext())
 			{	filesInCurrentFolderIter = nextFolder();
 			}
 		
