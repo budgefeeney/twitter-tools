@@ -29,15 +29,17 @@ public class CompoundTokenDictionary implements TokenDictionary
 {
 	private final Map<TokenType, Integer> tokenIds =
 		new EnumMap<>(TokenType.class);
-		
+	
+	// There arrays are one-indexed so we can always do one-minus tokenId
+	// on the cumulative capacity
 	private final TokenType[] tokens =
-		new TokenType[TokenType.values().length];
+		new TokenType[TokenType.values().length + 1];
 	
 	private final Dictionary[] dicts =
-		new Dictionary[TokenType.values().length];
+		new Dictionary[TokenType.values().length + 1];
 	
 	private final int[] cumulativeCapacity =
-		new int[TokenType.values().length];
+		new int[TokenType.values().length + 1];
 	
 	private final TokenType defaultToken;
 	private       int numDicts = 0;
@@ -51,9 +53,9 @@ public class CompoundTokenDictionary implements TokenDictionary
 		this.tokenIds.putAll (that.tokenIds);
 		
 		this.numDicts = that.numDicts;
-		System.arraycopy (that.cumulativeCapacity, 0, this.cumulativeCapacity, 0, that.numDicts);
-		System.arraycopy (that.tokens,             0, this.tokens,             0, that.numDicts);
-		for (int token = 0; token < this.numDicts; token++)
+		System.arraycopy (that.cumulativeCapacity, 0, this.cumulativeCapacity, 0, that.numDicts + 1);
+		System.arraycopy (that.tokens,             0, this.tokens,             0, that.numDicts + 1);
+		for (int token = 1; token <= this.numDicts; token++)
 			this.dicts[token] = that.dicts[token].clone();
 	}
 	
@@ -61,18 +63,16 @@ public class CompoundTokenDictionary implements TokenDictionary
 	{	Integer tokenIdPtr = tokenIds.get(tokenType);
 		final int tokenId;
 		if (tokenIdPtr == null)
-		{	tokenId = numDicts;
+		{	tokenId = numDicts + 1;
 			tokenIds.put (tokenType, tokenId);
 			tokens[tokenId] = tokenType;
 		}
 		else
-		{	tokenId = tokenIdPtr.intValue();
+		{	tokenId = tokenIdPtr.intValue() + 1;
 		}
 		
 		dicts[tokenId] = dictionary;
-		cumulativeCapacity[tokenId] = tokenId == 0
-			? dictionary.capacity()
-			: cumulativeCapacity[tokenId - 1] + dictionary.capacity();
+		cumulativeCapacity[tokenId] = cumulativeCapacity[tokenId - 1] + dictionary.capacity();
 		
 		++numDicts;
 	}
@@ -87,7 +87,11 @@ public class CompoundTokenDictionary implements TokenDictionary
 	 */
 	public int toInt(TokenType tokenType, String word)
 	{	assert tokenType != null : "Token type should not be null";
-		return dicts[id(tokenType)].toInt(word);
+	
+		int tokenTypeId = id(tokenType);
+		int wordId      = dicts[tokenTypeId].toInt(word);
+		
+		return cumulativeCapacity[tokenTypeId - 1] + wordId;
 	}
 	
 	@Override
@@ -99,27 +103,25 @@ public class CompoundTokenDictionary implements TokenDictionary
 	 * @see cc.twittertools.words.TokenDictionary#toWordToken(int)
 	 */
 	public Pair<TokenType, String> toWordToken (int wordId)
-	{	int token = 0;
+	{	int token = 1;
 		while (wordId >= cumulativeCapacity[token])
 			++token;
 		
-		int baseId = token == 0
-			? wordId
-			: wordId - cumulativeCapacity[token - 1];
+		int baseId = wordId - cumulativeCapacity[token - 1];
 		
 		return Pair.of(tokens[token], dicts[token].toWord(baseId));
 	}
 	
 	@Override
 	public void seal()
-	{	for (int token = 0; token < numDicts; token++)
+	{	for (int token = 1; token <= numDicts; token++)
 			dicts[token].seal();
 	}
 
 	@Override
 	public int size()
 	{	int size = 0;
-		for (int token = 0; token < numDicts; token++)
+		for (int token = 1; token <= numDicts; token++)
 			size += dicts[token].size();
 		return size;
 	}
@@ -133,7 +135,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 
 	@Override
 	public int capacity()
-	{	return numDicts == 0 ? 0 : cumulativeCapacity[numDicts - 1];
+	{	return cumulativeCapacity[numDicts];
 	}
 	
 
@@ -155,14 +157,14 @@ public class CompoundTokenDictionary implements TokenDictionary
 	@Override
 	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
 	{	String[] dictNames = new String[numDicts];
-		for (int tokenId = 0; tokenId < numDicts; tokenId++)
+		for (int tokenId = 1; tokenId <= numDicts; tokenId++)
 		{	dictNames[tokenId] = pyVarName + StringUtils.capitalizeFirstLetter(tokens[tokenId].toString().toLowerCase());
 		}
 		
-		for (int tokenId = 0; tokenId < numDicts; tokenId++)
+		for (int tokenId = 1; tokenId <= numDicts; tokenId++)
 		{	// find out if the same dictionary object is being used for more
 			// than one token type.
-			int dictRef = 0;
+			int dictRef = 1;
 			while (dictRef < tokenId)
 				if (dicts[dictRef] == dicts[tokenId] 
 						|| (dicts[dictRef] instanceof SigilStrippingDictionary 
