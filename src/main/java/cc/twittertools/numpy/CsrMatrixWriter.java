@@ -63,13 +63,16 @@ class CsrMatrixWriter implements AutoCloseable
 	private final static String PY_COMBINE_SCRIPT = 
 		   "import numpy as np; "
 		 + "import scipy.sparse as ssp; "
+		 + "import pickle as pkl; "
 
 		 + "indices = np.load('%s'); "
 		 + "indptr  = np.load('%s'); "
 		 + "data    = np.load('%s'); "
 		
 		 + "mat = ssp.csr_matrix((data, indices, indptr)); "
-		 + "np.save ('%s', mat);";
+		 + "f = open('%s', 'wb'); "
+     + "pkl.dump(mat, f); "
+     + "f.close(); ";
 	
 	/** 
 	 * if true launch a Python script on close which combines the three outputs into
@@ -153,11 +156,11 @@ class CsrMatrixWriter implements AutoCloseable
 		// Note that this essentially _doubles_ the memory usage
 		
 		close();
-		indicesPath.toFile().deleteOnExit();
-		indptrPath.toFile().deleteOnExit();
-		dataPath.toFile().deleteOnExit();
+//		indicesPath.toFile().deleteOnExit();
+//		indptrPath.toFile().deleteOnExit();
+//		dataPath.toFile().deleteOnExit();
 		
-		Path combinedPath = appendFileNameSuffix(filePrefix, ".npy");
+		Path combinedPath = appendFileNameSuffix(filePrefix, ".pkl");
 		String pyScript   = String.format (
 			PY_COMBINE_SCRIPT,
 			indicesPath.toString(),
