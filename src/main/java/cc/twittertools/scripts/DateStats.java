@@ -57,6 +57,7 @@ public class DateStats implements Callable<Integer>
 	private final Int2IntArrayMap          interPostTimeMins;
 	private final Map<String,  MutableInt> retweetsByUser;
 	private final Map<String,  MutableInt> rtRetweetsByUser;
+	private final Map<String,  MutableInt> tweetsPerUser;
 	
 	private final Path datasetDirectory;
 	private final Path postsSinceDayFile;
@@ -80,6 +81,7 @@ public class DateStats implements Callable<Integer>
 		interPostTimeMins    = new Int2IntArrayMap(MAX_INTER_TWEET_TIME_MINS);
 		retweetsByUser       = new HashMap<>(NUM_USERS_IN_DATASET);
 		rtRetweetsByUser     = new HashMap<>(NUM_USERS_IN_DATASET);
+		tweetsPerUser        = new HashMap<>(NUM_USERS_IN_DATASET);
 		
 		postsSinceDay.defaultReturnValue(0);
 		interPostTimeMins.defaultReturnValue(0);
@@ -110,10 +112,13 @@ public class DateStats implements Callable<Integer>
 			  			++tweetCount;
 			  			
 			  			// Retweet statistics
-				  		if (tweet.isRetweetFromId())
+				  		if (tweet.getAccount() != tweet.getAuthor())
 				  			inc (retweetsByUser, account);
-				  		if (tweet.isRetweetFromMsg())
+				  		else if (tweet.isRetweetFromMsg())
 				  			inc (rtRetweetsByUser, account);
+				  		else
+				  			inc (tweetsPerUser, account);
+				  		
 				  		
 				  		// Inter-post time statistics
 				  		if (account.equals (currentAccount) && lastDate != null)
@@ -174,6 +179,7 @@ public class DateStats implements Callable<Integer>
 					user                           + '\t' +
 					firstPostByUser.get(user)      + '\t' +
 					firstPostByUserAsDay.get(user) + '\t' +
+					tweetsPerUser.get(user)        + '\t' +
 					retweetsByUser.get(user)       + '\t' +
 					rtRetweetsByUser.get(user)     + '\n'
 				);
