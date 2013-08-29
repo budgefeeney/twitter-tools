@@ -61,7 +61,7 @@ public class DateStats implements Callable<Integer>
 	
 	private static final int MAX_CORRUPTED_TWEETS_PER_FILE = 5;
 
-	private final static Logger LOG = LoggerFactory.getLogger(DateStats.class);
+	private final static Logger LOG = LoggerFactory.getLogger(TwitterStats.class);
 	
 	private final Int2IntArrayMap          postsSinceDay;
 	private final Map<String,  DateTime>   lastPostByUser;
@@ -82,7 +82,7 @@ public class DateStats implements Callable<Integer>
 	
 	
 	
-	public DateStats(Path datasetDirectory, Path outputDir)
+	public TwitterStats(Path datasetDirectory, Path outputDir)
 	{
 		super();
 		this.datasetDirectory  = datasetDirectory;
@@ -407,6 +407,6 @@ public class DateStats implements Callable<Integer>
 		Path inputDir  = Paths.get("/Users/bryanfeeney/datasets/twitter-20130828");
 		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/");
 		
-		new DateStats (inputDir, outputDir).call();
+		new TwitterStats (inputDir, outputDir).call();
 	}
 }
