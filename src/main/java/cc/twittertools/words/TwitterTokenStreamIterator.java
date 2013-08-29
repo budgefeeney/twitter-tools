@@ -60,6 +60,14 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 		moveToNextToken();
 	}
 	
+	/**
+	 * Resets this iterator with the given text
+	 */
+	public void reset(String text)
+	{	toks.reset(text);
+		moveToNextToken();
+	}
+	
 
 	/**
 	 * Moves to the next token. Should that throw an Exception, stores
@@ -72,6 +80,7 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 		try
 		{	while ((hasNext = toks.incrementToken()))
 			{	term = charTermAttribute.getTermString();
+				boolean isAllCapLetters = isAllCapLetters (term);
 				if (lowerCase)
 				{	term = term.toLowerCase();
 				}
@@ -88,9 +97,20 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 				{	continue;
 				}
 				if (stem)
-				{	stemmer.setCurrent(term);
-					if (stemmer.stem())
-						term = stemmer.getCurrent();
+				{	if (! isProbablyAnAcronym(term, isAllCapLetters)) // the lucene stemmer tends to
+					{	stemmer.setCurrent(term);                       // completely dismantle acronyms
+						if (stemmer.stem())                             // (e.g. "IEDs" --> "I") so we 
+							term = stemmer.getCurrent();                  // avoid using it.
+					}
+					else
+					{	// Poor man's acronym stemmer - strip off terminating "s" characters
+						// on the presumption that they're _always_ there for pluralisation
+						if (term.charAt (term.length() - 1) == 's')
+						{	String stemmed = term.substring (0, term.length() - 1);
+							if (isProbablyAnAcronym (stemmed, true))
+								term = stemmed;
+						}
+					}
 				}
 				break;
 			}
@@ -99,6 +119,40 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 		{	e = new RuntimeException (ioe.getMessage(), ioe);
 			hasNext = true; // so they call next and see the exception
 		}
+	}
+	
+	/**
+	 * Soft test to see if the given term is an acronym
+	 * It uses a lookup list of common acroyms, and if no match is found 
+	 * against that set, it then returns true iff the term is all uppercase,
+	 * all letters, and its length is four characters or less
+	 */
+	private boolean isProbablyAnAcronym(String term, boolean isAllCapLetters)
+	{	return AcronymSet.INSTANCE.contains (term)
+			|| (term.length() < 5 && term.length() > 1 && isAllCapLetters);
+	}
+
+	/**
+	 * Is the given term entirely in capital letters.
+	 * If all characters but the last are uppercase letters, and the last
+	 * letter is the lowercase character "s", this also returns true. This
+	 * is due to the fact that this method is used to detect acronyms and
+	 * sometimes users will pluralise an upper-case acronym by appending a
+	 * lower-case s.
+	 */
+	public static boolean isAllCapLetters (String term)
+	{	if (term.isEmpty())
+			return false;
+		
+		for (int i = 0; i < term.length() - 1; i++)
+		{	char c = term.charAt(i);
+			if (! Character.isLetter(c) || Character.isLowerCase(c))
+				return false;
+		}
+	
+		char lastChar = term.charAt(term.length() - 1);
+		return (lastChar == 's' && term.length() > 1)
+				|| (Character.isLetter(lastChar) && Character.isUpperCase(lastChar));
 	}
 
 	@Override

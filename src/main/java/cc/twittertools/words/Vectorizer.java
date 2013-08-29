@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -43,10 +44,13 @@ public class Vectorizer {
 	
 //	private final static Logger LOG = LoggerFactory.getLogger(Vectorizer.class);
 	
+	private static final String SPACE_HTTP = " http://";
+
 	/** The different kinds of input text this tokenizer can operate on */
 	public static enum InputType { STANDARD_TEXT, TWITTER };
 	
 	private final Pattern DIGIT_REGEXP = Pattern.compile("[0-9]");
+	private final Pattern URL_REGEXP = Pattern.compile ("\\s+(?:\\w{2,}\\.)+\\w{2,}/[A-Z0-9]", Pattern.CASE_INSENSITIVE);
 	
 	private TokenDictionary dict;
 	private boolean         stemEnabled     = true;
@@ -58,8 +62,14 @@ public class Vectorizer {
 	private boolean         sealed          = false;
 	private InputType       inputType       = InputType.STANDARD_TEXT;
 	
+	
+	// Due to the way twitter's tokenizer works, we can just keep the
+	// one reference to a tokenizer instead of creating one per tweet
+	private TwitterTokenStreamIterator twitterTokenIter;
+	
 	public Vectorizer(TokenDictionary dict) {
 		this.dict = dict;
+		twitterTokenIter = createTokenizer("");
 	}
 	
 	public Vectorizer(Map<TokenType, Dictionary> dicts) {
@@ -68,6 +78,7 @@ public class Vectorizer {
 			compound.addDictionary(entry.getKey(), entry.getValue());
 		
 		this.dict = compound;
+		twitterTokenIter = createTokenizer("");
 	}
 	
 	/**
@@ -125,40 +136,65 @@ public class Vectorizer {
 				return new TokenStreamIterator(tok, charTermAttribute);
 			}
 			case TWITTER:
-			{ 	// TODO The twitter API allows the re-use of tokenizers once they're
-				// created. This would appear to be better than the Lucene approach,
-				// look into how we'd take advantage of this.
-				// TODO default contains the dot combiner. we probably don't want that.
-				com.twitter.common.text.token.TokenStream twitterTok = 
-				    // Remove punctuation not already used in entities below
-					new PunctuationFilter(
-					  // combine stock symbol
-				      new StockTokenCombiner(
-				        // combine emoticon like :) :-D
-				        new EmoticonTokenCombiner(
-				          // combine possessive form (e.g., apple's)
-				          new PossessiveContractionTokenCombiner(
-				            // combine URL
-				            new URLTokenCombiner(
-				              // combine # + hashtag
-				              new HashtagTokenCombiner(
-				                // combine @ + user name
-				                new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))));
-				
-				twitterTok.reset(text);
-				return new TwitterTokenStreamIterator (
-					twitterTok,
-					stemEnabled,
-					stopElimEnabled,
-					/* lower-case = */ true,
-					minWordLength,
-					maxWordLength
-				);
+			{ text = withUrlsMadeExplicit(text);
+				twitterTokenIter.reset(text);
+				return twitterTokenIter;
 			}
 		default:
 			throw new IllegalStateException ("Don't know how to tokenizer and filter inputs of type " + inputType);
 		}
 
+	}
+	
+	/**
+	 * Twitter's URL extractor is pretty hopeless, but I want to avoid cluttering
+	 * my token dictionary with nonsense IDs
+	 */
+	private final String withUrlsMadeExplicit (String text)
+	{	int start = 0;
+		Matcher m = URL_REGEXP.matcher(text);
+		while (m.find(start))
+		{	String left  = text.substring(0, m.start());
+			String right = text.substring(m.start());
+			String trimRight = right.trim();
+			
+			text = left + SPACE_HTTP + trimRight;
+			start = m.end() - (right.length() - trimRight.length()) + SPACE_HTTP.length() - 1;
+			m = URL_REGEXP.matcher(text);
+		}
+		return text;
+	}
+
+	/**
+	 * Creates the single instance of the tokenizer used for all tweets.
+	 */
+	private TwitterTokenStreamIterator createTokenizer(String text)
+	{
+		com.twitter.common.text.token.TokenStream twitterTok = 
+		    // Remove punctuation not already used in entities below
+			new PunctuationFilter(
+			  // combine stock symbol
+		      new StockTokenCombiner(
+		        // combine emoticon like :) :-D
+		        new EmoticonTokenCombiner(
+		          // combine possessive form (e.g., apple's)
+		          new PossessiveContractionTokenCombiner(
+		            // combine URL
+		            new URLTokenCombiner(
+		              // combine # + hashtag
+		              new HashtagTokenCombiner(
+		                // combine @ + user name
+		                new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))));
+		
+		twitterTok.reset(text);
+		return new TwitterTokenStreamIterator (
+			twitterTok,
+			stemEnabled,
+			stopElimEnabled,
+			/* lower-case = */ true,
+			minWordLength,
+			maxWordLength
+		);
 	}
 	
 	/**
