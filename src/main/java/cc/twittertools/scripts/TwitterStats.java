@@ -170,6 +170,9 @@ public class TwitterStats implements Callable<Integer>
 				  		}
 				  		
 				  		// Content statistics	
+				  		String badUrl  = "Tech girl blocks tweet plot spoilers << AWESOME story 8D cc: @ShelbyKnox http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=PublicRSS20-sa …";
+				  		String slashes = "Bad news :( Financial f/cs are wrong 3/4s of the time based on gov'ts advice: agree/disagree? ;-) More at bit.ly/3n32ds2";
+				  		
 				  		Iterator<Pair<TokenType, String>> iter = vec.toWords(tweet.getMsg());
 				  		while (iter.hasNext())
 				  		{	Pair<TokenType, String> tokenValue = iter.next();
@@ -332,7 +335,7 @@ public class TwitterStats implements Callable<Integer>
 			}
 		}
 		catch (IOException ioe)
-		{	LOG.error("Error writing out map " + mapName.length > 0 ? mapName[0] + " to file " + ioe.getMessage(), ioe);
+		{	LOG.error("Error writing out map " + (mapName.length > 0 ? mapName[0] : "") + " to file " + ioe.getMessage(), ioe);
 		}
 	}
 	
