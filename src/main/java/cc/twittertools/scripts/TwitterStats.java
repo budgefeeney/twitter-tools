@@ -7,6 +7,7 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -53,11 +54,11 @@ import com.twitter.common.text.token.attribute.TokenType;
 public class TwitterStats implements Callable<Integer>
 {
 	private static final int MAX_INTER_TWEET_TIME_MINS = 31 * 24 * 60; // basically we expect users to tweet at least once a month
-	private static final int NUM_USERS_IN_DATASET = 21000;
+	private static final int NUM_USERS_IN_DATASET = 21_000;
 	private static final int DATASET_LENGTH_IN_DAYS = 365;
-	private static final int EXPECTED_HASH_TAG_COUNT = 3000;
-	private static final int EXPECTED_URL_COUNT = 1000000;
-	private static final int EXPECTED_WORD_COUNT = 50000;
+	private static final int EXPECTED_HASH_TAG_COUNT = 3_000;
+	private static final int EXPECTED_URL_COUNT = 10_000_000;
+	private static final int EXPECTED_WORD_COUNT = 50_000;
 	
 	private static final int MAX_CORRUPTED_TWEETS_PER_FILE = 5;
 
@@ -73,9 +74,9 @@ public class TwitterStats implements Callable<Integer>
 	private final Map<String,  MutableInt> tweetsPerUser;
 	private final Map<Integer, Map<String,  MutableInt>> hashTagCount;
 	private final Map<Integer, Map<String,  MutableInt>> smileyCounts;
-	private final Set<String>              addressees;
+	private final Map<String,  MutableInt> addresseeCounts;
 	private final Map<String,  MutableInt> urlCounts;
-	private final Set<String>              dictionary;
+	private final Map<String,  MutableInt> wordCounts;
 	
 	private final Path datasetDirectory;
 	private final Path outputDir;
@@ -98,9 +99,9 @@ public class TwitterStats implements Callable<Integer>
 		tweetsPerUser        = new HashMap<>(NUM_USERS_IN_DATASET);
 		hashTagCount         = new HashMap<>(13 * 12); // 13 years, month by month
 		smileyCounts         = new HashMap<>(13 * 12); // 13 years, month by month
-		addressees           = new HashSet<>(NUM_USERS_IN_DATASET * 10);
+		addresseeCounts      = new HashMap<>(8_000_000);
 		urlCounts            = new HashMap<>(EXPECTED_URL_COUNT);
-		dictionary           = new HashSet<>(EXPECTED_WORD_COUNT);
+		wordCounts           = new HashMap<>(EXPECTED_WORD_COUNT);
 		
 		postsSinceDay.defaultReturnValue(0);
 		interPostTimeMins.defaultReturnValue(0);
@@ -177,7 +178,7 @@ public class TwitterStats implements Callable<Integer>
 				  					inc (urlCounts, tokenValue.getValue());
 				  					break;
 				  				case USERNAME:
-				  					addressees.add (tokenValue.getValue());
+				  					inc (addresseeCounts, tokenValue.getValue());
 				  					break;
 				  				case HASHTAG:
 				  					incTagCount (tweetDate, tokenValue.getValue());
@@ -186,9 +187,9 @@ public class TwitterStats implements Callable<Integer>
 				  					incSmileyCount (tweetDate, tokenValue.getValue());
 				  					break;
 				  				case TOKEN:
-				  					dictionary.add (tokenValue.getValue());
+				  					inc (wordCounts, tokenValue.getValue());
 				  					if (tokenValue.getValue().length() == 1)
-				  						System.out.println ("Tweet " + String.format("%5d", tweetCount) + ": Single character word '" + tokenValue.getValue() + "' dervied from message '" + tweet.getMsg() + "'");
+				  						LOG.warn ("Tweet " + String.format("%5d", tweetCount) + ": Single character word '" + tokenValue.getValue() + "' dervied from message '" + tweet.getMsg() + "'");
 				  				default:
 				  					break;
 				  			}
@@ -265,20 +266,10 @@ public class TwitterStats implements Callable<Integer>
 		}
 		
 		// The dictionary of words
-		try
-		{	FileUtils.writeLines(outputDir.resolve("dictionary.txt").toFile(), Charsets.UTF_8.name(), dictionary);
-		}
-		catch (IOException ioe)
-		{	LOG.error ("Error writing out dictionary of words to file " + ioe.getMessage(), ioe);
-		}
+		writeMapToFile (outputDir.resolve("dictionary.txt"), Charsets.UTF_8, wordCounts, "word-counts");
 		
 		// The list of addressees
-		try
-		{	FileUtils.writeLines(outputDir.resolve("addressees.txt").toFile(), Charsets.UTF_8.name(), addressees);
-		}
-		catch (IOException ioe)
-		{	LOG.error ("Error writing out list of addressees to file " + ioe.getMessage(), ioe);
-		}
+		writeMapToFile (outputDir.resolve("addressees.txt"), Charsets.UTF_8, addresseeCounts, "addressee-counts");
 		
 		// The list of hashtags
 		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("hashtags.txt"), Charsets.UTF_8); )
@@ -326,13 +317,22 @@ public class TwitterStats implements Callable<Integer>
 		}
 		
 		// Dictionary of URLs
-		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("urls.txt"), Charsets.UTF_8);)
-		{	for (Map.Entry<String, MutableInt> entry : urlCounts.entrySet())
-			{	wtr.write(entry.getKey() + '\t' + entry.getValue() + '\n');
+		writeMapToFile(outputDir.resolve("urls.txt"), Charsets.UTF_8, urlCounts, "url-counts");
+	}
+
+	/**
+	 * Writes a map out to a file. Keys are delimited from values by tabs, and key-value
+	 * pairs are delimited from one another by newlines.
+	 */
+	private final static <K,V> void writeMapToFile(Path file, Charset charset, Map<K, V> urlCounts, String... mapName)
+	{
+		try (BufferedWriter wtr = Files.newBufferedWriter(file, Charsets.UTF_8);)
+		{	for (Map.Entry<K, V> entry : urlCounts.entrySet())
+			{	wtr.write(entry.getKey().toString() + '\t' + entry.getValue().toString() + '\n');
 			}
 		}
 		catch (IOException ioe)
-		{	LOG.error("Error writing out counts of URLs to file " + ioe.getMessage(), ioe);
+		{	LOG.error("Error writing out map " + mapName.length > 0 ? mapName[0] + " to file " + ioe.getMessage(), ioe);
 		}
 	}
 	
