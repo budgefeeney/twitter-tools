@@ -8,8 +8,6 @@ import java.util.Map;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.velocity.util.StringUtils;
 
-import cc.twittertools.post.Sigil;
-
 import com.twitter.common.text.token.attribute.TokenType;
 
 /**
@@ -129,6 +127,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 	/* (non-Javadoc)
 	 * @see cc.twittertools.words.TokenDictionary#size(com.twitter.common.text.token.attribute.TokenType)
 	 */
+	@Override
 	public int size(TokenType tokenType)
 	{	return dicts[id(tokenType)].size();
 	}
@@ -142,6 +141,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 	/* (non-Javadoc)
 	 * @see cc.twittertools.words.TokenDictionary#capacity(com.twitter.common.text.token.attribute.TokenType)
 	 */
+	@Override
 	public int capacity(TokenType tokenType)
 	{	return dicts[id(tokenType)].capacity();
 	}
