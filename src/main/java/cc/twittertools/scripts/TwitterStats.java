@@ -50,7 +50,7 @@ import com.twitter.common.text.token.attribute.TokenType;
  * @author bryanfeeney
  *
  */
-public class DateStats implements Callable<Integer>
+public class TwitterStats implements Callable<Integer>
 {
 	private static final int MAX_INTER_TWEET_TIME_MINS = 31 * 24 * 60; // basically we expect users to tweet at least once a month
 	private static final int NUM_USERS_IN_DATASET = 21000;
