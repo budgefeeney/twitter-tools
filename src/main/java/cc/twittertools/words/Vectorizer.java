@@ -28,6 +28,7 @@ import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.twitter.common.text.combiner.EmoticonTokenCombiner;
+import com.twitter.common.text.combiner.ExtractorBasedTokenCombiner;
 import com.twitter.common.text.combiner.HashtagTokenCombiner;
 import com.twitter.common.text.combiner.PossessiveContractionTokenCombiner;
 import com.twitter.common.text.combiner.StockTokenCombiner;
@@ -41,6 +42,39 @@ import com.twitter.common.text.tokenizer.LatinTokenizer;
  * Converts text into vectors, it's as simple as that.
  */
 public class Vectorizer {
+	
+	
+	private final static class StdEmoticonCombiner extends ExtractorBasedTokenCombiner {
+	  public StdEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
+	    super(inputStream);
+	    setExtractor(new EmoticonWithEyesExtractor(':'));
+	    setType(TokenType.EMOTICON);
+	  }
+	};
+	
+	private final static class WinkEmoticonCombiner extends ExtractorBasedTokenCombiner {
+	  public WinkEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
+	    super(inputStream);
+	    setExtractor(new EmoticonWithEyesExtractor(';'));
+	    setType(TokenType.EMOTICON);
+	  }
+	}
+
+	private final static class GoogleEmoticonCombiner extends ExtractorBasedTokenCombiner {
+	  public GoogleEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
+	    super(inputStream);
+	    setExtractor(new EmoticonWithEyesExtractor('8'));
+	    setType(TokenType.EMOTICON);
+	  }
+	};
+	
+	private final static class GlassesEmoticonCombiner extends ExtractorBasedTokenCombiner {
+	  public GlassesEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
+	    super(inputStream);
+	    setExtractor(new EmoticonWithEyesExtractor('B'));
+	    setType(TokenType.EMOTICON);
+	  }
+	};
 	
 //	private final static Logger LOG = LoggerFactory.getLogger(Vectorizer.class);
 	
@@ -176,7 +210,7 @@ public class Vectorizer {
 			  // combine stock symbol
 		      new StockTokenCombiner(
 		        // combine emoticon like :) :-D
-		        new EmoticonTokenCombiner(
+		        new StdEmoticonCombiner(new WinkEmoticonCombiner (new GoogleEmoticonCombiner (new GlassesEmoticonCombiner(
 		          // combine possessive form (e.g., apple's)
 		          new PossessiveContractionTokenCombiner(
 		            // combine URL
@@ -184,7 +218,7 @@ public class Vectorizer {
 		              // combine # + hashtag
 		              new HashtagTokenCombiner(
 		                // combine @ + user name
-		                new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))));
+		                new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build()))))))))));
 		
 		twitterTok.reset(text);
 		return new TwitterTokenStreamIterator (
