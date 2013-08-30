@@ -72,11 +72,6 @@
       <url>http://maven.twttr.com</url>
     </repository>
     <repository>
-      <id>twitter</id>
-      <name>Repository for Twitter Java Tools</name>
-      <url>http://maven.twttr.com</url>
-    </repository>
-    <repository>
       <id>javanet</id>
       <name>Repository for Maven2</name>
       <url>http://download.java.net/maven/2</url>
