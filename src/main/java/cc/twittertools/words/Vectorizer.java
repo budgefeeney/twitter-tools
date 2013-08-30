@@ -27,10 +27,8 @@ import org.apache.lucene.util.Version;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.twitter.common.text.combiner.EmoticonTokenCombiner;
 import com.twitter.common.text.combiner.ExtractorBasedTokenCombiner;
 import com.twitter.common.text.combiner.HashtagTokenCombiner;
-import com.twitter.common.text.combiner.PossessiveContractionTokenCombiner;
 import com.twitter.common.text.combiner.StockTokenCombiner;
 import com.twitter.common.text.combiner.URLTokenCombiner;
 import com.twitter.common.text.combiner.UserNameTokenCombiner;
@@ -209,16 +207,18 @@ public class Vectorizer {
 			new PunctuationFilter(
 			  // combine stock symbol
 		      new StockTokenCombiner(
-		        // combine emoticon like :) :-D
+		        // combine emoticon like ;) :-D 8D B-| 
 		        new StdEmoticonCombiner(new WinkEmoticonCombiner (new GoogleEmoticonCombiner (new GlassesEmoticonCombiner(
 		          // combine possessive form (e.g., apple's)
-		          new PossessiveContractionTokenCombiner(
-		            // combine URL
-		            new URLTokenCombiner(
-		              // combine # + hashtag
-		              new HashtagTokenCombiner(
-		                // combine @ + user name
-		                new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build()))))))))));
+		          new MyPossessiveContractionTokenCombiner(
+		            // Combine fractions (3/4s) and abbrvs ("financial f/cs")
+		            new SlashTokenCombiner(
+		              // combine URL
+		              new URLTokenCombiner(
+		                // combine # + hashtag
+		                new HashtagTokenCombiner(
+		                  // combine @ + user name
+		                  new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))))))));
 		
 		twitterTok.reset(text);
 		return new TwitterTokenStreamIterator (
