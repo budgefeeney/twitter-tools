@@ -2,7 +2,6 @@ package cc.twittertools.words.combiners;
 
 import java.util.regex.Pattern;
 
-import com.google.common.base.Preconditions;
 import com.twitter.common.text.combiner.ExtractorBasedTokenCombiner;
 import com.twitter.common.text.detector.PunctuationDetector;
 import com.twitter.common.text.extractor.EmoticonExtractor;
