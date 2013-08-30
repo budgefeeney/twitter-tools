@@ -97,12 +97,6 @@ public final class EmoticonCombiners
 		
 		public final Pattern EMOTICON_REGEX_PATTERN;
 		
-		/** The term of art for referring to {positive, negative} sentiment is polarity. */
-		public enum Polarity {
-		 HAPPY,
-		 SAD
-		}
-		
 		/** Default constructor. **/
 		public EmoticonWithEyesExtractor(char eyesCharacter) {
 			String eyes = String.valueOf(eyesCharacter);
@@ -114,24 +108,6 @@ public final class EmoticonCombiners
 			         		+ String.format(FROWNY_REGEX_PATTERN, eyes)
 			         + ")+(?=$|" + EMOTICON_DELIMITER + ")");
 			setRegexPattern(EMOTICON_REGEX_PATTERN, 1, 1);
-		}
-		
-		/**
-		* Returns the polarity (happy, sad...) of a given emoticon.
-		*
-		* @param emoticon emoticon text
-		* @return polarity of the emoticon
-		*/
-		public static final Polarity getPolarityOf(CharSequence emoticon) {
-			Preconditions.checkNotNull(emoticon);
-			Preconditions.checkArgument(emoticon.length() > 0);
-			
-			char lastChar = emoticon.charAt(emoticon.length() - 1);
-			if (lastChar == '(' || lastChar == '<') {
-				return Polarity.SAD;
-			}
-
-			return Polarity.HAPPY;
 		}
 	}
 	
