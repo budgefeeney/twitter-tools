@@ -100,8 +100,15 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 				{	if (term.length() > 2 && ! isProbablyAnAcronym(term, isAllCapLetters)) 
 					{	stemmer.setCurrent(term);                       // the lucene stemmer tends to
 						if (stemmer.stem())                             // completely dismantle acronyms
-							term = stemmer.getCurrent();                  // (e.g. "IEDs" --> "I") so we 
-					}                                                 // avoid using it.
+						{	term = stemmer.getCurrent();                  // (e.g. "IEDs" --> "I") so we 
+					    // "it's" goes to "it'" instead of "it"       // avoid using it.
+							while (term.length() > 0 && ! Character.isLetterOrDigit(term.charAt(term.length() - 1)))
+								term = term.substring(0, term.length() - 1);
+							
+							if (term.isEmpty())
+								continue;
+						}
+					}                                                 
 					else
 					{	// Poor man's acronym stemmer - strip off terminating "s" characters
 						// on the presumption that they're _always_ there for pluralisation
