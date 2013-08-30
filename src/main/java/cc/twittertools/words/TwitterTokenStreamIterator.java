@@ -97,7 +97,7 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 				{	continue;
 				}
 				if (stem) // Have to be careful with stemming twitter text due to abbreviations
-				{	if (term.length() > 2 && ! isProbablyAnAcronym(term, isAllCapLetters)) 
+				{	if (term.length() > 2 && ! isProbablyAnAcronym(term, isAllCapLetters) && ! isSlashAbbrv(term)) 
 					{	stemmer.setCurrent(term);                       // the lucene stemmer tends to
 						if (stemmer.stem())                             // completely dismantle acronyms
 						{	term = stemmer.getCurrent();                  // (e.g. "IEDs" --> "I") so we 
@@ -139,6 +139,26 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 			|| (term.length() < 5 && term.length() > 1 && isAllCapLetters);
 	}
 
+	/**
+	 * Is this a slash abbreviation, i.e. an abbreviation containing a single
+	 * slash. We use this to stop the stemmer taking it apart.
+	 */
+	public static boolean isSlashAbbrv (final String term)
+	{	if (term.length() > 5)
+			return false;
+		
+		boolean foundSlash = false;
+		for (int i = 0; i < term.length(); i++)
+		{	final char c = term.charAt(i);
+			if (c == '/' && ! foundSlash)
+				foundSlash = true;
+			else
+				if (! Character.isLetter(c))
+					return false;
+		}
+		return foundSlash;
+	}
+	
 	/**
 	 * Is the given term entirely in capital letters. 
 	 * There are two exceptions to this rule:

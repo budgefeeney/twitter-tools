@@ -49,9 +49,9 @@ public class TokenizationTest {
 		int numToks = 0;
 		while (iter.hasNext())
 		{	Pair<TokenType, String> tokenValue = iter.next();
-			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight(), outputs[numToks * 2 + 1]);
+			assertEquals(outputs[numToks * 2], tokenValue.getLeft().toString());
+			assertEquals(outputs[numToks * 2 + 1], tokenValue.getRight().toString());
 			numToks++;
 		}
 		assertEquals (outputs.length / 2, numToks);
@@ -83,8 +83,8 @@ public class TokenizationTest {
 		while (iter.hasNext())
 		{	Pair<TokenType, String> tokenValue = iter.next();
 			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			assertEquals(outputs[numToks * 2], tokenValue.getLeft().toString());
+			assertEquals(outputs[numToks * 2 + 1], tokenValue.getRight().toString());
 			numToks++;
 		}
 		assertEquals (outputs.length / 2, numToks);
@@ -111,8 +111,8 @@ public class TokenizationTest {
 		while (iter.hasNext())
 		{	Pair<TokenType, String> tokenValue = iter.next();
 			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			assertEquals(outputs[numToks * 2], tokenValue.getLeft().toString());
+			assertEquals(outputs[numToks * 2 + 1], tokenValue.getRight().toString());
 			numToks++;
 		}
 		System.out.flush();
@@ -155,8 +155,45 @@ public class TokenizationTest {
 		while (iter.hasNext())
 		{	Pair<TokenType, String> tokenValue = iter.next();
 			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			assertEquals(outputs[numToks * 2], tokenValue.getLeft().toString());
+			assertEquals(outputs[numToks * 2 + 1], tokenValue.getRight().toString());
+			numToks++;
+		}
+		System.out.flush();
+		assertEquals (outputs.length / 2, numToks);
+	}
+	
+	@Test
+	public void testSlashes() throws IOException
+	{	
+		String input = "Cont. claims more interesting than initial claims. Down again. Implies risk of even lower U/E rate.";
+		String[] outputs = new String[] {
+	   "TOKEN", "cont",
+	   "TOKEN", "claim",
+	   "TOKEN", "more",
+	   "TOKEN", "interest",
+	   "TOKEN", "than",
+	   "TOKEN", "initi",
+	   "TOKEN", "claim",
+	   "TOKEN", "down",
+	   "TOKEN", "again",
+	   "TOKEN", "impli",
+	   "TOKEN", "risk",
+	   "TOKEN", "even",
+	   "TOKEN", "lower",
+	   "TOKEN", "u/e",
+	   "TOKEN", "rate"
+		};
+		
+		Vectorizer vec = new Main().newVectorizer();
+		
+		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+		int numToks = 0;
+		while (iter.hasNext())
+		{	Pair<TokenType, String> tokenValue = iter.next();
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+			assertEquals(outputs[numToks * 2], tokenValue.getLeft().toString());
+			assertEquals(outputs[numToks * 2 + 1], tokenValue.getRight().toString());
 			numToks++;
 		}
 		System.out.flush();
