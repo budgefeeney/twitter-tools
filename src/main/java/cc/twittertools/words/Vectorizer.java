@@ -27,10 +27,8 @@ import org.apache.lucene.util.Version;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.twitter.common.text.combiner.ExtractorBasedTokenCombiner;
 import com.twitter.common.text.combiner.HashtagTokenCombiner;
 import com.twitter.common.text.combiner.StockTokenCombiner;
-import com.twitter.common.text.combiner.URLTokenCombiner;
 import com.twitter.common.text.combiner.UserNameTokenCombiner;
 import com.twitter.common.text.filter.PunctuationFilter;
 import com.twitter.common.text.token.attribute.TokenType;
@@ -181,7 +179,7 @@ public class Vectorizer {
 		            // Combine fractions (3/4s) and abbrvs ("financial f/cs")
 		            new SlashTokenCombiner(
 		              // combine URL
-		              new URLTokenCombiner(
+		              new UrlCombiner(
 		                // combine # + hashtag
 		                new HashtagTokenCombiner(
 		                  // combine @ + user name

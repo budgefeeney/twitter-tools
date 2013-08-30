@@ -61,39 +61,33 @@ public class TokenizationTest {
 	{
 		String input  = "Tech girl blocks tweet plot spoilers << AWESOME story 8D cc: @ShelbyKnox http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=PublicRSS20-sa …";
 		String[] outputs = new String[] {
-	  			   "TOKEN", "bad",
-	  			   "TOKEN", "new",
-	  			"EMOTICON", ":(",
-	  			   "TOKEN", "i'v",
-	  			   "TOKEN", "realis",
-	  			   "TOKEN", "financi",
-	  			   "TOKEN", "f/c",
-	  			   "TOKEN", "wrong",
-	  			   "TOKEN", "3/4",
-	  			   "TOKEN", "time",
-	  			   "TOKEN", "base",
-	  			   "TOKEN", "gov't",
-	  			   "TOKEN", "advic",
-	  			   "TOKEN", "agre",
-	  			   "TOKEN", "disagre",
-	  			"EMOTICON", ";-)",
-	  			   "TOKEN", "more",
-	  			     "URL", "http://bit.ly/3n32ds2",
+			   "TOKEN", "tech",
+			   "TOKEN", "girl",
+			   "TOKEN", "block",
+			   "TOKEN", "tweet",
+			   "TOKEN", "plot",
+			   "TOKEN", "spoiler",
+			   "TOKEN", "awesom",
+			   "TOKEN", "stori",
+			"EMOTICON", "8d",
+			   "TOKEN", "cc",
+			"USERNAME", "@shelbyknox",
+			     "URL", "http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=publicrss20-sa"
 	  		};
 			
 			
 			Vectorizer vec = new Main().newVectorizer();
 	  		
-	  		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
-	  		int numToks = 0;
-	  		while (iter.hasNext())
-	  		{	Pair<TokenType, String> tokenValue = iter.next();
-	  			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-//	  			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-//	  			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
-	  			numToks++;
-	  		}
-//	  		assertEquals (outputs.length / 2, numToks);
+  		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+  		int numToks = 0;
+  		while (iter.hasNext())
+  		{	Pair<TokenType, String> tokenValue = iter.next();
+  			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+  			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
+  			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+  			numToks++;
+  		}
+  		assertEquals (outputs.length / 2, numToks);
 	}
 	
 	@Test
