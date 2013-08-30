@@ -95,4 +95,33 @@ public class TokenizationTest {
 	  		}
 //	  		assertEquals (outputs.length / 2, numToks);
 	}
+	
+	@Test
+	public void testSmileys()
+	{
+		String input  = "Anyone remember Keith (Mr. what's in the box) x)";
+		String[] outputs = new String[] {
+			   "TOKEN", "anyon",
+			   "TOKEN", "rememb",
+			   "TOKEN", "keith",
+			   "TOKEN", "mr",
+			   "TOKEN", "what",
+			   "TOKEN", "box",
+			"EMOTICON", "x)"
+	  };
+			
+		Vectorizer vec = new Main().newVectorizer();
+  		
+		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+		int numToks = 0;
+		while (iter.hasNext())
+		{	Pair<TokenType, String> tokenValue = iter.next();
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
+			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			numToks++;
+		}
+		System.out.flush();
+		assertEquals (outputs.length / 2, numToks);
+	}
 }

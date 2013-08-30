@@ -41,39 +41,6 @@ import com.twitter.common.text.tokenizer.LatinTokenizer;
  */
 public class Vectorizer {
 	
-	
-	private final static class StdEmoticonCombiner extends ExtractorBasedTokenCombiner {
-	  public StdEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
-	    super(inputStream);
-	    setExtractor(new EmoticonWithEyesExtractor(':'));
-	    setType(TokenType.EMOTICON);
-	  }
-	};
-	
-	private final static class WinkEmoticonCombiner extends ExtractorBasedTokenCombiner {
-	  public WinkEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
-	    super(inputStream);
-	    setExtractor(new EmoticonWithEyesExtractor(';'));
-	    setType(TokenType.EMOTICON);
-	  }
-	}
-
-	private final static class GoogleEmoticonCombiner extends ExtractorBasedTokenCombiner {
-	  public GoogleEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
-	    super(inputStream);
-	    setExtractor(new EmoticonWithEyesExtractor('8'));
-	    setType(TokenType.EMOTICON);
-	  }
-	};
-	
-	private final static class GlassesEmoticonCombiner extends ExtractorBasedTokenCombiner {
-	  public GlassesEmoticonCombiner(com.twitter.common.text.token.TokenStream inputStream) {
-	    super(inputStream);
-	    setExtractor(new EmoticonWithEyesExtractor('B'));
-	    setType(TokenType.EMOTICON);
-	  }
-	};
-	
 //	private final static Logger LOG = LoggerFactory.getLogger(Vectorizer.class);
 	
 	private static final String SPACE_HTTP = " http://";
@@ -208,7 +175,7 @@ public class Vectorizer {
 			  // combine stock symbol
 		      new StockTokenCombiner(
 		        // combine emoticon like ;) :-D 8D B-| 
-		        new StdEmoticonCombiner(new WinkEmoticonCombiner (new GoogleEmoticonCombiner (new GlassesEmoticonCombiner(
+		        EmoticonCombiners.newAllEmoticonCombiner(
 		          // combine possessive form (e.g., apple's)
 		          new MyPossessiveContractionTokenCombiner(
 		            // Combine fractions (3/4s) and abbrvs ("financial f/cs")
@@ -218,7 +185,7 @@ public class Vectorizer {
 		                // combine # + hashtag
 		                new HashtagTokenCombiner(
 		                  // combine @ + user name
-		                  new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))))))));
+		                  new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build()))))))));
 		
 		twitterTok.reset(text);
 		return new TwitterTokenStreamIterator (
