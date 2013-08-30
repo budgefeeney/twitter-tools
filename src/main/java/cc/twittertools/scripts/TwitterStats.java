@@ -1,7 +1,5 @@
 package cc.twittertools.scripts;
 
-import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntSet;
 
@@ -17,6 +15,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
@@ -52,8 +51,8 @@ public class TwitterStats implements Callable<Integer>
 {
 	private static final int MAX_INTER_TWEET_TIME_MINS = 31 * 24 * 60; // basically we expect users to tweet at least once a month
 	private static final int NUM_USERS_IN_DATASET = 21_000;
-	private static final int DATASET_LENGTH_IN_DAYS = 365;
-	private static final int EXPECTED_HASH_TAG_COUNT = 3_000;
+	private static final int DATASET_LENGTH_IN_DAYS = 5_000;
+	private static final int EXPECTED_HASH_TAG_COUNT = 3_000_000;
 	private static final int EXPECTED_URL_COUNT = 10_000_000;
 	private static final int EXPECTED_WORD_COUNT = 50_000;
 	
@@ -61,11 +60,11 @@ public class TwitterStats implements Callable<Integer>
 
 	private final static Logger LOG = LoggerFactory.getLogger(TwitterStats.class);
 	
-	private final Int2IntArrayMap          postsSinceDay;
-	private final Map<String,  DateTime>   lastPostByUser;
+	private final Map<Integer, MutableInt> postsSinceDay;
+	private final Map<String, DateTime>    lastPostByUser;
 	private final Map<String,  DateTime>   firstPostByUser;
 	private final Map<String,  Integer>    firstPostByUserAsDay;
-	private final Int2IntArrayMap          interPostTimeMins;
+	private final Map<Integer, MutableInt> interPostTimeMins;
 	private final Map<String,  MutableInt> retweetsByUser;
 	private final Map<String,  MutableInt> rtRetweetsByUser;
 	private final Map<String,  MutableInt> tweetsPerUser;
@@ -86,11 +85,11 @@ public class TwitterStats implements Callable<Integer>
 		this.datasetDirectory  = datasetDirectory;
 		this.outputDir         = outputDir;
 		
-		postsSinceDay        = new Int2IntArrayMap(DATASET_LENGTH_IN_DAYS);
+		postsSinceDay        = new HashMap<>(DATASET_LENGTH_IN_DAYS);
 		lastPostByUser       = new HashMap<>(NUM_USERS_IN_DATASET);
 		firstPostByUser      = new HashMap<>(NUM_USERS_IN_DATASET);
 		firstPostByUserAsDay = new HashMap<>(NUM_USERS_IN_DATASET);
-		interPostTimeMins    = new Int2IntArrayMap(MAX_INTER_TWEET_TIME_MINS);
+		interPostTimeMins    = new HashMap<>(MAX_INTER_TWEET_TIME_MINS);
 		retweetsByUser       = new HashMap<>(NUM_USERS_IN_DATASET);
 		rtRetweetsByUser     = new HashMap<>(NUM_USERS_IN_DATASET);
 		tweetsPerUser        = new HashMap<>(NUM_USERS_IN_DATASET);
@@ -99,9 +98,6 @@ public class TwitterStats implements Callable<Integer>
 		addresseeCounts      = new HashMap<>(8_000_000);
 		urlCounts            = new HashMap<>(EXPECTED_URL_COUNT);
 		wordCounts           = new HashMap<>(EXPECTED_WORD_COUNT);
-		
-		postsSinceDay.defaultReturnValue(0);
-		interPostTimeMins.defaultReturnValue(0);
 	}
 	
 	public Integer call() throws Exception
@@ -239,8 +235,8 @@ public class TwitterStats implements Callable<Integer>
 		
 		// Inter post time statistics
 		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("interPostStats.txt"), Charsets.UTF_8))
-		{	for (Int2IntMap.Entry entry : interPostTimeMins.int2IntEntrySet())
-				wtr.write(Integer.toString (entry.getIntKey()) + '\t' + String.valueOf(entry.getIntValue()) + '\n');;
+		{	for (Map.Entry<Integer, ? extends Number> entry : interPostTimeMins.entrySet())
+				wtr.write(entry.getKey().toString() + '\t' + entry.getValue().toString() + '\n');;
 		}
 		catch (IOException ioe)
 		{	LOG.error("Error writing out inter-post time statistics to file " + ioe.getMessage(), ioe);
@@ -248,13 +244,13 @@ public class TwitterStats implements Callable<Integer>
 		
 		// Tweets since date counts
 		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("postsSinceDay.txt"), Charsets.UTF_8))
-		{	IntSet set   = postsSinceDay.keySet();
+		{	Set<Integer> set = postsSinceDay.keySet();
 			int    start = min (set);
 			int    end   = max (set);
 			
 			int cumulative = 0;
 			for (int day = end; day >= start; day--)
-			{	cumulative += postsSinceDay.get(day);
+			{	cumulative += postsSinceDay.get(day).intValue();
 				wtr.write(Integer.toString (day) + '\t' + Integer.toString (cumulative) + '\n');
 			}
 		}
@@ -333,23 +329,23 @@ public class TwitterStats implements Callable<Integer>
 		}
 	}
 	
-	private int min(IntSet set)
+	private int min(Set<Integer> set)
 	{	int min = Integer.MAX_VALUE;
-		IntIterator iter = set.iterator();
+		Iterator<Integer> iter = set.iterator();
 				
 		while (iter.hasNext())
-		{	min = Math.min (min, iter.nextInt());
+		{	min = Math.min (min, iter.next());
 		}
 		
 		return min;
 	}
 	
-	private int max(IntSet set)
+	private int max(Set<Integer> set)
 	{	int max = Integer.MIN_VALUE;
-		IntIterator iter = set.iterator();
+		Iterator<Integer> iter = set.iterator();
 				
 		while (iter.hasNext())
-		{	max = Math.max (max, iter.nextInt());
+		{	max = Math.max (max, iter.next());
 		}
 		
 		return max;
@@ -370,8 +366,13 @@ public class TwitterStats implements Callable<Integer>
 	{	return StringUtils.trimToEmpty(key).toLowerCase();
 	}
 	
-	private static void inc (Int2IntArrayMap counts, int key)
-	{	counts.put (key, counts.get(key) + 1);
+	private static void inc (Map<Integer, MutableInt> counts, int key)
+	{	MutableInt count = counts.get(key);
+		if (count == null)
+		{	count = new MutableInt(0);
+			counts.put (key, count);
+		}
+		count.increment();
 	}
 	
 	private static <V extends Number> int get (Map<String, V> counts, String key)
