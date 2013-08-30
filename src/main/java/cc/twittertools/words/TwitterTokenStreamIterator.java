@@ -140,20 +140,29 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 	}
 
 	/**
-	 * Is the given term entirely in capital letters.
-	 * If all characters but the last are uppercase letters, and the last
+	 * Is the given term entirely in capital letters. 
+	 * There are two exceptions to this rule:
+	 * <ul>
+	 * <li>It may contain one ampersand in the middle of the sequence
+	 * <li>If all characters but the last are uppercase letters, and the last
 	 * letter is the lowercase character "s", this also returns true. This
 	 * is due to the fact that this method is used to detect acronyms and
 	 * sometimes users will pluralise an upper-case acronym by appending a
 	 * lower-case s.
+	 * </ul>
 	 */
 	public static boolean isAllCapLetters (String term)
 	{	if (term.isEmpty())
 			return false;
 		
+		boolean foundAmp = false;
 		for (int i = 0; i < term.length() - 1; i++)
-		{	char c = term.charAt(i);
-			if (! Character.isLetter(c) || Character.isLowerCase(c))
+		{	
+			char c = term.charAt(i);
+			if (c == '&' && ! foundAmp && i > 0 && i < term.length() - 1)
+				foundAmp = true;
+			else 
+				if (! Character.isLetter(c) || Character.isLowerCase(c))
 				return false;
 		}
 	

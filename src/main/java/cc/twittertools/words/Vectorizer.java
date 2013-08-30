@@ -24,6 +24,7 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Version;
 
+import cc.twittertools.words.combiners.AmpAcronymTokenCombiner;
 import cc.twittertools.words.combiners.EmoticonCombiners;
 import cc.twittertools.words.combiners.MyPossessiveContractionTokenCombiner;
 import cc.twittertools.words.combiners.SlashTokenCombiner;
@@ -176,7 +177,7 @@ public class Vectorizer {
 	private TwitterTokenStreamIterator createTokenizer(String text)
 	{
 		com.twitter.common.text.token.TokenStream twitterTok = 
-		    // Remove punctuation not already used in entities below
+		  // Remove punctuation not already used in entities below
 			new PunctuationFilter(
 			  // combine stock symbol
 		      new StockTokenCombiner(
@@ -186,12 +187,14 @@ public class Vectorizer {
 		          new MyPossessiveContractionTokenCombiner(
 		            // Combine fractions (3/4s) and abbrvs ("financial f/cs")
 		            new SlashTokenCombiner(
-		              // combine URL
-		              new UrlCombiner(
-		                // combine # + hashtag
-		                new HashtagTokenCombiner(
-		                  // combine @ + user name
-		                  new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build()))))))));
+		            	// Handle acronyms involving ampersands such as the T&C's on your AT&T contract
+		            	new AmpAcronymTokenCombiner(
+			              // combine URL
+			              new UrlCombiner(
+			                // combine # + hashtag
+			                new HashtagTokenCombiner(
+			                  // combine @ + user name
+			                  new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))))));
 		
 		twitterTok.reset(text);
 		return new TwitterTokenStreamIterator (

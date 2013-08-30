@@ -118,4 +118,49 @@ public class TokenizationTest {
 		System.out.flush();
 		assertEquals (outputs.length / 2, numToks);
 	}
+	
+	@Test
+	public void testAcronymsWithAmpersands()
+	{
+		String input = "AT&T isn't good for me: The T&C's & AT&T's crappy 4G network is so bad I'm now in A&E :-| Time to trash&burn that contract of mine. LOVE&HATE";
+		String[] outputs = new String[] 
+		{
+	   "TOKEN", "at&t",
+	   "TOKEN", "isn't",
+	   "TOKEN", "good",
+	   "TOKEN", "me",
+	   "TOKEN", "t&c",
+	   "TOKEN", "at&t",
+	   "TOKEN", "crappi",
+	   "TOKEN", "4g",
+	   "TOKEN", "network",
+	   "TOKEN", "so",
+	   "TOKEN", "bad",
+	   "TOKEN", "i'm",
+	   "TOKEN", "now",
+	   "TOKEN", "a&e",
+	   "TOKEN", "time",
+	   "TOKEN", "trash",
+	   "TOKEN", "burn",
+	   "TOKEN", "contract",
+	   "TOKEN", "mine",
+	   "TOKEN", "love",
+	   "TOKEN", "hate",
+		};
+		
+		
+		Vectorizer vec = new Main().newVectorizer();
+  		
+		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+		int numToks = 0;
+		while (iter.hasNext())
+		{	Pair<TokenType, String> tokenValue = iter.next();
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
+			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			numToks++;
+		}
+		System.out.flush();
+		assertEquals (outputs.length / 2, numToks);
+	}
 }
