@@ -1,12 +1,17 @@
 package cc.twittertools.words.dict;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 
 
 
@@ -47,6 +52,51 @@ public class LookupDictionary extends AbstractDictionary
 		
 		this.wordIds = new HashMap<Integer, String>(initialSize);
 		this.wordIds.putAll (that.wordIds);
+	}
+	
+	/**
+	 * Load a dictionary from a file. The last two colums of a file should
+	 * be a word and a frequency count respectively. It's okay if the word
+	 * occurs several times, in these cases the frequencies are summed. 
+	 * Eventually all words whose frequency is greater than or equal to
+	 * the limit are taken to create a sealed dictionary
+	 */
+	public static Dictionary fromFile (Path file, int minOccurrenceCount) throws IOException
+	{	Map<String, MutableInt> wordFreqs = new HashMap<>(4_000_000);
+		
+		try (BufferedReader rdr = Files.newBufferedReader(file, Charsets.UTF_8); )
+		{	String line;
+			while ((line = rdr.readLine()) != null)
+			{	if ((line = line.trim()).isEmpty())
+					continue;
+				
+				int lastTab  = line.lastIndexOf('\t');
+				int penulTab = Math.max (0, line.lastIndexOf('\t', lastTab - 1));
+				
+				String count = line.substring(lastTab + 1);
+				String word  = line.substring(penulTab + 1, lastTab);
+				
+				MutableInt freq = wordFreqs.get (word);
+				if (freq == null)
+				{	freq = new MutableInt(0);
+					wordFreqs.put (word, freq);
+				}
+				freq.add (Integer.valueOf(count));
+			}
+		}
+		
+		int dictSize = 0;
+		for (MutableInt freq : wordFreqs.values())
+			if (freq.intValue() >= minOccurrenceCount)
+				++dictSize;
+		
+		LookupDictionary dict = new LookupDictionary(dictSize);
+		for (Map.Entry<String, MutableInt> entry : wordFreqs.entrySet())
+			if (entry.getValue().intValue() >= minOccurrenceCount)
+				dict.toInt(entry.getKey());
+		
+		dict.seal();
+		return dict;
 	}
 
 	@Override
