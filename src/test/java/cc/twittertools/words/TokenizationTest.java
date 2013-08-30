@@ -93,15 +93,21 @@ public class TokenizationTest {
 	@Test
 	public void testSmileys() throws IOException
 	{
-		String input  = "Anyone remember Keith (Mr. what's in the box) x)";
+		String input  = "Anyone remember Keith :-P (Mr. what's in the box) x). My mum's not a fan :-|";
 		String[] outputs = new String[] {
 			   "TOKEN", "anyon",
 			   "TOKEN", "rememb",
 			   "TOKEN", "keith",
+			"EMOTICON", ":-p",
 			   "TOKEN", "mr",
 			   "TOKEN", "what",
 			   "TOKEN", "box",
-			"EMOTICON", "x)"
+			"EMOTICON", "x)",
+		     "TOKEN", "my",
+		     "TOKEN", "mum",
+		     // it's a bit disturbing that a sentiment specific word like "not" is in the stop-word list.
+		     "TOKEN", "fan",
+			"EMOTICON", ":-|",
 	  };
 			
 		Vectorizer vec = new Main().newVectorizer();
@@ -122,7 +128,7 @@ public class TokenizationTest {
 	@Test
 	public void testAcronymsWithAmpersands() throws IOException
 	{
-		String input = "AT&T isn't good for me: The T&C's & AT&T's crappy 4G network is so bad I'm now in A&E :-| Time to trash&burn that contract of mine. LOVE&HATE";
+		String input = "AT&T isn't good for me: The T&C's & AT&T's crappy 4G network is so bad I'm now in A&E :| Time to trash&burn that contract of mine. LOVE&HATE";
 		String[] outputs = new String[] 
 		{
 	   "TOKEN", "at&t",
@@ -139,6 +145,7 @@ public class TokenizationTest {
 	   "TOKEN", "i'm",
 	   "TOKEN", "now",
 	   "TOKEN", "a&e",
+	   "EMOTICON", ":|",
 	   "TOKEN", "time",
 	   "TOKEN", "trash",
 	   "TOKEN", "burn",

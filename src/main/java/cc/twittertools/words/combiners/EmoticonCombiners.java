@@ -92,8 +92,8 @@ public final class EmoticonCombiners
 		private static final String EMOTICON_DELIMITER =
 		       PunctuationDetector.SPACE_REGEX + "|" + PunctuationDetector.PUNCTUATION_REGEX;
 		
-		public static final String SMILEY_REGEX_PATTERN = "%1$s[)DdpP]|%1$s[ -]\\)|<3";
-		public static final String FROWNY_REGEX_PATTERN = "%1$s[(<]|%1$s[ -]\\(";
+		public static final String SMILEY_REGEX_PATTERN = "%1$s-?[)DdpP]|<3";
+		public static final String FROWNY_REGEX_PATTERN = "%1$s-?[(<|]";
 		
 		public final Pattern EMOTICON_REGEX_PATTERN;
 		
