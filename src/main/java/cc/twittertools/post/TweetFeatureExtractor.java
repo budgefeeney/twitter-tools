@@ -24,9 +24,9 @@ import org.slf4j.LoggerFactory;
 
 import cc.twittertools.numpy.CsrShortMatrixBuilder;
 import cc.twittertools.util.FilesInFoldersIterator;
-import cc.twittertools.words.Dictionary;
-import cc.twittertools.words.LookupDictionary;
 import cc.twittertools.words.Vectorizer;
+import cc.twittertools.words.dict.Dictionary;
+import cc.twittertools.words.dict.LookupDictionary;
 
 /**
  * Extracts paired features from tweets: one references the "text", one references the "event"

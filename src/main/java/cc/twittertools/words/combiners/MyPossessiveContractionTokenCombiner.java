@@ -1,4 +1,4 @@
-package cc.twittertools.words;
+package cc.twittertools.words.combiners;
 
 //=================================================================================================
 //Copyright 2011 Twitter, Inc.

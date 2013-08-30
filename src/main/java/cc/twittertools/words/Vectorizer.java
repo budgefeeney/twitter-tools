@@ -24,6 +24,14 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.util.Version;
 
+import cc.twittertools.words.combiners.EmoticonCombiners;
+import cc.twittertools.words.combiners.MyPossessiveContractionTokenCombiner;
+import cc.twittertools.words.combiners.SlashTokenCombiner;
+import cc.twittertools.words.combiners.UrlCombiner;
+import cc.twittertools.words.dict.CompoundTokenDictionary;
+import cc.twittertools.words.dict.Dictionary;
+import cc.twittertools.words.dict.TokenDictionary;
+
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;

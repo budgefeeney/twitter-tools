@@ -1,4 +1,4 @@
-package cc.twittertools.words;
+package cc.twittertools.words.dict;
 
 import java.io.BufferedWriter;
 import java.io.IOException;

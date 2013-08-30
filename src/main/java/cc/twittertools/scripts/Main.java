@@ -19,13 +19,13 @@ import org.kohsuke.args4j.Option;
 
 import cc.twittertools.post.FeatureSpecification;
 import cc.twittertools.post.TweetFeatureExtractor;
-import cc.twittertools.words.CompoundTokenDictionary;
-import cc.twittertools.words.Dictionary;
-import cc.twittertools.words.LookupDictionary;
-import cc.twittertools.words.NullDictionary;
-import cc.twittertools.words.SigilStrippingDictionary;
 import cc.twittertools.words.Vectorizer;
 import cc.twittertools.words.Vectorizer.InputType;
+import cc.twittertools.words.dict.CompoundTokenDictionary;
+import cc.twittertools.words.dict.Dictionary;
+import cc.twittertools.words.dict.LookupDictionary;
+import cc.twittertools.words.dict.NullDictionary;
+import cc.twittertools.words.dict.SigilStrippingDictionary;
 
 import com.twitter.common.text.token.attribute.TokenType;
 

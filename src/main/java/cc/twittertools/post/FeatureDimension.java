@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 import org.joda.time.Interval;
 import org.joda.time.Period;
 
-import cc.twittertools.words.Dictionary;
+import cc.twittertools.words.dict.Dictionary;
 
 /**
  * For each of the given features, gives the total possible number of values

@@ -2,7 +2,7 @@ package cc.twittertools.post;
 
 import org.joda.time.Interval;
 
-import cc.twittertools.words.Dictionary;
+import cc.twittertools.words.dict.Dictionary;
 
 /**
  * Which features (relating to all aspects of tweets other than the bodies of

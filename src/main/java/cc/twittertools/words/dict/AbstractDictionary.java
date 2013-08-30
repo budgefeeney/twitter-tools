@@ -1,4 +1,4 @@
-package cc.twittertools.words;
+package cc.twittertools.words.dict;
 
 /**
  * Implements the {@link #capacity()} part of the {@link Dictionary} 

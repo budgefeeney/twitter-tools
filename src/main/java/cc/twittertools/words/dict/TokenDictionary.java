@@ -1,4 +1,4 @@
-package cc.twittertools.words;
+package cc.twittertools.words.dict;
 
 import org.apache.commons.lang3.tuple.Pair;
 

@@ -1,4 +1,4 @@
-package cc.twittertools.words;
+package cc.twittertools.words.combiners;
 
 import java.util.regex.Pattern;
 
