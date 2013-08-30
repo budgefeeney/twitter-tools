@@ -80,12 +80,15 @@ public class Main implements Callable<Integer>
   private boolean numbersAllowed = false;
   private int     minWordCount   = 5; // words occuring less often than this will be skipped
   
-	private int numAddressees = 100000;
-	private int numUrls       = 100000;
-	private int numWords      = 50000;
-	private int numStocks     = 50000;
-	private int numEmoticons  = 500;
-	private int numHashTags   = 50000;
+  // These dictionary fields are overloaded. If parseable as an int, then they
+  // specify the maximum capacity of a new dictionary to be created. Otherwise
+  // they specify the path to a file from which the dict should be loaded.
+	private String addresseeDict = "100000";
+	private String urlsDict      = "100000";
+	private String wordsDict     = "50000";
+	private String stocksDict    = "50000";
+	private String emoticonsDict = "500";
+	private String hashTagsDict  = "50000";
   
   // Options for encoding of non-text features
   FeatureSpecification featSpec = new FeatureSpecification();
@@ -189,7 +192,7 @@ public class Main implements Callable<Integer>
 		return tfe;
 	}
 
-	public Vectorizer newVectorizer()
+	public Vectorizer newVectorizer() throws IOException
 	{
 		CompoundTokenDictionary dict = tokenDictionary();
 		Vectorizer vec = new Vectorizer(dict);
@@ -203,35 +206,49 @@ public class Main implements Callable<Integer>
 		return vec;
 	}
 
-	private CompoundTokenDictionary tokenDictionary()
+	private CompoundTokenDictionary tokenDictionary() throws IOException
 	{
 		CompoundTokenDictionary dict = new CompoundTokenDictionary(null);
 		
 		if (treatHashTagsAsWords)
-		{	if (numWords == 0)
-				throw new IllegalStateException ("Cannot set dict-size-words = 0 and also require hashtags to be treated as words.");
-			if (numHashTags == 0)
-				throw new IllegalStateException ("Must set dict-size-tags = 0 and dict-size-words to a non-zero value when you treat hashtags as words");
+		{	if ("0".equals (wordsDict))
+				throw new IllegalStateException ("Cannot set dict-words = 0 and also require hashtags to be treated as words.");
+			if (! "0".equals (hashTagsDict))
+				throw new IllegalStateException ("Must set dict-tags = 0 and dict-words to a non-zero value when you treat hashtags as words");
 		}
 		
-		Dictionary wordDict = dictionary(numWords);	
-		dict.addDictionary(TokenType.USERNAME, dictionary(numAddressees));
-		dict.addDictionary(TokenType.URL,      dictionary(numUrls));
+		Dictionary wordDict = dictionary(wordsDict);	
+		dict.addDictionary(TokenType.USERNAME, dictionary(addresseeDict));
+		dict.addDictionary(TokenType.URL,      dictionary(urlsDict));
 		dict.addDictionary(TokenType.TOKEN,    wordDict);
-		dict.addDictionary(TokenType.STOCK,    dictionary(numStocks));
-		dict.addDictionary(TokenType.EMOTICON, dictionary(numEmoticons));
+		dict.addDictionary(TokenType.STOCK,    dictionary(stocksDict));
+		dict.addDictionary(TokenType.EMOTICON, dictionary(emoticonsDict));
 		dict.addDictionary(TokenType.HASHTAG,  treatHashTagsAsWords
 			? new SigilStrippingDictionary('#', wordDict)
-			: dictionary(numHashTags));
+			: dictionary(hashTagsDict));
 		
 		return dict;
 	}
   
-  private final static Dictionary dictionary(int size)
-  {	return size == 0 ? NullDictionary.INSTANCE : new LookupDictionary(size);
+  private final Dictionary dictionary(String dict) throws IOException
+  {	if (isDigitSequence (dict))
+  	{	int size = Integer.parseInt(dict);
+  		return size == 0 ? NullDictionary.INSTANCE : new LookupDictionary(size);
+  	}
+	  else
+	  {	return LookupDictionary.fromFile(Paths.get(dict), minWordCount);
+	  }
   }
   
-  public Command getCommand() {
+  /** Is the given string entirely a sequence of integers only */
+  private boolean isDigitSequence(String dict)
+	{	for (int i = 0; i < dict.length(); i++)
+			if (! Character.isDigit (dict.charAt(i)))
+				return false;
+		return true;
+	}
+
+	public Command getCommand() {
     return command;
   }
   
@@ -465,57 +482,57 @@ public class Main implements Callable<Integer>
   	this.showHelp = showHelp;
   }
 
-	public int getNumAddressees()
-	{	return numAddressees;
+	public String getAddresseeDict()
+	{	return addresseeDict;
 	}
 
-	@Option(name="--dict-size-addrs", aliases="--help", usage="Maximum number of addressees in dictionary, all subsequent words are dropped.", metaVar=" ")
-	public void setNumAddressees(int numAddressees)
-	{	this.numAddressees = numAddressees;
+	@Option(name="--dict-addrs", aliases="--help", usage="Maximum number of addressees in dictionary, all subsequent words are dropped.", metaVar=" ")
+	public void setAddresseeDict(String dict)
+	{	this.addresseeDict = dict;
 	}
 
-	public int getNumUrls()
-	{	return numUrls;
+	public String getUrlsDict()
+	{	return urlsDict;
 	}
 
-	@Option(name="--dict-size-urls", aliases="--help", usage="Maximum number of URLs in dictionary, all subsequent URLs are dropped.", metaVar=" ")
-	public void setNumUrls(int numUrls)
-	{	this.numUrls = numUrls;
+	@Option(name="--dict-urls", aliases="--help", usage="Maximum number of URLs to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	public void setUrlsDict(String dict)
+	{	this.urlsDict = dict;
 	}
 
-	public int getNumWords()
-	{	return numWords;
+	public String getWordsDict()
+	{	return wordsDict;
 	}
 
-	@Option(name="--dict-size-words", aliases="--help", usage="Maximum number of words in dictionary, all subsequent words are dropped.", metaVar=" ")
-	public void setNumWords(int numWords)
-	{	this.numWords = numWords;
+	@Option(name="--dict-words", aliases="--help", usage="Maximum number of words to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	public void setWordsDict(String dict)
+	{	this.wordsDict = dict;
 	}
 
-	public int getNumStocks()
-	{	return numStocks;
+	public String getStocksDict()
+	{	return stocksDict;
 	}
 
-	@Option(name="--dict-size-stocks", aliases="--help", usage="Maximum number of stocks in dictionary, all subsequent stocks are dropped.", metaVar=" ")
-	public void setNumStocks(int numStocks)
-	{	this.numStocks = numStocks;
+	@Option(name="--dict-stocks", aliases="--help", usage="Maximum number of stocks to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	public void setStocksDict(String dict)
+	{	this.stocksDict = dict;
 	}
 
-	public int getNumEmoticons()
-	{	return numEmoticons;
+	public String getEmoticonsDict()
+	{	return emoticonsDict;
 	}
 
-	@Option(name="--dict-size-smileys", aliases="--help", usage="Maximum number of emoticons (\"smileys\") in dictionary, all subsequent emoticons are dropped.", metaVar=" ")
-	public void setNumEmoticons(int numEmoticons)
-	{	this.numEmoticons = numEmoticons;
+	@Option(name="--dict-smileys", aliases="--help", usage="Maximum number of emoticons (\"smileys\") to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	public void setEmoticonsDict(String dict)
+	{	this.emoticonsDict = dict;
 	}
 
-	public int getNumHashTags()
-	{	return numHashTags;
+	public String getHashTagsDict()
+	{	return hashTagsDict;
 	}
 
-	@Option(name="--dict-size-tags", aliases="--help", usage="Maximum number of hashtags in dictionary, all subsequent hashtags are dropped.", metaVar=" ")
-	public void setNumHashTags(int numHashTags)
-	{	this.numHashTags = numHashTags;
+	@Option(name="--dict-tags", aliases="--help", usage="Maximum number of hashtags to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	public void setHashTagsDict(String dict)
+	{	this.hashTagsDict = dict;
 	}
 }

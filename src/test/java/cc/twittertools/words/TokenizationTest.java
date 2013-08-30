@@ -1,11 +1,12 @@
 package cc.twittertools.words;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
-import static org.junit.Assert.assertEquals;
 
+import static org.junit.Assert.assertEquals;
 import cc.twittertools.scripts.Main;
 
 import com.twitter.common.text.token.attribute.TokenType;
@@ -17,7 +18,7 @@ public class TokenizationTest {
 	}
 
 	@Test
-	public void testFractionsAndEmoticons()
+	public void testFractionsAndEmoticons() throws IOException
 	{
 		String input = "Bad news :( I've realised financial f/cs are wrong 3/4s of the time based on gov'ts advice: agree/disagree? ;-) More at bit.ly/3n32ds2";
   		String[] outputs = new String[] {
@@ -44,20 +45,20 @@ public class TokenizationTest {
 		
 		Vectorizer vec = new Main().newVectorizer();
   		
-  		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
-  		int numToks = 0;
-  		while (iter.hasNext())
-  		{	Pair<TokenType, String> tokenValue = iter.next();
-  			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-  			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-  			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
-  			numToks++;
-  		}
-  		assertEquals (outputs.length / 2, numToks);
+		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+		int numToks = 0;
+		while (iter.hasNext())
+		{	Pair<TokenType, String> tokenValue = iter.next();
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
+			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			numToks++;
+		}
+		assertEquals (outputs.length / 2, numToks);
 	}
 	
 	@Test
-	public void testUrls()
+	public void testUrls() throws IOException
 	{
 		String input  = "Tech girl blocks tweet plot spoilers << AWESOME story 8D cc: @ShelbyKnox http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=PublicRSS20-sa …";
 		String[] outputs = new String[] {
@@ -75,23 +76,22 @@ public class TokenizationTest {
 			     "URL", "http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=publicrss20-sa"
 	  		};
 			
-			
-			Vectorizer vec = new Main().newVectorizer();
-	  		
-  		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
-  		int numToks = 0;
-  		while (iter.hasNext())
-  		{	Pair<TokenType, String> tokenValue = iter.next();
-  			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
-  			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
-  			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
-  			numToks++;
-  		}
-  		assertEquals (outputs.length / 2, numToks);
+		Vectorizer vec = new Main().newVectorizer();
+  		
+		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+		int numToks = 0;
+		while (iter.hasNext())
+		{	Pair<TokenType, String> tokenValue = iter.next();
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+			assertEquals(tokenValue.getLeft().toString(), outputs[numToks * 2]);
+			assertEquals(tokenValue.getRight().toString(), outputs[numToks * 2 + 1]);
+			numToks++;
+		}
+		assertEquals (outputs.length / 2, numToks);
 	}
 	
 	@Test
-	public void testSmileys()
+	public void testSmileys() throws IOException
 	{
 		String input  = "Anyone remember Keith (Mr. what's in the box) x)";
 		String[] outputs = new String[] {
@@ -120,7 +120,7 @@ public class TokenizationTest {
 	}
 	
 	@Test
-	public void testAcronymsWithAmpersands()
+	public void testAcronymsWithAmpersands() throws IOException
 	{
 		String input = "AT&T isn't good for me: The T&C's & AT&T's crappy 4G network is so bad I'm now in A&E :-| Time to trash&burn that contract of mine. LOVE&HATE";
 		String[] outputs = new String[] 
@@ -147,7 +147,6 @@ public class TokenizationTest {
 	   "TOKEN", "love",
 	   "TOKEN", "hate",
 		};
-		
 		
 		Vectorizer vec = new Main().newVectorizer();
   		

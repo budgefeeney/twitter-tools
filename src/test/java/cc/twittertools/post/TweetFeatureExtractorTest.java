@@ -18,12 +18,12 @@ import cc.twittertools.scripts.Main;
 
 public class TweetFeatureExtractorTest
 {
-	private static final int NUM_ADDRESSEES = 100000;
-	private static final int NUM_URLS       = 100000;
-	private static final int NUM_WORDS      = 50000;
-	private static final int NUM_STOCKS     = 50000;
-	private static final int NUM_EMOTICONS  = 500;
-	private static final int NUM_HASHTAGS   = 50000;
+	private static final String NUM_ADDRESSEES = "100000";
+	private static final String NUM_URLS       = "100000";
+	private static final String NUM_WORDS      = "50000";
+	private static final String NUM_STOCKS     = "50000";
+	private static final String NUM_EMOTICONS  = "500";
+	private static final String NUM_HASHTAGS   = "50000";
 
 	private final static String SAMPLE =
 	   "AnaColinaF1\t351740397812334593\t351740397812334593\t2013-07-01T17:33:40+01:00\t2013-07-01T09:33:00Z\t-07:00\t@charlie_whiting He presses that button. Yes, that button. #silverstone #F1 pic.twitter.com/VK7vGlwy33\n"
@@ -97,12 +97,12 @@ public class TweetFeatureExtractorTest
 		main.setMonthOfYearInFeatures(true);
 		
 		// Word features
-		main.setNumAddressees(NUM_ADDRESSEES);
-		main.setNumEmoticons(NUM_EMOTICONS);
-		main.setNumHashTags(NUM_HASHTAGS);
-		main.setNumStocks(NUM_STOCKS);
-		main.setNumUrls(NUM_URLS);
-		main.setNumWords(NUM_WORDS);
+		main.setAddresseeDict(NUM_ADDRESSEES);
+		main.setEmoticonsDict(NUM_EMOTICONS);
+		main.setHashTagsDict(NUM_HASHTAGS);
+		main.setStocksDict(NUM_STOCKS);
+		main.setUrlsDict(NUM_URLS);
+		main.setWordsDict(NUM_WORDS);
 		
 		main.setStem(true);
 		main.setElimStopWords(true);
