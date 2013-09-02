@@ -1,7 +1,9 @@
 package cc.twittertools.scripts;
 
-import it.unimi.dsi.fastutil.ints.IntIterator;
-import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -52,7 +54,7 @@ public class TwitterStats implements Callable<Integer>
 	private static final int MAX_INTER_TWEET_TIME_MINS = 31 * 24 * 60; // basically we expect users to tweet at least once a month
 	private static final int NUM_USERS_IN_DATASET = 21_000;
 	private static final int DATASET_LENGTH_IN_DAYS = 5_000;
-	private static final int EXPECTED_HASH_TAG_COUNT = 3_000_000;
+	private static final int EXPECTED_HASH_TAG_COUNT = 8_000_000;
 	private static final int EXPECTED_URL_COUNT = 10_000_000;
 	private static final int EXPECTED_WORD_COUNT = 50_000;
 	
@@ -60,19 +62,19 @@ public class TwitterStats implements Callable<Integer>
 
 	private final static Logger LOG = LoggerFactory.getLogger(TwitterStats.class);
 	
-	private final Map<Integer, MutableInt> postsSinceDay;
-	private final Map<String, DateTime>    lastPostByUser;
-	private final Map<String,  DateTime>   firstPostByUser;
-	private final Map<String,  Integer>    firstPostByUserAsDay;
-	private final Map<Integer, MutableInt> interPostTimeMins;
-	private final Map<String,  MutableInt> retweetsByUser;
-	private final Map<String,  MutableInt> rtRetweetsByUser;
-	private final Map<String,  MutableInt> tweetsPerUser;
-	private final Map<Integer, Map<String,  MutableInt>> hashTagCount;
-	private final Map<Integer, Map<String,  MutableInt>> smileyCounts;
-	private final Map<String,  MutableInt> addresseeCounts;
-	private final Map<String,  MutableInt> urlCounts;
-	private final Map<String,  MutableInt> wordCounts;
+	private final Int2IntMap            postsSinceDay;
+	private final Map<String, DateTime> lastPostByUser;
+	private final Map<String, DateTime> firstPostByUser;
+	private final Object2IntMap<String> firstPostByUserAsDay;
+	private final Int2IntMap            interPostTimeMins;
+	private final Object2IntMap<String> retweetsByUser;
+	private final Object2IntMap<String> rtRetweetsByUser;
+	private final Object2IntMap<String> tweetsPerUser;
+	private final Map<Integer, Object2IntMap<String>> hashTagCount;
+	private final Map<Integer, Object2IntMap<String>> smileyCounts;
+	private final Object2IntMap<String> addresseeCounts;
+	private final Object2IntMap<String> urlCounts;
+	private final Object2IntMap<String> wordCounts;
 	
 	private final Path datasetDirectory;
 	private final Path outputDir;
@@ -85,19 +87,29 @@ public class TwitterStats implements Callable<Integer>
 		this.datasetDirectory  = datasetDirectory;
 		this.outputDir         = outputDir;
 		
-		postsSinceDay        = new HashMap<>(DATASET_LENGTH_IN_DAYS);
+		postsSinceDay        = new Int2IntArrayMap(DATASET_LENGTH_IN_DAYS);
 		lastPostByUser       = new HashMap<>(NUM_USERS_IN_DATASET);
 		firstPostByUser      = new HashMap<>(NUM_USERS_IN_DATASET);
-		firstPostByUserAsDay = new HashMap<>(NUM_USERS_IN_DATASET);
-		interPostTimeMins    = new HashMap<>(MAX_INTER_TWEET_TIME_MINS);
-		retweetsByUser       = new HashMap<>(NUM_USERS_IN_DATASET);
-		rtRetweetsByUser     = new HashMap<>(NUM_USERS_IN_DATASET);
-		tweetsPerUser        = new HashMap<>(NUM_USERS_IN_DATASET);
+		firstPostByUserAsDay = new Object2IntArrayMap<>(NUM_USERS_IN_DATASET);
+		interPostTimeMins    = new Int2IntArrayMap(MAX_INTER_TWEET_TIME_MINS);
+		retweetsByUser       = new Object2IntArrayMap<>(NUM_USERS_IN_DATASET);
+		rtRetweetsByUser     = new Object2IntArrayMap<>(NUM_USERS_IN_DATASET);
+		tweetsPerUser        = new Object2IntArrayMap<>(NUM_USERS_IN_DATASET);
 		hashTagCount         = new HashMap<>(13 * 12); // 13 years, month by month
 		smileyCounts         = new HashMap<>(13 * 12); // 13 years, month by month
-		addresseeCounts      = new HashMap<>(8_000_000);
-		urlCounts            = new HashMap<>(EXPECTED_URL_COUNT);
-		wordCounts           = new HashMap<>(EXPECTED_WORD_COUNT);
+		addresseeCounts      = new Object2IntArrayMap<>(8_000_000);
+		urlCounts            = new Object2IntArrayMap<>(EXPECTED_URL_COUNT);
+		wordCounts           = new Object2IntArrayMap<>(EXPECTED_WORD_COUNT);
+		
+		postsSinceDay.defaultReturnValue(0);
+		firstPostByUserAsDay.defaultReturnValue(0);
+		interPostTimeMins.defaultReturnValue(0);
+		retweetsByUser.defaultReturnValue(0);
+		rtRetweetsByUser.defaultReturnValue(0);
+		tweetsPerUser.defaultReturnValue(0);
+		addresseeCounts.defaultReturnValue(0);
+		urlCounts.defaultReturnValue(0);
+		wordCounts.defaultReturnValue(0);
 	}
 	
 	public Integer call() throws Exception
@@ -253,8 +265,7 @@ public class TwitterStats implements Callable<Integer>
 			
 			int cumulative = 0;
 			for (int day = end; day >= start; day--)
-			{	MutableInt value = postsSinceDay.get(day);
-				cumulative += value == null ? 0 : value.intValue();
+			{	cumulative += postsSinceDay.get(day);
 				wtr.write(Integer.toString (day) + '\t' + Integer.toString (cumulative) + '\n');
 			}
 		}
@@ -276,7 +287,7 @@ public class TwitterStats implements Callable<Integer>
 			{	int month = key % 100;
 				int year  = key / 100;
 				
-				for (Map.Entry<String, MutableInt> entry : hashTagCount.get(key).entrySet())
+				for (Object2IntMap.Entry<String> entry : hashTagCount.get(key).object2IntEntrySet())
 				{	wtr.write (
 						"" + year        + '\t' +
 						month            + '\t' +
@@ -299,7 +310,7 @@ public class TwitterStats implements Callable<Integer>
 			{	int month = key % 100;
 				int year  = key / 100;
 				
-				for (Map.Entry<String, MutableInt> entry : smileyCounts.get(key).entrySet())
+				for (Object2IntMap.Entry<String> entry : smileyCounts.get(key).object2IntEntrySet())
 				{	wtr.write (
 						"" + year        + '\t' +
 						month            + '\t' +
@@ -354,29 +365,19 @@ public class TwitterStats implements Callable<Integer>
 		
 		return max;
 	}
-
-	private static void inc (Map<String, MutableInt> counts, String key)
+	
+	private static void inc (Object2IntMap<String> counts, String key)
 	{	key = tidyStringKey(key);
-		MutableInt count = counts.get(key);
-		if (count == null)
-		{	count = new MutableInt(0);
-			counts.put (key, count);
-		}
-		count.increment();
+		counts.put (key, counts.get(key) + 1);
 	}
 
 	/** Tidies string keys in hashmaps - trimmed and to lower-case */
 	private static String tidyStringKey(String key)
 	{	return StringUtils.trimToEmpty(key).toLowerCase();
 	}
-	
-	private static void inc (Map<Integer, MutableInt> counts, int key)
-	{	MutableInt count = counts.get(key);
-		if (count == null)
-		{	count = new MutableInt(0);
-			counts.put (key, count);
-		}
-		count.increment();
+
+	private static void inc (Int2IntMap counts, int key)
+	{	counts.put (key, counts.get(key) + 1);
 	}
 	
 	private static <V extends Number> int get (Map<String, V> counts, String key)
@@ -393,12 +394,12 @@ public class TwitterStats implements Callable<Integer>
 	{	inc (smileyCounts, tweetDate, smiley);
 	}
 	
-	private final void inc (Map<Integer, Map<String, MutableInt>> counts, DateTime tweetDate, String hashTag)
+	private final void inc (Map<Integer, Object2IntMap<String>> counts, DateTime tweetDate, String hashTag)
 	{
 		int key = tweetDate.getYear() * 100 + tweetDate.getMonthOfYear();
-		Map<String, MutableInt> tagCounts = counts.get(key);
+		Object2IntMap<String> tagCounts = counts.get(key);
 		if (tagCounts == null)
-		{	tagCounts = new HashMap<>(EXPECTED_HASH_TAG_COUNT);
+		{	tagCounts = new Object2IntArrayMap<String>(EXPECTED_HASH_TAG_COUNT);
 			counts.put (key, tagCounts);
 		}
 		inc (tagCounts, hashTag.toLowerCase());
