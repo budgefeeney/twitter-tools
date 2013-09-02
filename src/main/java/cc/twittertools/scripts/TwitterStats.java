@@ -7,7 +7,9 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.charset.Charset;
+import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -231,7 +232,7 @@ public class TwitterStats implements Callable<Integer>
 			Collections.sort(users);
 			
 			for (String user : users)
-				wtr.write(
+				writeSafely (wtr, "user-statistics",
 					user                             + '\t' +
 					firstPostByUser.get(user)        + '\t' +
 					get (firstPostByUserAsDay, user) + '\t' +
@@ -247,10 +248,8 @@ public class TwitterStats implements Callable<Integer>
 		
 		// Inter post time statistics
 		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("interPostStats.txt"), Charsets.UTF_8))
-		{	for (Map.Entry<Integer, ? extends Number> entry : interPostTimeMins.entrySet())
-			{	Number numBox = entry.getValue();
-				int num = numBox == null ? 0 : numBox.intValue();
-				wtr.write(entry.getKey().toString() + '\t' + num + '\n');
+		{	for (Int2IntMap.Entry entry : interPostTimeMins.int2IntEntrySet())
+			{	writeSafely(wtr, "inter-post-time", entry.getKey().toString() + '\t' + entry.getIntValue() + '\n');
 			}
 		}
 		catch (IOException ioe)
@@ -266,7 +265,7 @@ public class TwitterStats implements Callable<Integer>
 			int cumulative = 0;
 			for (int day = end; day >= start; day--)
 			{	cumulative += postsSinceDay.get(day);
-				wtr.write(Integer.toString (day) + '\t' + Integer.toString (cumulative) + '\n');
+				writeSafely(wtr, "posts-since-day", Integer.toString (day) + '\t' + Integer.toString (cumulative) + '\n');
 			}
 		}
 		catch (Exception ioe)
@@ -288,11 +287,11 @@ public class TwitterStats implements Callable<Integer>
 				int year  = key / 100;
 				
 				for (Object2IntMap.Entry<String> entry : hashTagCount.get(key).object2IntEntrySet())
-				{	wtr.write (
-						"" + year        + '\t' +
-						month            + '\t' +
-						entry.getKey()   + '\t' +
-						entry.getValue() + '\n'
+				{	writeSafely (wtr, "hashtags",
+						"" + year           + '\t' +
+						month               + '\t' +
+						entry.getKey()      + '\t' +
+						entry.getIntValue() + '\n'
 					);
 				}
 			}
@@ -311,11 +310,11 @@ public class TwitterStats implements Callable<Integer>
 				int year  = key / 100;
 				
 				for (Object2IntMap.Entry<String> entry : smileyCounts.get(key).object2IntEntrySet())
-				{	wtr.write (
-						"" + year        + '\t' +
-						month            + '\t' +
-						entry.getKey()   + '\t' +
-						entry.getValue() + '\n'
+				{	writeSafely (wtr, "smileys",
+						"" + year           + '\t' +
+						month               + '\t' +
+						entry.getKey()      + '\t' +
+						entry.getIntValue() + '\n'
 					);
 				}
 			}
@@ -327,20 +326,38 @@ public class TwitterStats implements Callable<Integer>
 		// Dictionary of URLs
 		writeMapToFile(outputDir.resolve("urls.txt"), Charsets.UTF_8, urlCounts, "url-counts");
 	}
+	
+	/**
+	 * Writes the given line to the given {@link Writer}. If a {@link MalformedInputException}
+	 * is thrown, indicating a charset issue, it's logged, and we return normally. 
+	 * @param wtr
+	 * @param fileDes
+	 * @param text
+	 * @throws IOException 
+	 */
+	private final static void writeSafely (BufferedWriter wtr, String fileDes, String text) throws IOException
+	{	try
+		{	wtr.write(text);
+		}
+		catch (MalformedInputException mie)
+		{	LOG.error("Can't write out the following line to the " + text + " due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
+		}
+	}
+	
 
 	/**
 	 * Writes a map out to a file. Keys are delimited from values by tabs, and key-value
 	 * pairs are delimited from one another by newlines.
 	 */
-	private final static <K,V> void writeMapToFile(Path file, Charset charset, Map<K, V> urlCounts, String... mapName)
-	{
+	private final static <K,V> void writeMapToFile(Path file, Charset charset, Object2IntMap<String> urlCounts, String... mapName)
+	{	String fileName = mapName.length == 0 ? "" : " " + mapName[0];
 		try (BufferedWriter wtr = Files.newBufferedWriter(file, Charsets.UTF_8);)
-		{	for (Map.Entry<K, V> entry : urlCounts.entrySet())
-			{	wtr.write(entry.getKey().toString() + '\t' + String.valueOf (entry.getValue()) + '\n');
+		{	for (Object2IntMap.Entry<String> entry : urlCounts.object2IntEntrySet())
+			{	writeSafely(wtr, fileName, entry.getKey().toString() + '\t' + String.valueOf (entry.getIntValue()) + '\n');
 			}
 		}
 		catch (Exception ioe)
-		{	LOG.error("Error writing out map " + (mapName.length > 0 ? mapName[0] : "") + " to file " + ioe.getMessage(), ioe);
+		{	LOG.error("Error writing out the" + (mapName.length > 0 ? mapName[0] : "") + " map to file " + ioe.getMessage(), ioe);
 		}
 	}
 	
@@ -368,7 +385,7 @@ public class TwitterStats implements Callable<Integer>
 	
 	private static void inc (Object2IntMap<String> counts, String key)
 	{	key = tidyStringKey(key);
-		counts.put (key, counts.get(key) + 1);
+		counts.put (key, counts.getInt(key) + 1);
 	}
 
 	/** Tidies string keys in hashmaps - trimmed and to lower-case */
@@ -380,10 +397,9 @@ public class TwitterStats implements Callable<Integer>
 	{	counts.put (key, counts.get(key) + 1);
 	}
 	
-	private static <V extends Number> int get (Map<String, V> counts, String key)
+	private static int get (Object2IntMap<String> counts, String key)
 	{	key = tidyStringKey(key);
-		V count = counts.get(key);
-		return count == null ? 0 : count.intValue();
+		return counts.get(key);
 	}
 	
 	private final void incTagCount (DateTime tweetDate, String hashTag)
@@ -400,6 +416,7 @@ public class TwitterStats implements Callable<Integer>
 		Object2IntMap<String> tagCounts = counts.get(key);
 		if (tagCounts == null)
 		{	tagCounts = new Object2IntArrayMap<String>(EXPECTED_HASH_TAG_COUNT);
+			tagCounts.defaultReturnValue(0);
 			counts.put (key, tagCounts);
 		}
 		inc (tagCounts, hashTag.toLowerCase());
