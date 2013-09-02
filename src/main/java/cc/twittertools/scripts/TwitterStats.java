@@ -236,7 +236,10 @@ public class TwitterStats implements Callable<Integer>
 		// Inter post time statistics
 		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("interPostStats.txt"), Charsets.UTF_8))
 		{	for (Map.Entry<Integer, ? extends Number> entry : interPostTimeMins.entrySet())
-				wtr.write(entry.getKey().toString() + '\t' + entry.getValue().toString() + '\n');;
+			{	Number numBox = entry.getValue();
+				int num = numBox == null ? 0 : numBox.intValue();
+				wtr.write(entry.getKey().toString() + '\t' + num + '\n');
+			}
 		}
 		catch (IOException ioe)
 		{	LOG.error("Error writing out inter-post time statistics to file " + ioe.getMessage(), ioe);
@@ -250,11 +253,12 @@ public class TwitterStats implements Callable<Integer>
 			
 			int cumulative = 0;
 			for (int day = end; day >= start; day--)
-			{	cumulative += postsSinceDay.get(day).intValue();
+			{	MutableInt value = postsSinceDay.get(day);
+				cumulative += value == null ? 0 : value.intValue();
 				wtr.write(Integer.toString (day) + '\t' + Integer.toString (cumulative) + '\n');
 			}
 		}
-		catch (IOException ioe)
+		catch (Exception ioe)
 		{	LOG.error("Error writing out counts of tweets since dates to file " + ioe.getMessage(), ioe);
 		}
 		
@@ -282,7 +286,7 @@ public class TwitterStats implements Callable<Integer>
 				}
 			}
 		}
-		catch (IOException ioe)
+		catch (Exception ioe)
 		{	LOG.error("Error writing out counts of hashtags to file " + ioe.getMessage(), ioe);
 		}
 		
@@ -305,7 +309,7 @@ public class TwitterStats implements Callable<Integer>
 				}
 			}
 		}
-		catch (IOException ioe)
+		catch (Exception ioe)
 		{	LOG.error("Error writing out counts of smileys to file " + ioe.getMessage(), ioe);
 		}
 		
@@ -321,10 +325,10 @@ public class TwitterStats implements Callable<Integer>
 	{
 		try (BufferedWriter wtr = Files.newBufferedWriter(file, Charsets.UTF_8);)
 		{	for (Map.Entry<K, V> entry : urlCounts.entrySet())
-			{	wtr.write(entry.getKey().toString() + '\t' + entry.getValue().toString() + '\n');
+			{	wtr.write(entry.getKey().toString() + '\t' + String.valueOf (entry.getValue()) + '\n');
 			}
 		}
-		catch (IOException ioe)
+		catch (Exception ioe)
 		{	LOG.error("Error writing out map " + (mapName.length > 0 ? mapName[0] : "") + " to file " + ioe.getMessage(), ioe);
 		}
 	}
