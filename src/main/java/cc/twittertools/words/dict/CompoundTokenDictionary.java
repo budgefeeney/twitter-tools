@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.velocity.util.StringUtils;
 
 import com.twitter.common.text.token.attribute.TokenType;
 
@@ -158,7 +158,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 	public void writeAsPythonList (String pyVarName, BufferedWriter writer) throws IOException
 	{	String[] dictNames = new String[numDicts + 1];
 		for (int tokenId = 1; tokenId <= numDicts; tokenId++)
-		{	dictNames[tokenId] = pyVarName + StringUtils.capitalizeFirstLetter(tokens[tokenId].toString().toLowerCase());
+		{	dictNames[tokenId] = pyVarName + ucFirst(tokens[tokenId].toString());
 		}
 		
 		for (int tokenId = 1; tokenId <= numDicts; tokenId++)
@@ -183,6 +183,24 @@ public class CompoundTokenDictionary implements TokenDictionary
 		}
 	}
 
+	/**
+	 * Given a string, returns the same string, with the first character in 
+	 * upper-case, and all subsequent characters in lower-case.
+	 * @param string
+	 * @return
+	 */
+	/* pkg */ static final String ucFirst(String string)
+	{	if (StringUtils.isEmpty(string))
+			return string;
+		
+		StringBuilder sb = new StringBuilder(string.length());
+		sb.append (Character.toUpperCase(string.charAt(0)));
+		
+		for (int i = 1; i < string.length(); i++)
+			sb.append (Character.toLowerCase(string.charAt(i)));
+		
+		return sb.toString();
+	}
 
 	/**
 	 * Dictionaries and their capacity are stored in arrays. This maps a
