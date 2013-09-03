@@ -73,7 +73,7 @@ public class TokenizationTest {
 			"EMOTICON", "8d",
 			   "TOKEN", "cc",
 			"USERNAME", "@shelbyknox",
-			     "URL", "http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=publicrss20-sa"
+			     "URL", "http://www.bbc.co.uk/news/technology-22464364#sa-ns_mchannel=rss&ns_source=PublicRSS20-sa"
 	  		};
 			
 		Vectorizer vec = new Main().newVectorizer();
@@ -191,6 +191,26 @@ public class TokenizationTest {
 	   "TOKEN", "u/e",
 	   "TOKEN", "rate"
 		};
+		
+		Vectorizer vec = new Main().newVectorizer();
+		
+		Iterator<Pair<TokenType, String>> iter = vec.toWords(input);
+		int numToks = 0;
+		while (iter.hasNext())
+		{	Pair<TokenType, String> tokenValue = iter.next();
+			System.out.printf ("%8s --> %s\n", tokenValue.getLeft(), tokenValue.getRight());
+			assertEquals(outputs[numToks * 2], tokenValue.getLeft().toString());
+			assertEquals(outputs[numToks * 2 + 1], tokenValue.getRight().toString());
+			numToks++;
+		}
+		System.out.flush();
+		assertEquals (outputs.length / 2, numToks);
+	}
+	
+	@Test
+	public void testUrlOnly() throws Exception
+	{	String input = "pic.twitter.com/0CYzIF3MaI";
+		String[] outputs = new String[] { "URL", "http://pic.twitter.com/0CYzIF3MaI" };
 		
 		Vectorizer vec = new Main().newVectorizer();
 		

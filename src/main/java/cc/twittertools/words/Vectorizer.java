@@ -56,7 +56,7 @@ public class Vectorizer {
 	public static enum InputType { STANDARD_TEXT, TWITTER };
 	
 	private final Pattern DIGIT_REGEXP = Pattern.compile("[0-9]");
-	private final Pattern URL_REGEXP = Pattern.compile ("\\s+(?:\\w{2,}\\.)+\\w{2,}/[A-Z0-9]", Pattern.CASE_INSENSITIVE);
+	private final Pattern URL_REGEXP = Pattern.compile ("(?:^|\\s)(?:\\w{2,}\\.)+\\w{2,}/[A-Z0-9]", Pattern.CASE_INSENSITIVE);
 	
 	private TokenDictionary dict;
 	private boolean         stemEnabled     = true;

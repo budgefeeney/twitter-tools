@@ -81,7 +81,7 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 		{	while ((hasNext = toks.incrementToken()))
 			{	term = charTermAttribute.getTermString();
 				boolean isAllCapLetters = isAllCapLetters (term);
-				if (lowerCase)
+				if (lowerCase && tokenAttr.getType() != TokenType.URL)
 				{	term = term.toLowerCase();
 				}
 				if (tokenAttr.getType() != TokenType.TOKEN)
