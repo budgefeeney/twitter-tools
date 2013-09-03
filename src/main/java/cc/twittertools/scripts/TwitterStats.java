@@ -362,7 +362,7 @@ public class TwitterStats implements Callable<Integer>
 	
 	private static int get (Object2IntMap<String> counts, String key)
 	{	key = tidyStringKey(key);
-		return counts.get(key);
+		return counts.getInt(key);
 	}
 	
 	private final void incTagCount (DateTime tweetDate, String hashTag)
