@@ -244,7 +244,7 @@ public class TwitterStats implements Callable<Integer>
 					get (rtRetweetsByUser, user)     + '\n'
 				);
 		}
-		catch (IOException ioe)
+		catch (Exception ioe)
 		{	LOG.error("Error writing out user statistics to file " + ioe.getMessage(), ioe);
 		}
 		
@@ -254,7 +254,7 @@ public class TwitterStats implements Callable<Integer>
 			{	writeSafely(wtr, "inter-post-time", entry.getKey().toString() + '\t' + entry.getIntValue() + '\n');
 			}
 		}
-		catch (IOException ioe)
+		catch (Exception ioe)
 		{	LOG.error("Error writing out inter-post time statistics to file " + ioe.getMessage(), ioe);
 		}
 		
