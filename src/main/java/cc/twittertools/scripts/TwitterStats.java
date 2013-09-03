@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import cc.twittertools.post.SavedTweetReader;
 import cc.twittertools.post.Tweet;
 import cc.twittertools.util.FilesInFoldersIterator;
+import cc.twittertools.util.PathUtils;
 import cc.twittertools.words.Vectorizer;
 
 import com.twitter.common.text.token.attribute.TokenType;
@@ -275,19 +276,19 @@ public class TwitterStats implements Callable<Integer>
 		}
 		
 		// The dictionary of words
-		writeMapToFile (outputDir.resolve("dictionary.txt"), Charsets.UTF_8, wordCounts, "word-counts");
+		writeMapToFile (outputDir.resolve("dictionary"), Charsets.UTF_8, wordCounts, "word-counts");
 		
 		// The list of addressees
-		writeMapToFile (outputDir.resolve("addressees.txt"), Charsets.UTF_8, addresseeCounts, "addressee-counts");
+		writeMapToFile (outputDir.resolve("addressees"), Charsets.UTF_8, addresseeCounts, "addressee-counts");
 		
 		// The list of hashtags
-		writeMapToFile (outputDir.resolve("hashtags.txt"), Charsets.UTF_8, hashTagCounts, "hashtag-counts");	
+		writeMapToFile (outputDir.resolve("hashtags"), Charsets.UTF_8, hashTagCounts, "hashtag-counts");	
 		
 		// The list of smileys
-		writeMapToFile (outputDir.resolve("smileys.txt"), Charsets.UTF_8, hashTagCounts, "smiley-counts");	
+		writeMapToFile (outputDir.resolve("smileys"), Charsets.UTF_8, hashTagCounts, "smiley-counts");	
 		
 		// Dictionary of URLs
-		writeMapToFile(outputDir.resolve("urls.txt"), Charsets.UTF_8, urlCounts, "url-counts");
+		writeMapToFile(outputDir.resolve("urls"), Charsets.UTF_8, urlCounts, "url-counts");
 	}
 	
 	/**
@@ -313,10 +314,18 @@ public class TwitterStats implements Callable<Integer>
 	 * pairs are delimited from one another by newlines.
 	 */
 	private final static void writeMapToFile(Path file, Charset charset, Object2IntMap<String> urlCounts, String... mapName)
-	{	String fileName = mapName.length == 0 ? "" : " " + mapName[0];
-		try (BufferedWriter wtr = Files.newBufferedWriter(file, Charsets.UTF_8);)
+	{	Path singles = PathUtils.appendFileNameSuffix(file, "-sgls.txt");
+		Path many    = PathUtils.appendFileNameSuffix(file, ".txt");
+		
+		String fileName = mapName.length == 0 ? "" : " " + mapName[0];
+		try (BufferedWriter sgl = Files.newBufferedWriter(singles, Charsets.UTF_8);
+				 BufferedWriter mny = Files.newBufferedWriter(many, Charsets.UTF_8))
 		{	for (Object2IntMap.Entry<String> entry : urlCounts.object2IntEntrySet())
-			{	writeSafely(wtr, fileName, entry.getKey().toString() + '\t' + String.valueOf (entry.getIntValue()) + '\n');
+			{	writeSafely(
+					entry.getIntValue() == 1 ? sgl : mny,
+					fileName,
+					entry.getKey().toString() + '\t' + String.valueOf (entry.getIntValue()) + '\n'
+				);
 			}
 		}
 		catch (Exception ioe)
