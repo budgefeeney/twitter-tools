@@ -29,7 +29,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.joda.time.Chronology;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +92,7 @@ public class TwitterStats implements Callable<Integer>
 
 	
 	private final Set<String> excludedUsers = new HashSet<>();
+	private       DateTime startDateIncl = new DateTime (1900, 01, 01, 00, 00, 01);
 	
 	private final Path datasetDirectory;
 	private final Path outputDir;
@@ -169,7 +172,8 @@ public class TwitterStats implements Callable<Integer>
 			  			String   account   = tweet.getAccount();
 			  			DateTime tweetDate = tweet.getLocalTime();
 			  			
-			  			if (excludedUsers.contains(tidyStringKey(account)))
+			  			if (excludedUsers.contains(tidyStringKey(account))
+						   || tweetDate.isBefore(startDateIncl))
 			  				continue;
 			  			
 			  			++tweetCount;
@@ -349,6 +353,7 @@ public class TwitterStats implements Callable<Integer>
 		// Tweets per week
 		writeMapsToFile(outputDir.resolve("tweets-per-week"), Charsets.UTF_8, tweetsPerWeek, "tweets");
 		
+		// Empirical distributions over the number of words, urls, hashtags etc. in each individual tweet.
 		writeMapsToFile (outputDir.resolve ("tokencounts"), Charsets.UTF_8,
 			wordsPerTweet,    "words",
 			urlsPerTweet,     "urls",
@@ -482,6 +487,14 @@ public class TwitterStats implements Callable<Integer>
 			this.excludedUsers.add (tidyStringKey(user));
 	}
 
+	public DateTime getStartDateIncl()
+	{	return startDateIncl;
+	}
+
+	public void setStartDateIncl(DateTime startDateIncl)
+	{	this.startDateIncl = startDateIncl;
+	}
+
 	@SuppressWarnings("unused")
 	private final void inc (Map<Integer, Object2IntMap<String>> counts, DateTime tweetDate, String hashTag)
 	{
@@ -497,11 +510,12 @@ public class TwitterStats implements Callable<Integer>
 	
 	public static void main (String[] args) throws Exception
 	{
-		Path inputDir  = Paths.get("/Users/bryanfeeney/datasets/twitter-20130828");
-		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/");
+		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
+		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats");
 		
 		TwitterStats stats = new TwitterStats (inputDir, outputDir);
 		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);
+		stats.setStartDateIncl(new DateTime (2013, 04, 01, 00, 00, 01, DateTimeZone.UTC));
 		stats.call();
 	}
 	
