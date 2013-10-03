@@ -13,31 +13,34 @@ import java.util.Iterator;
  */
 public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseable
 {
-	private DirectoryStream<Path> folders;
-	private DirectoryStream<Path> filesInCurrentFolder;
+	private DirectoryStream<Path> foldersStream;
+	private DirectoryStream<Path> folderFilesStream;
 	
 	private Iterator<Path> foldersIter;
-	private Iterator<Path> filesInCurrentFolderIter;
+	private Iterator<Path> folderFilesIter;
 	
 	private Exception error;
 
-	public FilesInFoldersIterator(Path folderOfFolders) throws IOException
-	{	folders = Files.newDirectoryStream(folderOfFolders, new DirectoryStream.Filter<Path>()
-		{ @Override public boolean accept(Path path) throws IOException
-			{	return Files.isDirectory(path);
+	public FilesInFoldersIterator(Path pathToFolderOfFolders) throws IOException
+	{	foldersStream = Files.newDirectoryStream(
+			pathToFolderOfFolders, 
+			new DirectoryStream.Filter<Path>()
+			{ @Override public boolean accept(Path path) throws IOException
+				{	return Files.isDirectory(path);
+				}
 			}
-		});
-		foldersIter = folders.iterator();
-		filesInCurrentFolderIter = nextFolder();
+		);
+		foldersIter = foldersStream.iterator();
+		folderFilesIter = nextFolderFilesIter();
 	}
 	
 	public boolean hasNext()
 	{	try
-		{	while (filesInCurrentFolderIter != null && ! filesInCurrentFolderIter.hasNext())
-			{	filesInCurrentFolderIter = nextFolder();
+		{	while (folderFilesIter != null && ! folderFilesIter.hasNext())
+			{	folderFilesIter = nextFolderFilesIter();
 			}
 		
-			return filesInCurrentFolderIter != null; // the lopp above implies hasNext = true
+			return folderFilesIter != null; // the loop above implies hasNext = true
 		}
 		catch (Exception e)
 		{	error = e;
@@ -51,32 +54,37 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 			error = null;
 			throw runError;
 		}
-		return filesInCurrentFolderIter.next();
+		return folderFilesIter.next();
 	}
 
 	public void remove()
 	{	throw new UnsupportedOperationException();
 	}
   
-	private Iterator<Path> nextFolder() throws IOException
+	/**
+	 * Returns an iterator over the files in the next folder (according to
+	 * its iterator), or null if there are no more folders whose contents
+	 * need listing.
+	 */
+	private Iterator<Path> nextFolderFilesIter() throws IOException
 	{	if (! foldersIter.hasNext())
 			return null;
 	
 		Path folder = foldersIter.next();
-		if (filesInCurrentFolder != null)
-			filesInCurrentFolder.close();
+		if (folderFilesStream != null)
+			folderFilesStream.close();
 		
-		filesInCurrentFolder = Files.newDirectoryStream(folder, new DirectoryStream.Filter<Path>()
+		folderFilesStream = Files.newDirectoryStream(folder, new DirectoryStream.Filter<Path>()
 		{	@Override public boolean accept(Path path) throws IOException
 			{	return ! Files.isDirectory(path);
 			}
 		});
-		return filesInCurrentFolder.iterator();
+		return folderFilesStream.iterator();
 	}
 	
 	public void close() throws Exception
-	{	folders.close();
-		if (filesInCurrentFolder != null)
-			filesInCurrentFolder.close();
+	{	foldersStream.close();
+		if (folderFilesStream != null)
+			folderFilesStream.close();
 	}
 }
