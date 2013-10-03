@@ -163,23 +163,23 @@ public class TwitterStats implements Callable<Integer>
 	  		Path currentFile = tweetFiles.next();
 	  		LOG.info ("Processing tweets in file: " + currentFile);
 	  		
-				try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
+	  		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
 				{	
 					while (rdr.hasNext())
 					{	
 						try
 						{	Tweet    tweet     = rdr.next();
-			  			String   account   = tweet.getAccount();
+			  			String   account   = tidyStringKey (tweet.getAccount());
 			  			DateTime tweetDate = tweet.getLocalTime();
 			  			
-			  			if (excludedUsers.contains(tidyStringKey(account))
+			  			if (excludedUsers.contains(account)
 						   || tweetDate.isBefore(startDateIncl))
 			  				continue;
 			  			
 			  			++tweetCount;
 			  			
 			  			// Retweet statistics
-				  		if (! tweet.getAccount().equals (tweet.getAuthor()))
+				  		if (! account.equals (tidyStringKey(tweet.getAuthor())))
 				  			inc (retweetsByUser, account);
 				  		else if (tweet.isRetweetFromMsg())
 				  			inc (rtRetweetsByUser, account);
@@ -204,8 +204,8 @@ public class TwitterStats implements Callable<Integer>
 				  		inc (postsSinceDay, dayOfTweet);
 				  		
 				  		// tweets per week
-				  		int year = tweetDate.getWeekyear(); // Jodatime Javadoc explains why this makes
-				  		int week = tweetDate.getWeekOfWeekyear(); // sense even if it looks wrong
+				  		int year = tweetDate.getWeekyear();       // Jodatime Javadoc explains why this...
+				  		int week = tweetDate.getWeekOfWeekyear(); // ...makes sense even if it looks wrong
 				  		int time = year * 100 + week;
 				  		inc (tweetsPerWeek, time);
 				  		
@@ -213,7 +213,7 @@ public class TwitterStats implements Callable<Integer>
 				  		DateTime accountsFirstPost = firstPostByUser.get(account);
 				  		if (accountsFirstPost == null || tweetDate.isBefore(accountsFirstPost))
 				  		{	firstPostByUser.put (account, tweetDate);
-				  			firstPostByUserAsDay.put (tidyStringKey(account), dayOfTweet);
+				  			firstPostByUserAsDay.put (account, dayOfTweet);
 				  		}
 				  		DateTime accountsLastPost = lastPostByUser.get(account);
 				  		if (accountsLastPost == null || tweetDate.isAfter(accountsLastPost))
@@ -292,6 +292,7 @@ public class TwitterStats implements Callable<Integer>
 		try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("userStats.txt"), Charsets.UTF_8))
 		{
 			List<String> users = new ArrayList<String>(firstPostByUser.keySet());
+			System.out.println ("There are " + users.size() + " user accounts");
 			Collections.sort(users);
 			
 			for (String user : users)
@@ -377,7 +378,7 @@ public class TwitterStats implements Callable<Integer>
 		{	wtr.write(text);
 		}
 		catch (MalformedInputException mie)
-		{	LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
+		{	; //LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
 		}
 	}
 	
