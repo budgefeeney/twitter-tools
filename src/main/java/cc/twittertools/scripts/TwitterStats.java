@@ -23,13 +23,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
-import org.joda.time.Chronology;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
@@ -74,14 +75,14 @@ public class TwitterStats implements Callable<Integer>
 	private final Map<String, DateTime> firstPostByUser;
 	private final Object2IntMap<String> firstPostByUserAsDay;
 	private final Int2IntMap            interPostTimeMins;
-	private final Object2IntMap<String> retweetsByUser;
-	private final Object2IntMap<String> rtRetweetsByUser;
-	private final Object2IntMap<String> tweetsPerUser;
-	private final Object2IntMap<String> hashTagCounts;
-	private final Object2IntMap<String> smileyCounts;
-	private final Object2IntMap<String> addresseeCounts;
-	private final Object2IntMap<String> urlCounts;
-	private final Object2IntMap<String> wordCounts;
+	private final Map<String, MutableInt> retweetsByUser;
+	private final Map<String, MutableInt> rtRetweetsByUser;
+	private final Map<String, MutableInt> tweetsPerUser;
+	private final Map<String, MutableInt> hashTagCounts;
+	private final Map<String, MutableInt> smileyCounts;
+	private final Map<String, MutableInt> addresseeCounts;
+	private final Map<String, MutableInt> urlCounts;
+	private final Map<String, MutableInt> wordCounts;
 	private final Int2IntMap            tweetsPerWeek;
 	private final Int2IntMap            wordsPerTweet;
 	private final Int2IntMap            urlsPerTweet;
@@ -110,15 +111,25 @@ public class TwitterStats implements Callable<Integer>
 		firstPostByUser      = new HashMap<>(NUM_USERS_IN_DATASET);
 		firstPostByUserAsDay = new Object2IntAVLTreeMap<>();
 		interPostTimeMins    = new Int2IntAVLTreeMap();
-		retweetsByUser       = new Object2IntAVLTreeMap<>();
-		rtRetweetsByUser     = new Object2IntAVLTreeMap<>();
-		tweetsPerUser        = new Object2IntAVLTreeMap<>();
-		hashTagCounts        = new Object2IntAVLTreeMap<>();
-		smileyCounts         = new Object2IntAVLTreeMap<>();
-		addresseeCounts      = new Object2IntAVLTreeMap<>();
-		urlCounts            = new Object2IntAVLTreeMap<>();
 		
-		wordCounts           = new Object2IntAVLTreeMap<>();
+//		retweetsByUser       = new Object2IntAVLTreeMap<>();
+//		rtRetweetsByUser     = new Object2IntAVLTreeMap<>();
+//		tweetsPerUser        = new Object2IntAVLTreeMap<>();
+//		hashTagCounts        = new Object2IntAVLTreeMap<>();
+//		smileyCounts         = new Object2IntAVLTreeMap<>();
+//		addresseeCounts      = new Object2IntAVLTreeMap<>();
+//		urlCounts            = new Object2IntAVLTreeMap<>();
+//		wordCounts           = new Object2IntAVLTreeMap<>();
+//		
+		retweetsByUser       = new HashMap<>(   20_000, 0.75f);
+		rtRetweetsByUser     = new HashMap<>(   20_000, 0.75f);
+		tweetsPerUser        = new HashMap<>(   20_000, 0.75f);
+		hashTagCounts        = new HashMap<>(  100_000, 0.75f);
+		smileyCounts         = new HashMap<>(      100, 0.75f);
+		addresseeCounts      = new HashMap<>(2_500_000, 0.90f);
+		urlCounts            = new HashMap<>(9_000_000, 0.90f);
+		wordCounts           = new HashMap<>(  100_000, 0.90f);
+		
 		tweetsPerWeek        = new Int2IntAVLTreeMap();
 		wordsPerTweet        = new Int2IntAVLTreeMap();
 		urlsPerTweet         = new Int2IntAVLTreeMap();
@@ -130,14 +141,16 @@ public class TwitterStats implements Callable<Integer>
 		postsSinceDay.defaultReturnValue(0);
 		firstPostByUserAsDay.defaultReturnValue(0);
 		interPostTimeMins.defaultReturnValue(0);
-		retweetsByUser.defaultReturnValue(0);
-		rtRetweetsByUser.defaultReturnValue(0);
-		tweetsPerUser.defaultReturnValue(0);
-		hashTagCounts.defaultReturnValue(0);
-		smileyCounts.defaultReturnValue(0);
-		addresseeCounts.defaultReturnValue(0);
-		urlCounts.defaultReturnValue(0);
-		wordCounts.defaultReturnValue(0);
+		
+//		retweetsByUser.defaultReturnValue(0);
+//		rtRetweetsByUser.defaultReturnValue(0);
+//		tweetsPerUser.defaultReturnValue(0);
+//		hashTagCounts.defaultReturnValue(0);
+//		smileyCounts.defaultReturnValue(0);
+//		addresseeCounts.defaultReturnValue(0);
+//		urlCounts.defaultReturnValue(0);
+//		wordCounts.defaultReturnValue(0);
+		
 		tweetsPerWeek.defaultReturnValue(0);
 		wordsPerTweet.defaultReturnValue(0);
 		urlsPerTweet.defaultReturnValue(0);
@@ -378,7 +391,8 @@ public class TwitterStats implements Callable<Integer>
 		{	wtr.write(text);
 		}
 		catch (MalformedInputException mie)
-		{	; //LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
+		{	wtr.write('\n');
+			; //LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
 		}
 	}
 	
@@ -387,18 +401,44 @@ public class TwitterStats implements Callable<Integer>
 	 * Writes a map out to a file. Keys are delimited from values by tabs, and key-value
 	 * pairs are delimited from one another by newlines.
 	 */
-	private final static void writeMapToFile(Path file, Charset charset, Object2IntMap<String> urlCounts, String... mapName)
+	private final static void writeMapToFile(Path file, Charset charset, Object2IntMap<String> counts, String... mapName)
 	{	Path singles = PathUtils.appendFileNameSuffix(file, "-sgls.txt");
 		Path many    = PathUtils.appendFileNameSuffix(file, ".txt");
 		
 		String fileName = mapName.length == 0 ? "" : " " + mapName[0];
 		try (BufferedWriter sgl = Files.newBufferedWriter(singles,charset);
 				 BufferedWriter mny = Files.newBufferedWriter(many, charset))
-		{	for (Object2IntMap.Entry<String> entry : urlCounts.object2IntEntrySet())
+		{	for (Object2IntMap.Entry<String> entry : counts.object2IntEntrySet())
 			{	writeSafely(
 					entry.getIntValue() == 1 ? sgl : mny,
 					fileName,
 					entry.getKey().toString() + '\t' + String.valueOf (entry.getIntValue()) + '\n'
+				);
+			}
+		}
+		catch (Exception ioe)
+		{	LOG.error("Error writing out the" + (mapName.length > 0 ? mapName[0] : "") + " map to file " + ioe.getMessage(), ioe);
+		}
+	}
+	
+	/**
+	 * Writes a map out to a file. Keys are delimited from values by tabs, and key-value
+	 * pairs are delimited from one another by newlines.
+	 */
+	private final static void writeMapToFile(Path file, Charset charset, Map<String, MutableInt> counts, String... mapName)
+	{	Path singles = PathUtils.appendFileNameSuffix(file, "-sgls.txt");
+		Path many    = PathUtils.appendFileNameSuffix(file, ".txt");
+		
+		System.out.println ("There are " + counts.size() + " entries in the table for " + Arrays.toString(mapName));
+		
+		String fileName = mapName.length == 0 ? "" : " " + mapName[0];
+		try (BufferedWriter sgl = Files.newBufferedWriter(singles,charset);
+				 BufferedWriter mny = Files.newBufferedWriter(many, charset))
+		{	for (Map.Entry<String, MutableInt> entry : counts.entrySet())
+			{	writeSafely(
+					entry.getValue().intValue() == 1 ? sgl : mny,
+					fileName,
+					entry.getKey().toString() + '\t' + String.valueOf (entry.getValue().intValue()) + '\n'
 				);
 			}
 		}
@@ -456,6 +496,15 @@ public class TwitterStats implements Callable<Integer>
 	{	key = tidyStringKey(key);
 		counts.put (key, counts.getInt(key) + 1);
 	}
+	
+	private static void inc (Map<String, MutableInt> counts, String key)
+	{	key = tidyStringKey(key);
+		MutableInt count = counts.get(key);
+		if (count == null)
+			counts.put(key, new MutableInt(1));
+		else
+			count.increment();
+	}
 
 	/** Tidies string keys in hashmaps and sets - trimmed and to lower-case */
 	private static String tidyStringKey(String key)
@@ -469,6 +518,12 @@ public class TwitterStats implements Callable<Integer>
 	private static int get (Object2IntMap<String> counts, String key)
 	{	key = tidyStringKey(key);
 		return counts.getInt(key);
+	}
+	
+	private static int get (Map<String, MutableInt> counts, String key)
+	{	key = tidyStringKey(key);
+		MutableInt count = counts.get(key);
+		return count == null ? 0 : count.intValue();
 	}
 	
 	private final void incTagCount (DateTime tweetDate, String hashTag)

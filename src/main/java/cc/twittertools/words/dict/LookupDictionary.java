@@ -55,25 +55,39 @@ public class LookupDictionary extends AbstractDictionary
 	}
 	
 	/**
-	 * Load a dictionary from a file. The last two colums of a file should
+	 * Load a dictionary from a file. The last two columns of a file should
 	 * be a word and a frequency count respectively. It's okay if the word
 	 * occurs several times, in these cases the frequencies are summed. 
 	 * Eventually all words whose frequency is greater than or equal to
 	 * the limit are taken to create a sealed dictionary
 	 */
-	public static Dictionary fromFile (Path file, int minOccurrenceCount) throws IOException
+	public static LookupDictionary fromFile (Path file, int minOccurrenceCount) throws IOException
 	{	Map<String, MutableInt> wordFreqs = new HashMap<>(4_000_000);
+		String line = null;
+		int lineCount = 0;
 		
 		try (BufferedReader rdr = Files.newBufferedReader(file, Charsets.UTF_8); )
-		{	String line;
-			while ((line = rdr.readLine()) != null)
-			{	if ((line = line.trim()).isEmpty())
+		{	while ((line = rdr.readLine()) != null)
+			{	++lineCount;
+				if ((line = line.trim()).isEmpty())
 					continue;
+				if (line.length() < 3)
+				{	System.err.println ("Invalid line at line number " + lineCount + " : " + line);
+					continue;
+				}
 				
 				int lastTab  = line.lastIndexOf('\t');
+				
+				if (lastTab < 0)
+				{	System.err.println ("Invalid line:" + lineCount + " '" + line + "'");
+					continue;
+				}
+				
 				int penulTab = Math.max (0, line.lastIndexOf('\t', lastTab - 1));
 				
 				String count = line.substring(lastTab + 1);
+				if (penulTab < 0 || lastTab < 0)
+					System.out.println ("Whoa");
 				String word  = line.substring(penulTab + 1, lastTab);
 				
 				MutableInt freq = wordFreqs.get (word);
@@ -81,8 +95,17 @@ public class LookupDictionary extends AbstractDictionary
 				{	freq = new MutableInt(0);
 					wordFreqs.put (word, freq);
 				}
+				else
+				{	System.out.println ("Repeated word " + word);
+				}
 				freq.add (Integer.valueOf(count));
 			}
+		}
+		catch (IOException ioe)
+		{	throw ioe;
+		}
+		catch (Exception e)
+		{	throw new IOException ("Failed to parse file at line " + lineCount + ". Line was '" + line + "'. Error was " + e.getMessage(), e);
 		}
 		
 		int dictSize = 0;
@@ -96,6 +119,9 @@ public class LookupDictionary extends AbstractDictionary
 				dict.toInt(entry.getKey());
 		
 		dict.seal();
+		wordFreqs = null;
+		System.gc();
+		
 		return dict;
 	}
 
