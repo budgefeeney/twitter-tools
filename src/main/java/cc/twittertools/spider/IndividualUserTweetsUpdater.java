@@ -73,8 +73,10 @@ public class IndividualUserTweetsUpdater extends IndividualUserTweetsSpider
       { return true;
       }
       else
-      { LOG.info("Won't download new tweets for user " + user);
-        return false;
+      { 
+//      	LOG.info("Won't download new tweets for user " + user);
+//        return false;
+      	return true;
       }
     }
     catch (IOException ioe)
