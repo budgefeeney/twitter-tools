@@ -83,12 +83,14 @@ public class TwitterStats implements Callable<Integer>
 	private final Map<String, MutableInt> addresseeCounts;
 	private final Map<String, MutableInt> urlCounts;
 	private final Map<String, MutableInt> wordCounts;
+	private final Map<String, MutableInt> stockCounts;
 	private final Int2IntMap            tweetsPerWeek;
 	private final Int2IntMap            wordsPerTweet;
 	private final Int2IntMap            urlsPerTweet;
 	private final Int2IntMap            hashTagsPerTweet;
 	private final Int2IntMap            smileysPerTweet;
 	private final Int2IntMap            addrsPerTweet;
+	private final Int2IntMap            stocksPerTweet;
 	private final Int2IntMap            tokensPerTweet;
 
 	
@@ -126,9 +128,10 @@ public class TwitterStats implements Callable<Integer>
 		tweetsPerUser        = new HashMap<>(   20_000, 0.75f);
 		hashTagCounts        = new HashMap<>(  100_000, 0.75f);
 		smileyCounts         = new HashMap<>(      100, 0.75f);
-		addresseeCounts      = new HashMap<>(2_500_000, 0.90f);
-		urlCounts            = new HashMap<>(9_000_000, 0.90f);
-		wordCounts           = new HashMap<>(  100_000, 0.90f);
+		addresseeCounts      = new HashMap<>(2_500_000, 0.75f);
+		urlCounts            = new HashMap<>(9_000_000, 0.75f);
+		wordCounts           = new HashMap<>(  100_000, 0.75f);
+		stockCounts          = new HashMap<>(   25_000, 0.75f);
 		
 		tweetsPerWeek        = new Int2IntAVLTreeMap();
 		wordsPerTweet        = new Int2IntAVLTreeMap();
@@ -136,6 +139,7 @@ public class TwitterStats implements Callable<Integer>
 		hashTagsPerTweet     = new Int2IntAVLTreeMap();
 		smileysPerTweet      = new Int2IntAVLTreeMap();
 		addrsPerTweet        = new Int2IntAVLTreeMap();
+		stocksPerTweet       = new Int2IntAVLTreeMap();
 		tokensPerTweet       = new Int2IntAVLTreeMap();
 		
 		postsSinceDay.defaultReturnValue(0);
@@ -239,6 +243,7 @@ public class TwitterStats implements Callable<Integer>
 				  		int hashCount   = 0;
 				  		int smileyCount = 0;
 				  		int addrsCount  = 0;
+				  		int stockCount  = 0;
 				  		
 				  		Iterator<Pair<TokenType, String>> iter = vec.toWords(tweet.getMsg());
 				  		while (iter.hasNext())
@@ -260,6 +265,10 @@ public class TwitterStats implements Callable<Integer>
 				  					incSmileyCount (tweetDate, tokenValue.getValue());
 				  					++smileyCount;
 				  					break;
+				  				case STOCK:
+				  					inc (stockCounts, tokenValue.getValue());
+				  					++stockCount;
+				  					break;
 				  				case TOKEN:
 				  					inc (wordCounts, tokenValue.getValue());
 				  					++wordCount;
@@ -275,6 +284,7 @@ public class TwitterStats implements Callable<Integer>
 				  		inc (hashTagsPerTweet, hashCount);
 				  		inc (smileysPerTweet,  smileyCount);
 				  		inc (addrsPerTweet,    addrsCount);
+				  		inc (stocksPerTweet,   stockCount);
 				  		inc (tokensPerTweet,   wordCount + urlCount + hashCount + smileyCount + addrsCount);
 						}
 						catch (Exception e)
@@ -352,6 +362,9 @@ public class TwitterStats implements Callable<Integer>
 		// The dictionary of words
 		writeMapToFile (outputDir.resolve("dictionary"), Charsets.UTF_8, wordCounts, "word-counts");
 		
+		// the dictionary of stocks
+		writeMapToFile (outputDir.resolve("stocks"), Charsets.UTF_8, stockCounts, "stock-counts");
+		
 		// The list of addressees
 		writeMapToFile (outputDir.resolve("addressees"), Charsets.UTF_8, addresseeCounts, "addressee-counts");
 		
@@ -374,6 +387,7 @@ public class TwitterStats implements Callable<Integer>
 			hashTagsPerTweet, "hashtags",
 			smileysPerTweet,  "smileys",
 			addrsPerTweet,    "addrs",
+			stocksPerTweet,   "stocks",
 			tokensPerTweet,   "tokens"
 		);
 	}
