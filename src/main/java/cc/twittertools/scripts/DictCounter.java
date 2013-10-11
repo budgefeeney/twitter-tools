@@ -9,11 +9,23 @@ import cc.twittertools.words.dict.LookupDictionary;
 public class DictCounter
 {
 	public static void main (String[] args) throws IOException
-	{	final int  MIN_OCCURRENCE_COUNT = 1;
-		final Path PATH = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats/dictionary.txt");
+	{	final int  MIN_OCCURRENCE_COUNT = 10;
+		final Path PATH = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats");
 		
-		LookupDictionary dict = LookupDictionary.fromFile(PATH, MIN_OCCURRENCE_COUNT);
-		
-		System.out.println ("With min-occurrence = " + MIN_OCCURRENCE_COUNT + ". Size = " + dict.size());
+		for (int minOccurenceCount : new int[] { 1, 5, 10})
+		{	for (String dictFile : new String[] { "dictionary.txt", "hashtags.txt", "addressees.txt", "urls.txt" } )
+			{	LookupDictionary dict = LookupDictionary.fromFile(PATH.resolve(dictFile), minOccurenceCount);
+			
+				System.out.println ("With min-occurrence = " + minOccurenceCount + ", " + dictFile.replaceAll("\\.txt", ".size") + " = " + dict.size());
+				
+//				if (dict.size() < 7000)
+//					for (int i = 0; i < dict.size(); i++)
+//						System.out.printf ("%5d %s\n", i, dict.toWord(i));
+				
+				dict = null;
+				System.gc();
+			}
+			System.out.println();
+		}
 	}
 }
