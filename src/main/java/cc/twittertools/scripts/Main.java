@@ -231,12 +231,19 @@ public class Main implements Callable<Integer>
 	}
   
   private final Dictionary dictionary(String dict) throws IOException
-  {	if (isDigitSequence (dict))
+  {	int minWordCount = this.minWordCount;
+  	
+  	if (isDigitSequence (dict))
   	{	int size = Integer.parseInt(dict);
   		return size == 0 ? NullDictionary.INSTANCE : new LookupDictionary(size);
   	}
 	  else
-	  {	return LookupDictionary.fromFile(Paths.get(dict), minWordCount);
+	  {	int colonPos = dict.lastIndexOf(':');
+	  	if (colonPos >= 0)
+	  	{	minWordCount = Integer.parseInt (dict.substring(colonPos + 1));
+	  		dict         = dict.substring(0, colonPos);
+	  	}
+	  	return LookupDictionary.fromFile(Paths.get(dict), minWordCount);
 	  }
   }
   
@@ -297,7 +304,7 @@ public class Main implements Callable<Integer>
     return treatHashTagsAsWords;
   }
   
-  @Option(name="--skip-retweets", usage="Strip the hash from hashtags so they're processed as normal words (including stemming etc.)", metaVar=" ")
+  @Option(name="--treat-hts-as-words", usage="Strip the hash from hashtags so they're processed as normal words (including stemming etc.)", metaVar=" ")
   public void setTreatHashTagsAsWords(boolean treatHashTagsAsWords) {
     this.treatHashTagsAsWords = treatHashTagsAsWords;
   }
@@ -486,7 +493,7 @@ public class Main implements Callable<Integer>
 	{	return addresseeDict;
 	}
 
-	@Option(name="--dict-addrs", aliases="--help", usage="Maximum number of addressees in dictionary, all subsequent words are dropped.", metaVar=" ")
+	@Option(name="--dict-addrs", usage="Maximum number of addressees in dictionary, all subsequent words are dropped.", metaVar=" ")
 	public void setAddresseeDict(String dict)
 	{	this.addresseeDict = dict;
 	}
@@ -495,7 +502,7 @@ public class Main implements Callable<Integer>
 	{	return urlsDict;
 	}
 
-	@Option(name="--dict-urls", aliases="--help", usage="Maximum number of URLs to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	@Option(name="--dict-urls", usage="Maximum number of URLs to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
 	public void setUrlsDict(String dict)
 	{	this.urlsDict = dict;
 	}
@@ -504,7 +511,7 @@ public class Main implements Callable<Integer>
 	{	return wordsDict;
 	}
 
-	@Option(name="--dict-words", aliases="--help", usage="Maximum number of words to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	@Option(name="--dict-words", usage="Maximum number of words to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
 	public void setWordsDict(String dict)
 	{	this.wordsDict = dict;
 	}
@@ -513,7 +520,7 @@ public class Main implements Callable<Integer>
 	{	return stocksDict;
 	}
 
-	@Option(name="--dict-stocks", aliases="--help", usage="Maximum number of stocks to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	@Option(name="--dict-stocks", usage="Maximum number of stocks to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
 	public void setStocksDict(String dict)
 	{	this.stocksDict = dict;
 	}
@@ -522,7 +529,7 @@ public class Main implements Callable<Integer>
 	{	return emoticonsDict;
 	}
 
-	@Option(name="--dict-smileys", aliases="--help", usage="Maximum number of emoticons (\"smileys\") to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	@Option(name="--dict-smileys", usage="Maximum number of emoticons (\"smileys\") to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
 	public void setEmoticonsDict(String dict)
 	{	this.emoticonsDict = dict;
 	}
@@ -531,7 +538,7 @@ public class Main implements Callable<Integer>
 	{	return hashTagsDict;
 	}
 
-	@Option(name="--dict-tags", aliases="--help", usage="Maximum number of hashtags to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
+	@Option(name="--dict-tags", usage="Maximum number of hashtags to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
 	public void setHashTagsDict(String dict)
 	{	this.hashTagsDict = dict;
 	}
