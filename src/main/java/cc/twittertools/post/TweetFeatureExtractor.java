@@ -27,6 +27,7 @@ import cc.twittertools.util.FilesInFoldersIterator;
 import cc.twittertools.words.Vectorizer;
 import cc.twittertools.words.dict.Dictionary;
 import cc.twittertools.words.dict.LookupDictionary;
+import cc.twittertools.words.dict.UnmappableTokenException;
 
 /**
  * Extracts paired features from tweets: one references the "text", one references the "event"
@@ -84,6 +85,9 @@ public class TweetFeatureExtractor implements Callable<Integer>
   /** dictionary of users (including addressees if we're using them) */
   private final Dictionary userDict;
   
+  /** do we skip an entire tweet if we can't map a single token to an identifier */
+  private final boolean skipTweetOnUnmappableToken;
+  
   /**
    * Creates a new {@link TweetFeatureExtractor}
    * @param inputDir the directory from which the raw tweets are read. This directory
@@ -103,6 +107,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
     this.outputDir  = outputDir;
     this.vectorizer = vectorizer;
     this.featSpec   = featureSpecification;
+    
+    this.skipTweetOnUnmappableToken = true;
     
     int numUsers =
     	   featSpec.isAddresseeInFeatures() ? MAX_USERS + MAX_EXTRA_ADDRESSEES
@@ -312,13 +318,24 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		if (featSpec.isAddresseeInFeatures())
 		{	for (String addressee : addressees)
 			{	int userId = userDict.toInt(addressee);
+				if (userId == Dictionary.UNMAPPABLE_WORD)
+					if (skipTweetOnUnmappableToken)
+						throw new UnmappableTokenException ("Tweet contains the unmappable token " + addressee);
+					else
+						continue;
+				
 				inc (eventFeatures, step + userId);
 			}
 			step += dim.getAddresseeDim();
 		}
 		
 		if (featSpec.isAuthorInFeatures())
-		{	eventFeatures.put (step + userDict.toInt(tweet.getAccount()), one);
+		{	int authorId = userDict.toInt(tweet.getAccount());
+			if (authorId == Dictionary.UNMAPPABLE_WORD)
+				if (skipTweetOnUnmappableToken)
+					throw new UnmappableTokenException ("Tweet contains the unmappable token " + tweet.getAccount());
+			
+			eventFeatures.put (step + authorId, one);
 			step += dim.getAuthorDim();
 		}
 		
@@ -379,6 +396,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	 * it into word features. The given map is cleared and filled with the
 	 * encoded features.
 	 * 
+	 * @param tweet the tweet to parse
+	 * @param wordFeatures the bag of word ID counts.
 	 * @return the list of addressees
 	 */
 	private List<String> extractWordFeatures(Tweet tweet, Int2ShortMap wordFeatures)
@@ -399,7 +418,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		// tags, in which case we have to do this backwards by replacing
 		// # with HASH_TAG etc.
 		
-		for (int wordId : vectorizer.toInts(text))
+		for (int wordId : vectorizer.toInts(text, skipTweetOnUnmappableToken))
 		{	inc(wordFeatures, wordId);
 		}
 		

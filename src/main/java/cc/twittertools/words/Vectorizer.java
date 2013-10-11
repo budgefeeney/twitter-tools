@@ -32,6 +32,7 @@ import cc.twittertools.words.combiners.UrlCombiner;
 import cc.twittertools.words.dict.CompoundTokenDictionary;
 import cc.twittertools.words.dict.Dictionary;
 import cc.twittertools.words.dict.TokenDictionary;
+import cc.twittertools.words.dict.UnmappableTokenException;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
@@ -50,6 +51,7 @@ public class Vectorizer {
 	
 //	private final static Logger LOG = LoggerFactory.getLogger(Vectorizer.class);
 	
+	private static final int CORPUS_SIZE_ESTIMATE = 1000;
 	private static final String SPACE_HTTP = " http://";
 
 	/** The different kinds of input text this tokenizer can operate on */
@@ -227,13 +229,15 @@ public class Vectorizer {
 	 * <p>
 	 * This version skips the infrequent words check
 	 * @param text
+	 * @param failOnUmappableToken if true then throw an {@link IllegalArgumentException}
+	 * if any token in this text can't be mapped by a dictionary to a numeric ID.
 	 * @return an int array corresponding to the words in the text
 	 */
-	public int[] toInts (String text)
+	public int[] toInts (String text, boolean failOnUmappableToken)
 	{	if (minWordCount > 1)
 			throw new IllegalStateException ("Can't enabled infrequent word-filtering (minWordCount=" + minWordCount + ") and process files one at a time. For infrequenct word-filtering to work, the corpus needs to be vectorized all at once.");
 	
-		return toIntsInternal(text, Collections.<TokenType, Set<String>>emptyMap());
+		return toIntsInternal(text, Collections.<TokenType, Set<String>>emptyMap(), failOnUmappableToken);
 	}
 	
 	/**
@@ -247,8 +251,10 @@ public class Vectorizer {
 	 * @param infrequentWords a collection of words that are to be skipped as they occur
 	 * too rarely
 	 * @return an int array corresponding to the words in the text
+	 * @param failOnUmappableToken if true then throw an {@link IllegalArgumentException}
+	 * if any token in this text can't be mapped by a dictionary to a numeric ID.
 	 */
-	private int[] toIntsInternal (String text, Map<TokenType, Set<String>> infrequentWords)
+	private int[] toIntsInternal (String text, Map<TokenType, Set<String>> infrequentWords, boolean failOnUmappableToken)
 	{	int[] result = new int[text.length() / 5];
 		int numWords = 0;
 		Iterator<Pair<TokenType, String>> words = toWords(text);
@@ -264,7 +270,10 @@ public class Vectorizer {
 			
 			int wordId = dict.toInt(tokenType, word);
 			if (wordId == Dictionary.UNMAPPABLE_WORD)
-				continue;
+				if (failOnUmappableToken)
+					throw new UnmappableTokenException ("Can't map token \"" + word + "\" to numeric ID using dictionary");
+				else
+					continue;
 			
 			result = ArrayUtils.add(result, numWords, wordId);
 			++numWords;
@@ -283,18 +292,33 @@ public class Vectorizer {
 	
 	/**
 	 * Given a corpus of sample texts, breaks it into words, and converts those
-	 * words into integers. See {@link #toInts(String)}
+	 * words into integers. See {@link #toInts(String)}. Unmappable tokens are
+	 * just skipped.
 	 */
 	public int[][] toInts (Collection<String> corpus)
-	{	return toInts (corpus.iterator(), corpus.size());
+	{	return toInts (corpus.iterator(), corpus.size(), /* failOnUmappableToken = */ false);
 	}
 	
 	/**
 	 * Given a corpus of sample texts, breaks it into words, and converts those
 	 * words into integers. See {@link #toInts(String)}
+	 * @param corpus the collection of documents to convert to integers
+	 * @param failOnUmappableToken if true then throw an {@link IllegalArgumentException}
+	 * if any token in this text can't be mapped by a dictionary to a numeric ID.
 	 */
 	public int[][] toInts (Iterator<String> corpus)
-	{	return toInts (corpus, 1000);
+	{	return toInts (corpus, /* failOnUmappableToken = */ false);
+	}
+	
+	/**
+	 * Given a corpus of sample texts, breaks it into words, and converts those
+	 * words into integers. See {@link #toInts(String)}
+	 * @param corpus the collection of documents to convert to integers
+	 * @param failOnUmappableToken if true then throw an {@link IllegalArgumentException}
+	 * if any token in this text can't be mapped by a dictionary to a numeric ID.
+	 */
+	public int[][] toInts (Iterator<String> corpus, boolean failOnUmappableToken)
+	{	return toInts (corpus, CORPUS_SIZE_ESTIMATE, failOnUmappableToken);
 	}
 	
 	/**
@@ -302,10 +326,13 @@ public class Vectorizer {
 	 * words into integers. See {@link #toInts(String)}. The sizeHint gives the
 	 * number of elements in the iterator, to save on wasted memory allocation
 	 * with the arrays.
+	 * @param corpus the collection of documents to tokenize
+	 * @param failOnUmappableToken if true then throw an {@link IllegalArgumentException}
+	 * if any token in this text can't be mapped by a dictionary to a numeric ID.
 	 */
-	public int[][] toInts (Iterator<String> corpus, int sizeHint)
+	public int[][] toInts (Iterator<String> corpus, int sizeHint, boolean failOnUmappableToken)
 	{	if (minWordCount <= 1)
-			return toInts (corpus, Collections.<TokenType, Set<String>>emptyMap(), sizeHint);
+			return toInts (corpus, Collections.<TokenType, Set<String>>emptyMap(), sizeHint, failOnUmappableToken);
 	
 		// need to buffer the corpus and backup the dictionary as we're taking two
 		// passes through it
@@ -318,7 +345,7 @@ public class Vectorizer {
 		
 		// Do one run through the data, converting it to ints, to get counts of
 		// how often each token occurs.
-		int[][] firstRun = toInts (corpusCopy.iterator(), Collections.<TokenType, Set<String>>emptyMap(), sizeHint);
+		int[][] firstRun = toInts (corpusCopy.iterator(), Collections.<TokenType, Set<String>>emptyMap(), sizeHint, failOnUmappableToken);
 		int[] wordCounts = new int[dict.capacity()];
 		for (int[] document : firstRun)
 			for (int wordId : document)
@@ -335,7 +362,7 @@ public class Vectorizer {
 		// Restore the backup, and use the derived list of infrequent words to
 		// convert it to a list of integers
 		dict = backup;
-		return toInts (corpusCopy.iterator(), infrequentWords, sizeHint);
+		return toInts (corpusCopy.iterator(), infrequentWords, sizeHint, failOnUmappableToken);
 	}
 	
 	/**
@@ -343,13 +370,18 @@ public class Vectorizer {
 	 * words into integers. See {@link #toInts(String)}. The sizeHint gives the
 	 * number of elements in the iterator, to save on wasted memory allocation
 	 * with the arrays.
+	 * @param corpus the full list of documents to be tokenized
+	 * @param infrequentWords the list of words to be skipped.
+	 * @param sizeHint a hint as to how many documents we should expect in the corpus
+	 * @param failOnUmappableToken if true then throw an {@link IllegalArgumentException}
+	 * if any token in this text can't be mapped by a dictionary to a numeric ID.
 	 */
-	private int[][] toInts (Iterator<String> corpus, Map<TokenType, Set<String>> infrequentWords, int sizeHint)
+	private int[][] toInts (Iterator<String> corpus, Map<TokenType, Set<String>> infrequentWords, int sizeHint, boolean failOnUmappableToken)
 	{	
 		int[][] corpusInts = new int[sizeHint][];
 		int numDocs = 0;
 		while (corpus.hasNext())
-		{	int[] docInts = toIntsInternal (corpus.next(), infrequentWords);
+		{	int[] docInts = toIntsInternal (corpus.next(), infrequentWords, failOnUmappableToken);
 			corpusInts = ArrayUtils.add(corpusInts, numDocs, docInts);
 			++numDocs;
 		}
