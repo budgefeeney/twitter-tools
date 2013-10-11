@@ -210,9 +210,9 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	FeatureDimension dim = featSpec.dimensionality(userDict, interval);
     	
   	CsrShortMatrixBuilder wordMatrix
-  		= new CsrShortMatrixBuilder(vectorizer.getDict().capacity());
+  		= new CsrShortMatrixBuilder(vectorizer.getDict().capacity(), 30_000_000, 100);
   	CsrShortMatrixBuilder eventMatrix 
-  		= new CsrShortMatrixBuilder(dim.getTotal());
+  		= new CsrShortMatrixBuilder(dim.getTotal(), 30_000_000, 10);
   	
   	Int2ShortMap wordFeatures  = new Int2ShortOpenHashMap(MAX_WORDS_PER_TWEET);
   	Int2ShortMap eventFeatures = new Int2ShortOpenHashMap(featSpec.maxNonZeroFeatures());

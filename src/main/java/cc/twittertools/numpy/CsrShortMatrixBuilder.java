@@ -25,7 +25,7 @@ public class CsrShortMatrixBuilder
 	private int cols;
 	
 	/**
-	 * Creates a new bulider
+	 * Creates a new builder
 	 * @param cols the actual number of columns in this matrix
 	 * @param rowSizeHint a guess as to how many rows there will be
 	 * @param nonZeroColSizeHint a guess as to how many non-zero entries there
@@ -34,9 +34,9 @@ public class CsrShortMatrixBuilder
 	public CsrShortMatrixBuilder(int cols, int rowSizeHint, int nonZeroColSizeHint)
 	{	this.cols = cols;
 		
-		indices = new IntArrayList();
-		indptr  = new IntArrayList();
-		data    = new ShortArrayList(); 
+		indices = new IntArrayList(rowSizeHint * nonZeroColSizeHint);
+		indptr  = new IntArrayList(rowSizeHint);
+		data    = new ShortArrayList(rowSizeHint * nonZeroColSizeHint); 
 	}
 	/**
 	 * Creates a new bulider
