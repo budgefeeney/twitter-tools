@@ -84,7 +84,7 @@ public class Main implements Callable<Integer>
   private int     minWordLen     = 2;
   private int     maxWordLen     = 80; // to strip e.g. emails etc.
   private boolean numbersAllowed = false;
-  private int     minWordCount   = 5; // words occuring less often than this will be skipped
+  private int     minWordCount   = 10; // words occuring less often than this will be skipped
   
   // These dictionary fields are overloaded. If parseable as an int, then they
   // specify the maximum capacity of a new dictionary to be created. Otherwise
@@ -213,7 +213,7 @@ public class Main implements Callable<Integer>
 		vec.setStopElimEnabled(elimStopWords);
 		vec.setMinWordLength(minWordLen);
 		vec.setMaxWordLength(maxWordLen);
-		vec.setMinWordCount(minWordCount);
+		vec.setMinWordCount(1); // we use pre-defined dictionaries instead.
 		vec.setNumbersAllowed(numbersAllowed);
 		vec.setInputType(InputType.TWITTER);
 		return vec;
