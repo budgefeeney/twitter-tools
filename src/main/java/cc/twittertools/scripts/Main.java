@@ -174,7 +174,7 @@ public class Main implements Callable<Integer>
   private void doEncode() throws Exception
   {
   	TweetFeatureExtractor tfe = newTweetFeatExtractor();
-		tfe.call();
+	tfe.call();
   }
 
 	public TweetFeatureExtractor newTweetFeatExtractor() throws IOException
