@@ -1,6 +1,6 @@
 package cc.twittertools.numpy;
 
-import static cc.twittertools.numpy.CsrMatrixWriter.PYTHON_PATH;
+import static cc.twittertools.numpy.CsrMatrixWriter.pythonPath;
 import static cc.twittertools.numpy.CsrMatrixWriter.shellExec;
 import static org.junit.Assert.assertEquals;
 import it.unimi.dsi.fastutil.ints.Int2ShortMap;
@@ -92,7 +92,7 @@ public class CsrShortMatrixBuilderTest
 		System.out.println ("Wrote matrix to " + tmpFile.getParent());
 		
 		String pyscript = String.format (PY_PARTS_SCRIPT, paths[0].toString(), paths[1].toString(), paths[2].toString());
-		Pair<String, String> output = shellExec (new String[] { PYTHON_PATH, "-c", pyscript });
+		Pair<String, String> output = shellExec (new String[] { pythonPath(), "-c", pyscript });
 		
 		System.out.println ("Stderr: \n" + output.getRight());
 		System.out.println ("Stdout: \n" + output.getLeft());
@@ -108,7 +108,7 @@ public class CsrShortMatrixBuilderTest
 		System.out.println ("Wrote single file to " + paths[0]);
 		
 		pyscript = String.format (PY_SINGLE_SCRIPT, paths[0].toString());
-		output = shellExec (new String[] { PYTHON_PATH, "-c", pyscript });
+		output = shellExec (new String[] { pythonPath(), "-c", pyscript });
 		
 		System.out.println ("Stderr: \n" + output.getRight());
 		System.out.println ("Stdout: \n" + output.getLeft());
