@@ -9,14 +9,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
@@ -88,6 +92,11 @@ public class TweetFeatureExtractor implements Callable<Integer>
   /** do we skip an entire tweet if we can't map a single token to an identifier */
   private final boolean skipTweetOnUnmappableToken;
   
+  private int maxTweetsToProcess = 100_000;
+  
+  /** If not null, then only tweets tweeted or retweeted from these accounts will be included */
+  private final Set<String> restrictedUsers;
+  
   /**
    * Creates a new {@link TweetFeatureExtractor}
    * @param inputDir the directory from which the raw tweets are read. This directory
@@ -102,7 +111,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
    * and included in the output.
    * @throws IOException 
    */
-  public TweetFeatureExtractor(Path inputDir, Path outputDir, Vectorizer vectorizer, FeatureSpecification featureSpecification) throws IOException {
+  public TweetFeatureExtractor(Path inputDir, Path outputDir, Vectorizer vectorizer, FeatureSpecification featureSpecification, Collection<String> restrictedUserList) throws IOException {
     this.inputDir   = inputDir;
     this.outputDir  = outputDir;
     this.vectorizer = vectorizer;
@@ -116,8 +125,31 @@ public class TweetFeatureExtractor implements Callable<Integer>
     	 : 0;
     
     userDict = numUsers == 0 ? null : new LookupDictionary (numUsers);
+    
+    if (restrictedUserList == null)
+    {	restrictedUsers = null;
+    }
+    else
+    {	restrictedUsers = new HashSet<>(restrictedUserList.size());
+    	for (String user : restrictedUserList)
+    		restrictedUsers.add (tidyAccountName (user));
+    }
   }
   
+  /**
+   * Tidies an account name by trimming and lower-casing it.
+   */
+  private final static String tidyAccountName (String accountName)
+  {	return accountName == null ? null : accountName.trim().toLowerCase();
+  }
+  
+  /**
+   * Checks to see if tweets from the given account are to be included in the 
+   * output
+   */
+  private final boolean isTweetsFromThisAccountIncluded (String accountName)
+  {	return restrictedUsers == null ? true : restrictedUsers.contains(tidyAccountName (accountName));
+  }
 
 
   /**
@@ -229,13 +261,15 @@ public class TweetFeatureExtractor implements Callable<Integer>
   		Path currentFile = tweetFiles.next();
   		LOG.info ("Processing tweets in file: " + currentFile);
   		
-			try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
+		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
+		{	
+			while (rdr.hasNext() && tweetCount < maxTweetsToProcess)
 			{	
-				while (rdr.hasNext())
-				{	
-					try
-					{	Tweet tweet = rdr.next();
-		  		
+				try
+				{	Tweet tweet = rdr.next();
+					if (! isTweetsFromThisAccountIncluded(tweet.getAccount()))
+						continue filesLoop; // all tweets in a file belong to a single account
+	  		
 			  		// Do we include this tweet, or do we skip it.
 			  		if (stripRetweets && isRetweet(tweet))
 			  		{	LOG.info("Skipping tweet from " + tweet.getAuthor() + " as it's a retweet");
@@ -254,25 +288,25 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			  		
 			  		wordMatrix.addRow(wordFeatures);
 			  		eventMatrix.addRow(eventFeatures);
-					}
-					catch (Exception e)
-					{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
-						if (++corruptedTweetCount >= MAX_CORRUPTED_TWEETS_PER_FILE)
-						{	LOG.warn ("Encountered " + corruptedTweetCount + " corrupted tweets in the current file, so skipping it. The current file is " + currentFile);
-							continue filesLoop; // skip this file.
-						}
+				}
+				catch (Exception e)
+				{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
+					if (++corruptedTweetCount >= MAX_CORRUPTED_TWEETS_PER_FILE)
+					{	LOG.warn ("Encountered " + corruptedTweetCount + " corrupted tweets in the current file, so skipping it. The current file is " + currentFile);
+						continue filesLoop; // skip this file.
 					}
 				}
-			
-				LOG.info ("Total tweets processed thus far : " + tweetCount);
 			}
-	  }
-	
-		wordMatrix.writeToFile(wordsFile);
-		LOG.info ("Wrote tweet text features to " + wordsFile);
 		
-		eventMatrix.writeToFile(eventsFile);
-		LOG.info ("Wrote tweet side features to " + eventsFile);
+			LOG.info ("Total tweets processed thus far : " + tweetCount);
+		}
+	}
+	
+	wordMatrix.writeToFile(wordsFile);
+	LOG.info ("Wrote tweet text features to " + wordsFile);
+	
+	eventMatrix.writeToFile(eventsFile);
+	LOG.info ("Wrote tweet side features to " + eventsFile);
   	
   	return tweetCount;
   }
