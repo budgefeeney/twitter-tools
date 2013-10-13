@@ -83,10 +83,10 @@ public class LookupDictionary extends AbstractDictionary
 					continue;
 				}
 				
-				int penulTab = Math.max (0, line.lastIndexOf('\t', lastTab - 1));
+				int penulTab = Math.max (-1, line.lastIndexOf('\t', lastTab - 1));
 				
 				String count = line.substring(lastTab + 1);
-				if (penulTab < 0 || lastTab < 0)
+				if (penulTab < -1 || lastTab < 0)
 					System.out.println ("Whoa");
 				String word  = line.substring(penulTab + 1, lastTab);
 				
@@ -96,7 +96,7 @@ public class LookupDictionary extends AbstractDictionary
 					wordFreqs.put (word, freq);
 				}
 				else
-				{	System.out.println ("Repeated word " + word);
+				{	//System.out.println ("Repeated word " + word);
 				}
 				freq.add (Integer.valueOf(count));
 			}
