@@ -2,12 +2,16 @@ package cc.twittertools.scripts;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.apache.commons.io.Charsets;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.chrono.ISOChronology;
 import org.joda.time.format.DateTimeFormatter;
@@ -28,6 +32,7 @@ import cc.twittertools.words.dict.NullDictionary;
 import cc.twittertools.words.dict.NullTokenDictionary;
 import cc.twittertools.words.dict.SigilStrippingDictionary;
 
+import com.google.common.collect.Lists;
 import com.twitter.common.text.token.attribute.TokenType;
 
 /**
@@ -92,7 +97,12 @@ public class Main implements Callable<Integer>
 	private String hashTagsDict  = "50000";
   
   // Options for encoding of non-text features
-  FeatureSpecification featSpec = new FeatureSpecification();
+  private final FeatureSpecification featSpec = new FeatureSpecification();
+  
+  // The list of accounts to read tweets from. If null, all accounts'
+  // tweets are read in.
+  private List<String> selectedAccounts = null;
+  
   
   @Argument
   private List<String> arguments = new ArrayList<String>();
@@ -144,6 +154,8 @@ public class Main implements Callable<Integer>
   	  
   	  if (arguments.size() > 1)
   		die ("You should only specify one command. You specified many: " + arguments.toString());
+  	
+  	  command = Command.valueOf(arguments.get(0));
   	}
   	catch (CmdLineException e)
   	{ System.err.println (e.getMessage());
@@ -181,7 +193,7 @@ public class Main implements Callable<Integer>
 	public TweetFeatureExtractor newTweetFeatExtractor() throws IOException
 	{
 		Vectorizer vec = newVectorizer();
-		TweetFeatureExtractor tfe = new TweetFeatureExtractor(Paths.get(inPath), Paths.get(outPath), vec, featSpec);
+		TweetFeatureExtractor tfe = new TweetFeatureExtractor(Paths.get(inPath), Paths.get(outPath), vec, featSpec, selectedAccounts);
 		
 		tfe.setMinDateIncl(minDateIncl);
 		tfe.setMaxDateExcl(maxDateExcl);
@@ -545,5 +557,25 @@ public class Main implements Callable<Integer>
 	@Option(name="--dict-tags", usage="Maximum number of hashtags to add to dictionary, or path to dictionary to be loaded.", metaVar=" ")
 	public void setHashTagsDict(String dict)
 	{	this.hashTagsDict = dict;
+	}
+	
+	public String getSelectedUsers()
+	{	return selectedAccounts == null ? "" : StringUtils.join (selectedAccounts, ',');
+	}
+	
+	@Option(name="--selected-acs", usage="Path to, or comma-delimited list of, the accounts to be processed. If not set, all accounts are processed", metaVar=" ")
+	public void setSelectedUsers(String selectedAccountsPath)
+	{	Path path = Paths.get(selectedAccountsPath);
+		if (! Files.exists(path))
+		{	selectedAccounts = Lists.newArrayList(StringUtils.split (selectedAccountsPath, ','));
+		}
+		else
+		{	try
+			{	selectedAccounts = Files.readAllLines (path, Charsets.UTF_8);
+			}
+			catch (IOException e)
+			{	throw new RuntimeException ("Can't read in list of selected accounts from provided path '" + path + "' : " + e.getMessage(), e);	
+			}
+		}
 	}
 }
