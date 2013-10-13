@@ -3,6 +3,8 @@ package cc.twittertools.post;
 import static cc.twittertools.post.Tweet.userNameFromFile;
 import it.unimi.dsi.fastutil.ints.Int2ShortMap;
 import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,7 +22,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
@@ -96,6 +97,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   
   /** If not null, then only tweets tweeted or retweeted from these accounts will be included */
   private final Set<String> restrictedUsers;
+  
   
   /**
    * Creates a new {@link TweetFeatureExtractor}
@@ -253,6 +255,9 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	eventFeatures.defaultReturnValue((short) 0);
   	int tweetCount = 0;
   	
+  	String lastAccount = "not_the_last_author";
+  	LongSet tweetIDs = new LongOpenHashSet(100_000);
+  	
   	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
   	// file. For this reason the next-file loop is labelled.
   	filesLoop:while (tweetFiles.hasNext())
@@ -279,6 +284,19 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			  		{	LOG.info("Skipping tweet posted on " + tweet.getLocalTime() + " as it's outside the set time-range");
 			  			continue;
 			  		}
+			  		
+			  		// There are some duplicate tweets in the dataset. We <em>presume</em>
+			  		// files are sorted by name, and keep a track of each account's IDs
+			  		// so we can filter out already processed tweets.
+			  		String account = tweet.getAccount().trim().toLowerCase();
+			  		long   tweetId = tweet.getId();
+			  		if (! account.equals(lastAccount))
+			  		{	lastAccount = account;
+			  			tweetIDs.clear();
+			  		}
+			  		if (tweetIDs.contains(tweetId))
+			  			continue;
+			  		tweetIDs.add(tweetId);
 			  		
 			  		// TODO need some sort of "most-recent-date" idea for when we have an,
 			  		// incorrect date, which is something that occurs with retweets.

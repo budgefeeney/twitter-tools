@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Iterates over the downloaded tweet files. Recall we have a folder full of folders
@@ -79,7 +82,18 @@ public final class FilesInFoldersIterator implements Iterator<Path>, AutoCloseab
 			{	return ! Files.isDirectory(path);
 			}
 		});
-		return folderFilesStream.iterator();
+		
+		// TODO decide whether or not to keep this hack.
+		// We need files to be sorted for the duplicate tweet detection in
+		// TweetFeatureExtractor.extractAndWriteFeatures() to work.
+		List<Path> filesList = new ArrayList<Path>(1000);
+		Iterator<Path> paths = folderFilesStream.iterator();
+		while (paths.hasNext())
+			filesList.add(paths.next());
+		Collections.sort(filesList);
+		// --- End of Hack -----
+		
+		return filesList.iterator();
 	}
 	
 	public void close() throws Exception
