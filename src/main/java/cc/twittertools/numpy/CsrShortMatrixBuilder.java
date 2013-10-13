@@ -37,7 +37,11 @@ public class CsrShortMatrixBuilder
 		indices = new IntArrayList(rowSizeHint * nonZeroColSizeHint);
 		indptr  = new IntArrayList(rowSizeHint);
 		data    = new ShortArrayList(rowSizeHint * nonZeroColSizeHint); 
-	}
+		
+		indptr.add (indices.size()); // indptr has always got one more entry than the
+	}                                // number of rows, such that the last entry is the
+	                                 // effectively the length of the indices / data lists.
+	
 	/**
 	 * Creates a new bulider
 	 * @param cols the actual number of columns in this matrix
