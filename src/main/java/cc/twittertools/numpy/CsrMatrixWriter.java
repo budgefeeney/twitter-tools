@@ -1,5 +1,6 @@
 package cc.twittertools.numpy;
 
+import static cc.twittertools.util.PathUtils.appendFileNameSuffix;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 
@@ -11,12 +12,13 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-
-import static cc.twittertools.util.PathUtils.appendFileNameSuffix;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -36,8 +38,10 @@ import static cc.twittertools.util.PathUtils.appendFileNameSuffix;
  */
 class CsrMatrixWriter implements AutoCloseable
 {
+	private final static Logger LOG = LoggerFactory.getLogger(CsrMatrixWriter.class);
+	
 	// There are better ways of doing this, but none are worth my time...
-	public final static String PYTHON_PATH = "/opt/local/bin/python3.3";
+	public final static String PYTHON_PATH = "/opt/local/bin/python3";
 	
 	private final static String INDICES = "-indices.npy";
 	private final static String INDPTR  = "-indptr.npy";
@@ -170,7 +174,7 @@ class CsrMatrixWriter implements AutoCloseable
 		);
 		
 		try
-		{	Pair<String, String> output = shellExec (new String[] { PYTHON_PATH, "-c", pyScript });
+		{	Pair<String, String> output = shellExec (new String[] { pythonPath(), "-c", pyScript });
 			String err = output.getRight().trim();
 			if (! err.isEmpty())
 				throw new IOException ("Failed to combine arrays into a matrix due to script error: " + err);
@@ -181,6 +185,17 @@ class CsrMatrixWriter implements AutoCloseable
 		{	throw new IOException ("Interrupted while waiting for the Python recombination script to finish: " + ie.getMessage(), ie);
 		}
 	}
+
+	final static String pythonPath()
+	{
+		for (int v = 3; v >= 0; v--)
+		{	Path p = Paths.get(PYTHON_PATH + '.' + v);
+			if (Files.exists(p))
+				return p.toString();
+		}
+		
+		return PYTHON_PATH;
+	}
 	
 	/**
 	 * Executes the given commandline. Returns a tuple with the consequent 
@@ -189,7 +204,8 @@ class CsrMatrixWriter implements AutoCloseable
 	 * @param a tuple containing the captured stdout and stderr in that order.
 	 */
 	static Pair<String, String> shellExec (String[] cmdline) throws IOException, InterruptedException
-	{
+	{	LOG.info("Launching command " + StringUtils.join (cmdline, ' '));
+	
 		Process p = Runtime.getRuntime().exec(cmdline);
 		p.waitFor();
 		
