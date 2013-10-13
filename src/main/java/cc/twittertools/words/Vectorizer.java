@@ -270,10 +270,15 @@ public class Vectorizer {
 			
 			int wordId = dict.toInt(tokenType, word);
 			if (wordId == Dictionary.UNMAPPABLE_WORD)
-				if (failOnUmappableToken)
+			{	if (failOnUmappableToken)
 					throw new UnmappableTokenException ("Can't map token \"" + word + "\" to numeric ID using dictionary");
 				else
 					continue;
+			}
+			else if (wordId == Dictionary.IGNORABLE_WORD)
+			{	continue;
+			}
+				
 			
 			result = ArrayUtils.add(result, numWords, wordId);
 			++numWords;

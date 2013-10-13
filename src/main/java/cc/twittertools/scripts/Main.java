@@ -25,6 +25,7 @@ import cc.twittertools.words.dict.CompoundTokenDictionary;
 import cc.twittertools.words.dict.Dictionary;
 import cc.twittertools.words.dict.LookupDictionary;
 import cc.twittertools.words.dict.NullDictionary;
+import cc.twittertools.words.dict.NullTokenDictionary;
 import cc.twittertools.words.dict.SigilStrippingDictionary;
 
 import com.twitter.common.text.token.attribute.TokenType;
@@ -238,7 +239,10 @@ public class Main implements Callable<Integer>
   		return size == 0 ? NullDictionary.INSTANCE : new LookupDictionary(size);
   	}
 	  else
-	  {	int colonPos = dict.lastIndexOf(':');
+	  {	if (dict.equalsIgnoreCase(NullTokenDictionary.IDENTIFIER))
+		  return new NullTokenDictionary();
+		  
+		  int colonPos = dict.lastIndexOf(':');
 	  	if (colonPos >= 0)
 	  	{	minWordCount = Integer.parseInt (dict.substring(colonPos + 1));
 	  		dict         = dict.substring(0, colonPos);

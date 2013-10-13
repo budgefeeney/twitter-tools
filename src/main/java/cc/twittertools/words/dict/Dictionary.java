@@ -13,7 +13,15 @@ import java.io.IOException;
  */
 public interface Dictionary {
 
+	/** Dictionary can't map this word to an ID number. */
 	public static final int UNMAPPABLE_WORD = -1;
+	
+	/** 
+	 * Dictionary states that this word should be ignored. This is
+	 * separate from the normal stop-word mechanism, and is used for
+	 * programmatic rather than lookup dictionaries
+	 */
+	public static final int IGNORABLE_WORD = -2;
 	
 	/** 
 	 * Converts a word to an integer. Does not clean the word, we assume
