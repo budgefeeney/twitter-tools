@@ -2,6 +2,8 @@ package cc.twittertools.scripts;
 
 import it.unimi.dsi.fastutil.ints.Int2IntAVLTreeMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2IntAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
@@ -171,6 +173,10 @@ public class TwitterStats implements Callable<Integer>
 		int tweetCount = 0;
 		String currentAccount = null;
 		DateTime lastDate     = null;
+  	
+  	String lastAccount = "not_the_last_author";
+  	LongSet tweetIDs = new LongOpenHashSet(100_000);
+		
 		try (FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(datasetDirectory); )
 		{	
 			filesLoop:while (tweetFiles.hasNext())
@@ -191,6 +197,19 @@ public class TwitterStats implements Callable<Integer>
 			  			if (excludedUsers.contains(account)
 						   || tweetDate.isBefore(startDateIncl))
 			  				continue;
+
+				  		// There are some duplicate tweets in the dataset. We <em>presume</em>
+				  		// files are sorted by name, and keep a track of each account's IDs
+				  		// so we can filter out already processed tweets.
+				  		long tweetId = tweet.getId();
+				  		if (! account.equals(lastAccount))
+				  		{	lastAccount = account;
+				  			tweetIDs.clear();
+				  		}
+				  		else if (tweetIDs.contains(tweetId))
+				  		{	continue;
+				  		}
+				  		tweetIDs.add(tweetId);
 			  			
 			  			++tweetCount;
 			  			
@@ -414,6 +433,7 @@ public class TwitterStats implements Callable<Integer>
 	 * Writes a map out to a file. Keys are delimited from values by tabs, and key-value
 	 * pairs are delimited from one another by newlines.
 	 */
+	@SuppressWarnings("unused")
 	private final static void writeMapToFile(Path file, Charset charset, Object2IntMap<String> counts, String... mapName)
 	{	Path singles = PathUtils.appendFileNameSuffix(file, "-sgls.txt");
 		Path many    = PathUtils.appendFileNameSuffix(file, ".txt");

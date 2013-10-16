@@ -93,7 +93,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   /** do we skip an entire tweet if we can't map a single token to an identifier */
   private final boolean skipTweetOnUnmappableToken;
   
-  private int maxTweetsToProcess = 100_000;
+  private int maxTweetsToProcess = Integer.MAX_VALUE;
   
   /** If not null, then only tweets tweeted or retweeted from these accounts will be included */
   private final Set<String> restrictedUsers;
@@ -295,7 +295,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			  			tweetIDs.clear();
 			  		}
 			  		if (tweetIDs.contains(tweetId))
-			  			continue;
+			  		{	continue;
+			  		}
 			  		tweetIDs.add(tweetId);
 			  		
 			  		// TODO need some sort of "most-recent-date" idea for when we have an,
