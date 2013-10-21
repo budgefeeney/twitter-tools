@@ -167,9 +167,9 @@ public class Main implements Callable<Integer>
   /** Shows the help message to the given stream. Needs the parser object to say what the options are. */
   private void showHelp(PrintStream out, CmdLineParser parser)
   {	out.println ("Usage: java -jar JARNAME.jar <command> <options>");
-	out.println ("       where <command> is one of " + Arrays.toString (Command.values()));
-	if (parser != null)
-	  parser.printUsage(out);
+		out.println ("       where <command> is one of " + Arrays.toString (Command.values()));
+		if (parser != null)
+			parser.printUsage(out);
   }
   
   /** Prints the given messsage to stderr and quits the app */
@@ -187,7 +187,7 @@ public class Main implements Callable<Integer>
   private void doEncode() throws Exception
   {
   	TweetFeatureExtractor tfe = newTweetFeatExtractor();
-	tfe.call();
+  	tfe.call();
   }
 
 	public TweetFeatureExtractor newTweetFeatExtractor() throws IOException
@@ -200,7 +200,6 @@ public class Main implements Callable<Integer>
 		
 		tfe.setStripRetweets(stripRetweets);
 		tfe.setStripRtMarkersFromText(stripRtMarkersFromText);
-		
 		
 		return tfe;
 	}

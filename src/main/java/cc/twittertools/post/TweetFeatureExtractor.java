@@ -32,7 +32,7 @@ import cc.twittertools.util.FilesInFoldersIterator;
 import cc.twittertools.words.Vectorizer;
 import cc.twittertools.words.dict.Dictionary;
 import cc.twittertools.words.dict.LookupDictionary;
-import cc.twittertools.words.dict.UnmappableTokenException;
+import cc.twittertools.words.dict.ExcessUnmappableTokens;
 
 /**
  * Extracts paired features from tweets: one references the "text", one references the "event"
@@ -91,7 +91,10 @@ public class TweetFeatureExtractor implements Callable<Integer>
   private final Dictionary userDict;
   
   /** do we skip an entire tweet if we can't map a single token to an identifier */
-  private final boolean skipTweetOnUnmappableToken;
+  private final boolean skipTweetOnUnmappableEventToken;
+  
+  /** The minium amount of a tweets <em>characters</em> that must be tokenized for the tweet to be accepted */
+  private final double minTokenizedAmt;
   
   private int maxTweetsToProcess = Integer.MAX_VALUE;
   
@@ -119,23 +122,27 @@ public class TweetFeatureExtractor implements Callable<Integer>
     this.vectorizer = vectorizer;
     this.featSpec   = featureSpecification;
     
-    this.skipTweetOnUnmappableToken = true;
+    this.skipTweetOnUnmappableEventToken = true;
+    this.minTokenizedAmt = 0.5;
     
-    int numUsers =
-    	   featSpec.isAddresseeInFeatures() ? MAX_USERS + MAX_EXTRA_ADDRESSEES
-    	 : featSpec.isAuthorInFeatures() ? MAX_USERS
-    	 : 0;
-    
-    userDict = numUsers == 0 ? null : new LookupDictionary (numUsers);
-    
+    final int numAuthors;
     if (restrictedUserList == null)
     {	restrictedUsers = null;
+    	numAuthors = MAX_USERS;
     }
     else
-    {	restrictedUsers = new HashSet<>(restrictedUserList.size());
+    {	numAuthors = restrictedUserList.size();
+    	restrictedUsers = new HashSet<>(numAuthors);
     	for (String user : restrictedUserList)
     		restrictedUsers.add (tidyAccountName (user));
     }
+    
+    int numUsers =
+    	   featSpec.isAddresseeInFeatures() ? numAuthors + MAX_EXTRA_ADDRESSEES
+    	 : featSpec.isAuthorInFeatures() ? numAuthors
+    	 : 0;
+    
+    userDict = numUsers == 0 ? null : new LookupDictionary (numUsers);
   }
   
   /**
@@ -257,9 +264,12 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	
   	String lastAccount = "not_the_last_author";
   	LongSet tweetIDs = new LongOpenHashSet(100_000);
+  	int skippedAsUnmappable = 0;
+  	int skippedAsRetweet    = 0;
   	
   	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
   	// file. For this reason the next-file loop is labelled.
+  	Tweet tweet = null;
   	filesLoop:while (tweetFiles.hasNext())
   	{	
   		int corruptedTweetCount = 0;
@@ -271,42 +281,47 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			while (rdr.hasNext() && tweetCount < maxTweetsToProcess)
 			{	
 				try
-				{	Tweet tweet = rdr.next();
+				{	tweet = rdr.next();
 					if (! isTweetsFromThisAccountIncluded(tweet.getAccount()))
 						continue filesLoop; // all tweets in a file belong to a single account
 	  		
-			  		// Do we include this tweet, or do we skip it.
-			  		if (stripRetweets && isRetweet(tweet))
-			  		{	LOG.info("Skipping tweet from " + tweet.getAuthor() + " as it's a retweet");
-			  			continue;
-			  		}
-			  		if (tweet.getLocalTime().isBefore(minDateIncl) || maxDateExcl.isBefore(tweet.getLocalTime()))
-			  		{	LOG.info("Skipping tweet posted on " + tweet.getLocalTime() + " as it's outside the set time-range");
-			  			continue;
-			  		}
-			  		
-			  		// There are some duplicate tweets in the dataset. We <em>presume</em>
-			  		// files are sorted by name, and keep a track of each account's IDs
-			  		// so we can filter out already processed tweets.
-			  		String account = tweet.getAccount().trim().toLowerCase();
-			  		long   tweetId = tweet.getId();
-			  		if (! account.equals(lastAccount))
-			  		{	lastAccount = account;
-			  			tweetIDs.clear();
-			  		}
-			  		if (tweetIDs.contains(tweetId))
-			  		{	continue;
-			  		}
-			  		tweetIDs.add(tweetId);
-			  		
-			  		// TODO need some sort of "most-recent-date" idea for when we have an,
-			  		// incorrect date, which is something that occurs with retweets.
-			  	
-			  		++tweetCount;
-			  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
-			  		
-			  		wordMatrix.addRow(wordFeatures);
-			  		eventMatrix.addRow(eventFeatures);
+		  		// Do we include this tweet, or do we skip it.
+		  		if (stripRetweets && isRetweet(tweet))
+		  		{	++skippedAsRetweet;
+						LOG.info("Retweets skipped: " + skippedAsRetweet + "/" + tweetCount + " (" + (100 * skippedAsRetweet / Math.max(1, tweetCount)) + "%)");
+		  			continue;
+		  		}
+		  		if (tweet.getLocalTime().isBefore(minDateIncl) || maxDateExcl.isBefore(tweet.getLocalTime()))
+		  		{	LOG.info("Skipping tweet posted on " + tweet.getLocalTime() + " as it's outside the set time-range");
+		  			continue;
+		  		}
+		  		
+		  		// There are some duplicate tweets in the dataset. We <em>presume</em>
+		  		// files are sorted by name, and keep a track of each account's IDs
+		  		// so we can filter out already processed tweets.
+		  		String account = tweet.getAccount().trim().toLowerCase();
+		  		long   tweetId = tweet.getId();
+		  		if (! account.equals(lastAccount))
+		  		{	lastAccount = account;
+		  			tweetIDs.clear();
+		  		}
+		  		if (tweetIDs.contains(tweetId))
+		  		{	continue;
+		  		}
+		  		tweetIDs.add(tweetId);
+		  		
+		  		// TODO need some sort of "most-recent-date" idea for when we have an,
+		  		// incorrect date, which is something that occurs with retweets.
+		  	
+		  		++tweetCount;
+		  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
+		  		
+		  		wordMatrix.addRow(wordFeatures);
+		  		eventMatrix.addRow(eventFeatures);
+				}
+				catch (ExcessUnmappableTokens ute)
+				{	++skippedAsUnmappable;
+					LOG.info("Tweets with excess unmappable tokens skipped : " + skippedAsUnmappable + "/" + tweetCount + " (" + (100 * skippedAsUnmappable / Math.max(1, tweetCount)) + "%). Here " + ute.getProportionTokenized() + " of this tweet was tokenized only: " + tweet.getMsg());
 				}
 				catch (Exception e)
 				{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
@@ -372,8 +387,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		{	for (String addressee : addressees)
 			{	int userId = userDict.toInt(addressee);
 				if (userId == Dictionary.UNMAPPABLE_WORD)
-					if (skipTweetOnUnmappableToken)
-						throw new UnmappableTokenException ("Tweet contains the unmappable token " + addressee);
+					if (skipTweetOnUnmappableEventToken)
+						throw new ExcessUnmappableTokens (0.5, "Tweet contains the unmappable addressee identifier " + addressee);
 					else
 						continue;
 				
@@ -385,8 +400,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		if (featSpec.isAuthorInFeatures())
 		{	int authorId = userDict.toInt(tweet.getAccount());
 			if (authorId == Dictionary.UNMAPPABLE_WORD)
-				if (skipTweetOnUnmappableToken)
-					throw new UnmappableTokenException ("Tweet contains the unmappable token " + tweet.getAccount());
+				if (skipTweetOnUnmappableEventToken)
+					throw new ExcessUnmappableTokens (0.5, "Tweet contains the unmappable author identifier " + tweet.getAccount());
 			
 			eventFeatures.put (step + authorId, one);
 			step += dim.getAuthorDim();
@@ -471,8 +486,9 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		// tags, in which case we have to do this backwards by replacing
 		// # with HASH_TAG etc.
 		
-		// TODO Awful hack as we haven't got case-sensitive dictionary for URLs
-		for (int wordId : vectorizer.toInts(text.toLowerCase(), skipTweetOnUnmappableToken))
+		// TODO Awful hack ("text.toLowerCase()") as we haven't got a case-sensitive dictionary for URLs
+		text = "#ACLU sues #Arizona to block 2011 law banning #abortion based on the race or sex of the child http://bit.ly/10I8vOq  #women @NAACP @NAPAWF";
+		for (int wordId : vectorizer.toInts(text.toLowerCase(), minTokenizedAmt))
 		{	inc(wordFeatures, wordId);
 		}
 		
