@@ -199,6 +199,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	  	}
   	}
   	
+  	// Write dictionaries out as a bit Python script
+  	// 
   	try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("dicts.py"), Charsets.UTF_8); )
 	{	wtr.write("#!/usr/bin/python\n");
 		wtr.write("# -*- coding: utf-8 -*-\n\n");
@@ -212,8 +214,10 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		wtr.write("\n\n");
 	}
 
+  	// Then, just to be sure, write dictionaries out as a series of tab-delimited file
+  	//
   	userDict.writeDelimited(outputDir.resolve("userdict.txt"), Charsets.UTF_8);
-  	vectorizer.getDict().writeDelimited(outputDir.resolve("userdict.txt"), Charsets.UTF_8);
+  	vectorizer.getDict().writeDelimited(outputDir.resolve("worddict.txt"), Charsets.UTF_8);
   	return tweetCount;
   }
 
