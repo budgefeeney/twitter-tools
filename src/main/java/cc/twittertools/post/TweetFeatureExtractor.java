@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.Charsets;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
@@ -197,6 +199,21 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	  	}
   	}
   	
+  	try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("dicts.py"), Charsets.UTF_8); )
+	{	wtr.write("#!/usr/bin/python\n");
+		wtr.write("# -*- coding: utf-8 -*-\n\n");
+
+		wtr.write(eventFeatureSchema());
+		wtr.write("\n\n");
+		
+		userDict.writeAsPythonList("users", wtr);
+		wtr.write("\n\n");
+		vectorizer.getDict().writeAsPythonList("words", wtr);
+		wtr.write("\n\n");
+	}
+
+  	userDict.writeDelimited(outputDir.resolve("userdict.txt"), Charsets.UTF_8);
+  	vectorizer.getDict().writeDelimited(outputDir.resolve("userdict.txt"), Charsets.UTF_8);
   	return tweetCount;
   }
 
@@ -372,6 +389,67 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	{	List<String> addressees = extractWordFeatures(tweet, wordFeatures);
 		extractEventFeatures(tweet, dim, addressees, eventFeatures);
 	}
+	
+	/**
+	 * Creates a Python string writing out the schema for features
+	 */
+	private String eventFeatureSchema()
+	{	// NOTE Every time extractEventFeatures() is changed, this needs to be changed too
+		Interval interval = new Interval(minDateIncl, maxDateExcl);
+	  	FeatureDimension dim = featSpec.dimensionality(userDict, interval);
+		String result = "feats = dict()";
+		
+		int step = 0;
+		if (featSpec.isAddresseeInFeatures())
+		{	result += "feats['addr'] = " + step + '\n';
+			step += dim.getAddresseeDim();
+		}
+		if (featSpec.isAuthorInFeatures())
+		{	result += "feats['author'] = " + step + '\n';
+			step += dim.getAuthorDim();
+		}
+		if (featSpec.isDayHourOfWeekInFeatures())
+		{	result += "feats['day_hour_of_week'] = " + step + '\n';
+			step += dim.getDayHourOfWeekDim();
+		}
+		
+		if (featSpec.isDayOfWeekInFeatures())
+		{	result += "feats['day_of_week'] = " + step + '\n';
+			step += dim.getDayOfWeekDim();
+		}
+		
+		if (featSpec.isDayOfYearInFeatures())
+		{	result += "feats['day_of_year'] = " + step + '\n';
+			step += dim.getDayOfWeekDim();
+		}
+		
+		if (featSpec.isHourOfDayInFeatures())
+		{	result += "feats['hour_of_day'] = " + step + '\n';
+			step += dim.getHourOfDayDim();
+		}
+		
+		if (featSpec.isWeekOfYearInFeatures())
+		{	result += "feats['week_of_year'] = " + step + '\n';
+			step += dim.getWeekOfYearDim();
+		}
+		
+		if (featSpec.isMonthOfYearInFeatures())
+		{	result += "feats['month_of_year'] = " + step + '\n';
+			step += dim.getMonthOfYearDim();
+		}
+		
+		if (featSpec.isRtInFeatures())
+		{	result += "feats['retweet'] = " + step + '\n';
+			step += dim.getRtDim();
+		}
+		
+		if (featSpec.isInterceptInFeatures())
+		{	result += "feats['intercept'] = " + step + '\n';
+			step += dim.getInterceptDim();
+		}
+		
+		return result;
+	}
 
 	/**
 	 * Extracts and encodes features from the given tweet according to this
@@ -379,7 +457,9 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	 * encoded features.
 	 */
 	private void extractEventFeatures(Tweet tweet, FeatureDimension dim, List<String> addressees, Int2ShortMap eventFeatures)
-	{	eventFeatures.clear();
+	{	// NOTE Change eventFeatureSchema() whenever you change this method
+		
+		eventFeatures.clear();
 		short one = (short) 1;
 		
 		int step = 0;

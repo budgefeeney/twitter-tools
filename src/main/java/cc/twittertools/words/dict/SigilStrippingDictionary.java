@@ -2,9 +2,11 @@ package cc.twittertools.words.dict;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 
 /**
- * For twitter use, strips a learing sigil from a word before passing it down
+ * For twitter use, strips a leading sigil from a word before passing it down
  * to the wrapped dictionary.
  */
 public class SigilStrippingDictionary implements Dictionary
@@ -58,4 +60,15 @@ public class SigilStrippingDictionary implements Dictionary
 	public Dictionary getDictionary()
 	{	return dict;
 	}
+	
+	@Override
+	public void writeDelimited(Path path, Charset charset) throws IOException
+	{	dict.writeDelimited(path, charset);
+	}
+	
+	@Override
+	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException
+	{	dict.writeDelimited(wtr, prefix);
+	}
+
 }

@@ -2,6 +2,8 @@ package cc.twittertools.words.dict;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -69,5 +71,15 @@ public class NullTokenDictionary implements TokenDictionary {
 	@Override
 	public NullTokenDictionary clone() {
 		return this; // this is a threadsafe, stateless singleton class.
+	}
+	
+	@Override
+	public void writeDelimited(Path path, Charset charset) throws IOException
+	{	; // empty dictionary, do nothing
+	}
+	
+	@Override
+	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException
+	{	; // empty dictionary, do nothing
 	}
 }

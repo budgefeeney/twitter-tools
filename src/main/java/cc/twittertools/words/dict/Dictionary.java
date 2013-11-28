@@ -2,6 +2,8 @@ package cc.twittertools.words.dict;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 
 /**
  * Interface for class's which maps words to ints and optionally back again.
@@ -74,4 +76,22 @@ public interface Dictionary {
 	 * A deep copy of this dictionary
 	 */
 	public Dictionary clone();
+
+	/**
+	 * Writes the dictioary out as a tab delimited file, with the
+	 * tokens in the first column, and the IDs in the second.
+	 * @param path the path to write the dictionary to
+	 * @param charset the charset to use when writing out the dictionary
+	 */
+	public void writeDelimited(Path path, Charset charset) throws IOException;
+
+	/**
+	 * Writes the dictioary out as a tab delimited file, with the
+	 * tokens in the first column, and the IDs in the second.
+	 * @param wtr the write to write to
+	 * @param prefix if not null, this is written out ahead of the other
+	 * columns.
+	 */
+	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException;
+
 }

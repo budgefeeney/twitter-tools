@@ -3,6 +3,7 @@ package cc.twittertools.words.dict;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -190,6 +191,23 @@ public class LookupDictionary extends AbstractDictionary
 	@Override
 	public LookupDictionary clone()
 	{	return new LookupDictionary (this);
+	}
+	
+	@Override
+	public void writeDelimited(Path path, Charset charset) throws IOException
+	{	try (BufferedWriter wtr = Files.newBufferedWriter(path, charset);)
+		{	writeDelimited(wtr, null);
+		}
+	}
+	
+	@Override
+	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException
+	{	if (prefix == null)
+			for (Map.Entry<String, Integer> entry : words.entrySet())
+				wtr.write(entry.getKey() + '\t' + entry.getValue() + '\n');
+		else
+			for (Map.Entry<String, Integer> entry : words.entrySet())
+				wtr.write(entry.getKey() + '\t' + entry.getValue() + '\n');
 	}
 
 }

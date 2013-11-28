@@ -2,9 +2,13 @@ package cc.twittertools.words.dict;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.Map;
 
+import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -214,5 +218,23 @@ public class CompoundTokenDictionary implements TokenDictionary
 			throw new IllegalArgumentException ("No dictionary defined for token " + tokenType);
 		
 		return tokenId.intValue();
+	}
+	
+	@Override
+	public void writeDelimited(Path path, Charset charset) throws IOException
+	{	try (BufferedWriter wtr = Files.newBufferedWriter(path, Charsets.UTF_8);)
+		{	writeDelimited (wtr, null);
+		}
+	}
+	
+	@Override
+	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException
+	{	for (int i = 0; i < numDicts; i++)
+		{	TokenType  type = tokens[i];
+			Dictionary dict = dicts[i];
+		
+			String tokPrefix = prefix == null ? type.toString() : prefix + '\t' + type.toString();
+			dict.writeDelimited(wtr, tokPrefix);
+		}
 	}
 }

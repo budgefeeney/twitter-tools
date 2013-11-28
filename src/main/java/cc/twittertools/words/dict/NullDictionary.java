@@ -2,6 +2,8 @@ package cc.twittertools.words.dict;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
 
 import org.apache.commons.lang3.tuple.Pair;
 
@@ -64,5 +66,15 @@ public class NullDictionary implements TokenDictionary
 	@Override
 	public NullDictionary clone()
 	{	return this;
+	}
+	
+	@Override
+	public void writeDelimited(Path path, Charset charset)
+	{	; // doesn't write anything out, an empty dictionary
+	}
+	
+	@Override
+	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException
+	{	; // empty dictionary, do nothing
 	}
 }
