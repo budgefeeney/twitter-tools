@@ -191,7 +191,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	} // the standard approach, process all files together in a single batch run.
   	else
   	{ try (FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(inputDir); )
-	  	{ tweetCount = extractAndWriteFeatures(
+	  {		tweetCount = extractAndWriteFeatures(
 	  			tweetFiles,
 	  			outputDir.resolve("words"),
 	  			outputDir.resolve("side")
