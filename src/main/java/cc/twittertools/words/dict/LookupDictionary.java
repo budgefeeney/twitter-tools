@@ -183,7 +183,7 @@ public class LookupDictionary extends AbstractDictionary
 		
 		writer.write (pyVarName + " = [ \\\n");
 		for (int wordId = 0; wordId < size; wordId++)
-		{	writer.write ("\t\"" + StringEscapeUtils.escapeJava(toWord(wordId)) + "\" \\\n");
+		{	writer.write ("\t\"" + StringEscapeUtils.escapeJava(toWord(wordId)) + ",\" \\\n");
 		}
 		writer.write ("\t]\n\n");
 	}
@@ -207,7 +207,7 @@ public class LookupDictionary extends AbstractDictionary
 				wtr.write(entry.getKey() + '\t' + entry.getValue() + '\n');
 		else
 			for (Map.Entry<String, Integer> entry : words.entrySet())
-				wtr.write(entry.getKey() + '\t' + entry.getValue() + '\n');
+				wtr.write(prefix + '\t' + entry.getKey() + '\t' + entry.getValue() + '\n');
 	}
 
 }
