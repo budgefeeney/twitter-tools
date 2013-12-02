@@ -188,7 +188,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 		
 		// Write out the list of dictionaries
 		writer.write ("\n" + pyVarName + " = [ ");
-		for (int tokenId = 1; tokenId < numDicts; tokenId++)
+		for (int tokenId = 1; tokenId <= numDicts; tokenId++)
 			writer.write (dictNames[tokenId] + ", ");
 		writer.write("]\n\n");
 	}
