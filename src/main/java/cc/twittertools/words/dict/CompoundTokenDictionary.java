@@ -185,6 +185,12 @@ public class CompoundTokenDictionary implements TokenDictionary
 			else
 				dicts[tokenId].writeAsPythonList(dictNames[tokenId], writer);
 		}
+		
+		// Write out the list of dictionaries
+		writer.write ("\n" + pyVarName + " = [ ");
+		for (int tokenId = 1; tokenId < numDicts; tokenId++)
+			writer.write (dictNames[tokenId] + ", ");
+		writer.write("]\n\n");
 	}
 
 	/**
@@ -229,12 +235,17 @@ public class CompoundTokenDictionary implements TokenDictionary
 	
 	@Override
 	public void writeDelimited(BufferedWriter wtr, String prefix) throws IOException
-	{	for (int i = 0; i < numDicts; i++)
-		{	TokenType  type = tokens[i];
-			Dictionary dict = dicts[i];
-		
-			String tokPrefix = prefix == null ? type.toString() : prefix + '\t' + type.toString();
-			dict.writeDelimited(wtr, tokPrefix);
+	{	for (int t = 1; t <= numDicts; t++)
+		{	TokenType  type = tokens[t];
+			Dictionary dict = dicts[t];
+			
+			if (type == null || dict == null)
+			{	System.err.println ("numDicts = " + numDicts + ", t = " + t + ", type is " + (type == null ? "null":"not null") + ", and dict is " +  (dict == null ? "null":"not null"));
+			}
+			else
+			{	String tokPrefix = prefix == null ? String.valueOf(type) : prefix + '\t' + type.toString();
+				dict.writeDelimited(wtr, tokPrefix);
+			}
 		}
 	}
 }
