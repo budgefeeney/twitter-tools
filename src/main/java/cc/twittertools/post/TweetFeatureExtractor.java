@@ -213,7 +213,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		vectorizer.getDict().writeAsPythonList("words", wtr);
 		wtr.write("\n\n");
 	}
-
+  	
   	// Then, just to be sure, write dictionaries out as a series of tab-delimited file
   	//
   	userDict.writeDelimited(outputDir.resolve("userdict.txt"), Charsets.UTF_8);
