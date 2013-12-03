@@ -130,6 +130,8 @@ public class TweetFeatureExtractorTest
 		{	writer.write("# -*- coding: utf-8 -*-\n\n");
 			tfe.getVectorizer().getDict().writeAsPythonList ("dict", writer);
 		}
+		
+		
 	}
 
 }
