@@ -571,7 +571,6 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		// # with HASH_TAG etc.
 		
 		// TODO Awful hack ("text.toLowerCase()") as we haven't got a case-sensitive dictionary for URLs
-		text = "#ACLU sues #Arizona to block 2011 law banning #abortion based on the race or sex of the child http://bit.ly/10I8vOq  #women @NAACP @NAPAWF";
 		for (int wordId : vectorizer.toInts(text.toLowerCase(), minTokenizedAmt))
 		{	inc(wordFeatures, wordId);
 		}
