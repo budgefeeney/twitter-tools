@@ -27,4 +27,5 @@ jar_version="1.1.1"
 jar_dir="target"
 jar_file="$jar_dir/$jar_name-$jar_version-jar-with-dependencies.jar"
 
-java -Xmx3000m -cp $jar_file cc.twittertools.scripts.Main $params
+#java -Xmx3000m -cp $jar_file cc.twittertools.scripts.Main $params
+echo $params
