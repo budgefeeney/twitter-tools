@@ -423,8 +423,7 @@ public class TwitterStats implements Callable<Integer>
 		{	wtr.write(text);
 		}
 		catch (MalformedInputException mie)
-		{	wtr.write('\n');
-			; //LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
+		{	LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
 		}
 	}
 	
@@ -464,13 +463,13 @@ public class TwitterStats implements Callable<Integer>
 		
 		System.out.println ("There are " + counts.size() + " entries in the table for " + Arrays.toString(mapName));
 		
-		String fileName = mapName.length == 0 ? "" : " " + mapName[0];
+		String fileContentDescription = mapName.length == 0 ? "" : " " + mapName[0];
 		try (BufferedWriter sgl = Files.newBufferedWriter(singles,charset);
 				 BufferedWriter mny = Files.newBufferedWriter(many, charset))
 		{	for (Map.Entry<String, MutableInt> entry : counts.entrySet())
 			{	writeSafely(
 					entry.getValue().intValue() == 1 ? sgl : mny,
-					fileName,
+					fileContentDescription,
 					entry.getKey().toString() + '\t' + String.valueOf (entry.getValue().intValue()) + '\n'
 				);
 			}
@@ -600,7 +599,7 @@ public class TwitterStats implements Callable<Integer>
 	public static void main (String[] args) throws Exception
 	{
 		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
-		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats");
+		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStatsNew");
 		
 		TwitterStats stats = new TwitterStats (inputDir, outputDir);
 		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);
@@ -608,7 +607,10 @@ public class TwitterStats implements Callable<Integer>
 		stats.call();
 	}
 	
-	public final static Set<String> DEFAULT_EXCLUDED_USERS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList (new String[] {
+	
+	public final static Set<String> DEFAULT_EXCLUDED_USERS = Collections.emptySet();
+			
+	public final static Set<String> DEFAULT_EXCLUDED_USERSs = Collections.unmodifiableSet(new HashSet<>(Arrays.asList (new String[] {
 			"EconBrothers",
 			"actioneconomics",
 			"EatThisNotThat",
