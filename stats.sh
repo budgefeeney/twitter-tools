@@ -1,3 +1,3 @@
 #!/bin/sh
 
-java -Xmx 3500m -jar target/twitter-tools-1.1.1-jar-with-dependencies.jar -cp cc.twittertools.scripts.TwitterStats
+java -Xmx3000m -cp target/twitter-tools-1.1.1-jar-with-dependencies.jar cc.twittertools.scripts.TwitterStats
