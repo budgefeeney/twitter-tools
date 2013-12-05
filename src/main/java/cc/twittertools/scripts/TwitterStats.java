@@ -8,8 +8,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.BufferedWriter;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
@@ -27,13 +31,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,12 +85,6 @@ public class TwitterStats implements Callable<Integer>
 	private final Map<String, MutableInt> retweetsByUser;
 	private final Map<String, MutableInt> rtRetweetsByUser;
 	private final Map<String, MutableInt> tweetsPerUser;
-	private final Map<String, MutableInt> hashTagCounts;
-	private final Map<String, MutableInt> smileyCounts;
-	private final Map<String, MutableInt> addresseeCounts;
-	private final Map<String, MutableInt> urlCounts;
-	private final Map<String, MutableInt> wordCounts;
-	private final Map<String, MutableInt> stockCounts;
 	private final Int2IntMap            tweetsPerWeek;
 	private final Int2IntMap            wordsPerTweet;
 	private final Int2IntMap            urlsPerTweet;
@@ -101,7 +101,7 @@ public class TwitterStats implements Callable<Integer>
 	private final Path datasetDirectory;
 	private final Path outputDir;
 	
-	
+	private final static Writer sideWriter = new OutputStreamWriter (new ByteArrayOutputStream(), Charsets.UTF_8);
 	
 	public TwitterStats(Path datasetDirectory, Path outputDir)
 	{
@@ -127,12 +127,6 @@ public class TwitterStats implements Callable<Integer>
 		retweetsByUser       = new HashMap<>(   20_000, 0.75f);
 		rtRetweetsByUser     = new HashMap<>(   20_000, 0.75f);
 		tweetsPerUser        = new HashMap<>(   20_000, 0.75f);
-		hashTagCounts        = new HashMap<>(  100_000, 0.75f);
-		smileyCounts         = new HashMap<>(      100, 0.75f);
-		addresseeCounts      = new HashMap<>(2_500_000, 0.75f);
-		urlCounts            = new HashMap<>(9_000_000, 0.75f);
-		wordCounts           = new HashMap<>(  100_000, 0.75f);
-		stockCounts          = new HashMap<>(   25_000, 0.75f);
 		
 		tweetsPerWeek        = new Int2IntAVLTreeMap();
 		wordsPerTweet        = new Int2IntAVLTreeMap();
@@ -177,7 +171,16 @@ public class TwitterStats implements Callable<Integer>
   	String lastAccount = "not_the_last_author";
   	LongSet tweetIDs = new LongOpenHashSet(100_000);
 		
-		try (FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(datasetDirectory); )
+		try (
+			FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(datasetDirectory); 
+			BufferedWriter dictionary = Files.newBufferedWriter (outputDir.resolve("words.txt"), Charsets.UTF_8);
+			BufferedWriter stocks = Files.newBufferedWriter (outputDir.resolve("stocks.txt"), Charsets.UTF_8);
+			BufferedWriter addressees = Files.newBufferedWriter (outputDir.resolve("addressees.txt"), Charsets.UTF_8);
+			BufferedWriter hashtags = Files.newBufferedWriter (outputDir.resolve("hashtags.txt"), Charsets.UTF_8);
+			BufferedWriter smileys = Files.newBufferedWriter (outputDir.resolve("smileys.txt"), Charsets.UTF_8);
+			BufferedWriter urls = Files.newBufferedWriter (outputDir.resolve("urls.txt"), Charsets.UTF_8);
+			BufferedWriter tokenizerErrors = Files.newBufferedWriter(outputDir.resolve("tokenizer-errors.txt"), Charsets.UTF_8)
+		)
 		{	
 			filesLoop:while (tweetFiles.hasNext())
 	  	{	
@@ -185,6 +188,7 @@ public class TwitterStats implements Callable<Integer>
 	  		Path currentFile = tweetFiles.next();
 	  		LOG.info ("Processing tweets in file: " + currentFile);
 	  		
+	  		currentFile = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider/DrugsMarijuana/KaylaStylez.1");
 	  		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
 				{	
 					while (rdr.hasNext())
@@ -268,34 +272,39 @@ public class TwitterStats implements Callable<Integer>
 				  		{	Pair<TokenType, String> tokenValue = iter.next();
 				  			switch (tokenValue.getKey())
 				  			{	case URL:
-				  					inc (urlCounts, tokenValue.getValue());
+				  					writeSafely(urls, "urls", tokenValue.getValue() + '\n');
 				  					++urlCount;
 				  					break;
 				  				case USERNAME:
-				  					inc (addresseeCounts, tokenValue.getValue());
+				  					writeSafely(addressees, "addressees", tokenValue.getValue() + '\n');
 				  					++addrsCount;
 				  					break;
 				  				case HASHTAG:
-				  					incTagCount (tweetDate, tokenValue.getValue());
+				  					writeSafely (hashtags, "hashTags", tokenValue.getValue() + '\n');
 				  					++hashCount;
 				  					break;
 				  				case EMOTICON:
-				  					incSmileyCount (tweetDate, tokenValue.getValue());
+				  					writeSafely (smileys, "emoticons", tokenValue.getValue() + '\n');
 				  					++smileyCount;
 				  					break;
 				  				case STOCK:
-				  					inc (stockCounts, tokenValue.getValue());
+				  					writeSafely (stocks, "stocks", tokenValue.getValue() + '\n');
 				  					++stockCount;
 				  					break;
 				  				case TOKEN:
-				  					inc (wordCounts, tokenValue.getValue());
 				  					++wordCount;
-				  					if (tokenValue.getValue().length() == 1)
-				  						LOG.warn ("Tweet " + String.format("%5d", tweetCount) + ": Single character word '" + tokenValue.getValue() + "' dervied from message '" + tweet.getMsg() + "'");
+				  					writeSafely (dictionary, "words", tokenValue.getValue() + '\n');
 				  				default:
 				  					break;
 				  			}
 				  		}
+				  		
+				  		checkForTokenizerError(tokenizerErrors, tweet, "URL",        urlCount,     6);
+				  		checkForTokenizerError(tokenizerErrors, tweet, "ADDRESSEES", addrsCount,  20);
+				  		checkForTokenizerError(tokenizerErrors, tweet, "HASHTAGS",   hashCount,   20);
+				  		checkForTokenizerError(tokenizerErrors, tweet, "EMOTICONS",  smileyCount, 10);
+				  		checkForTokenizerError(tokenizerErrors, tweet, "STOCKS",     stockCount,   6);
+				  		checkForTokenizerError(tokenizerErrors, tweet, "WORDS",      wordCount,   60);
 				  		
 				  		inc (wordsPerTweet,    wordCount);
 				  		inc (urlsPerTweet,     urlCount);
@@ -323,6 +332,23 @@ public class TwitterStats implements Callable<Integer>
 		}
 		
 		return tweetCount;
+	}
+
+	/**
+	 * Checks the given testValue if less than or equal to the expectedMax.
+	 * If it's <em>greater</em> then write out the tweet with a description
+	 * of the error to the given 
+	 */
+	private void checkForTokenizerError(BufferedWriter tokenizerErrors,
+			Tweet tweet, String testName, int testValue, int expectedMax)
+	{	try
+		{
+			if (testValue > expectedMax)
+				tokenizerErrors.write(testName + "\t" + testValue + "\t" + tweet.toShortTabDelimString());
+		}
+		catch (IOException ioe)
+		{	LOG.error("Can't write out invalid tweet from with " + testName + " > " + expectedMax);
+		}
 	}
 	
 	
@@ -377,24 +403,6 @@ public class TwitterStats implements Callable<Integer>
 		{	LOG.error("Error writing out counts of tweets since dates to file " + ioe.getMessage(), ioe);
 		}
 		
-		// The dictionary of words
-		writeMapToFile (outputDir.resolve("dictionary"), Charsets.UTF_8, wordCounts, "word-counts");
-		
-		// the dictionary of stocks
-		writeMapToFile (outputDir.resolve("stocks"), Charsets.UTF_8, stockCounts, "stock-counts");
-		
-		// The list of addressees
-		writeMapToFile (outputDir.resolve("addressees"), Charsets.UTF_8, addresseeCounts, "addressee-counts");
-		
-		// The list of hashtags
-		writeMapToFile (outputDir.resolve("hashtags"), Charsets.UTF_8, hashTagCounts, "hashtag-counts");	
-		
-		// The list of smileys
-		writeMapToFile (outputDir.resolve("smileys"), Charsets.UTF_8, smileyCounts, "smiley-counts");	
-		
-		// Dictionary of URLs
-		writeMapToFile(outputDir.resolve("urls"), Charsets.UTF_8, urlCounts, "url-counts");
-		
 		// Tweets per week
 		writeMapsToFile(outputDir.resolve("tweets-per-week"), Charsets.UTF_8, tweetsPerWeek, "tweets");
 		
@@ -418,13 +426,37 @@ public class TwitterStats implements Callable<Integer>
 	 * @param text
 	 * @throws IOException 
 	 */
-	private final static void writeSafely (BufferedWriter wtr, String fileDes, String text) throws IOException
+	private final static void writeSafely (Writer wtr, String fileDes, String text) throws IOException
 	{	try
-		{	wtr.write(text);
+		{	if (text.equals("like"))
+				System.out.println("Here we go!");
+		
+			wtr.write(text);
+			wtr.flush();
+			
+			if (fileDes.equals("words"))
+			{	sideWriter.write (text);
+				sideWriter.flush();
+			}
 		}
 		catch (MalformedInputException mie)
-		{	LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + text, mie);
+		{	LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + toByteStrSafely(text), mie);
+			wtr.write("Surely this should work");
 		}
+	}
+	
+	/**
+	 * Converts a string to a series of hex-coded bytes. If for any reason any of this fails,
+	 * an error message is returned. Never throws an exception, hence "safely"
+	 */
+	private final static String toByteStrSafely(String input)
+	{	try
+		{	return new String (Hex.encodeHex(input.getBytes())); 
+		}
+		catch (Exception e)
+		{	return "[BYTE CONVERSION FAILED]";
+		}
+		
 	}
 	
 
@@ -445,32 +477,6 @@ public class TwitterStats implements Callable<Integer>
 					entry.getIntValue() == 1 ? sgl : mny,
 					fileName,
 					entry.getKey().toString() + '\t' + String.valueOf (entry.getIntValue()) + '\n'
-				);
-			}
-		}
-		catch (Exception ioe)
-		{	LOG.error("Error writing out the" + (mapName.length > 0 ? mapName[0] : "") + " map to file " + ioe.getMessage(), ioe);
-		}
-	}
-	
-	/**
-	 * Writes a map out to a file. Keys are delimited from values by tabs, and key-value
-	 * pairs are delimited from one another by newlines.
-	 */
-	private final static void writeMapToFile(Path file, Charset charset, Map<String, MutableInt> counts, String... mapName)
-	{	Path singles = PathUtils.appendFileNameSuffix(file, "-sgls.txt");
-		Path many    = PathUtils.appendFileNameSuffix(file, ".txt");
-		
-		System.out.println ("There are " + counts.size() + " entries in the table for " + Arrays.toString(mapName));
-		
-		String fileContentDescription = mapName.length == 0 ? "" : " " + mapName[0];
-		try (BufferedWriter sgl = Files.newBufferedWriter(singles,charset);
-				 BufferedWriter mny = Files.newBufferedWriter(many, charset))
-		{	for (Map.Entry<String, MutableInt> entry : counts.entrySet())
-			{	writeSafely(
-					entry.getValue().intValue() == 1 ? sgl : mny,
-					fileContentDescription,
-					entry.getKey().toString() + '\t' + String.valueOf (entry.getValue().intValue()) + '\n'
 				);
 			}
 		}
@@ -557,14 +563,7 @@ public class TwitterStats implements Callable<Integer>
 		MutableInt count = counts.get(key);
 		return count == null ? 0 : count.intValue();
 	}
-	
-	private final void incTagCount (DateTime tweetDate, String hashTag)
-	{	inc (hashTagCounts, /* tweetDate,*/ hashTag.intern());
-	}
-	
-	private final void incSmileyCount (DateTime tweetDate, String smiley)
-	{	inc (smileyCounts, /*tweetDate,*/ smiley);
-	}
+
 	
 	public Set<String> getExcludedUsers()
 	{	return excludedUsers;
@@ -598,13 +597,79 @@ public class TwitterStats implements Callable<Integer>
 	
 	public static void main (String[] args) throws Exception
 	{
-		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
-		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStatsNew");
+//		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
+//		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats2");
+//		
+//		TwitterStats stats = new TwitterStats (inputDir, outputDir);
+//		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);
+//		stats.setStartDateIncl(new DateTime (2013, 04, 01, 00, 00, 01, DateTimeZone.UTC));
+//		stats.call();
+
+		String test = new String (new byte[] { 0x20, 0x2A, 0x20, 0x49, 0x20, 0x63, 0x61, 0x6E, 0x27, 0x74, 0x20, 0x64, 0x65, 0x61, 0x6C, 0x20, 0x77, 0x69, 0x74, 0x68, 0x20, 0x52, 0x61, 0x79, 0x2D, 0x4A, (byte) 0xF0, (byte) 0x9F, (byte) 0x98, (byte) 0x91, 0x0A }, Charsets.UTF_8);
 		
-		TwitterStats stats = new TwitterStats (inputDir, outputDir);
-		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);
-		stats.setStartDateIncl(new DateTime (2013, 04, 01, 00, 00, 01, DateTimeZone.UTC));
-		stats.call();
+		System.out.println(test);
+		
+		Main main = new Main();
+		Vectorizer vec = main.newVectorizer();
+		
+		File tmpFile = File.createTempFile("out", ".txt");
+		tmpFile.deleteOnExit();
+		try (BufferedWriter wtr = Files.newBufferedWriter(tmpFile.toPath(), Charsets.UTF_8); )
+		{	// for (String test : new String[] { test0, test1 })
+			{	Iterator<Pair<TokenType, String>> tokens = vec.toWords(test);
+				List<String> words = new ArrayList<String>();
+				while (tokens.hasNext())
+				{	words.add (tokens.next().getValue());
+				}
+				for (String word : words)
+				{	System.out.println(word);
+					wtr.write(word);
+				}
+			}
+		}
+	
+		
+		List<CharBuffer> bufs = split(test);
+		
+		for (CharBuffer buf : bufs)
+			System.out.println (buf);
+		System.out.println();
+	}
+	
+	public final static List<CharBuffer> split (String input)
+	{	
+    List<CharBuffer> tokens = new ArrayList<CharBuffer>();
+    List<TokenType> tokenTypes = new ArrayList<TokenType>();
+    
+    int punctuationGroup = 0;
+    boolean keepPunctuation = false;
+		
+		String regex = "(?:[\\p{C}\\p{Z}&&[^\\n\\r]]+)|([\\p{P}\\p{M}\\p{S}\\n\\r])[\\p{C}\\p{Z}&&[^\\n\\r]]*";
+		Pattern delimiterPattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.CANON_EQ | Pattern.DOTALL);
+    Matcher matcher = delimiterPattern.matcher(input);
+    int lastMatch = 0;
+
+    
+    while (matcher.find()) {
+      if (matcher.start() != lastMatch) {
+        tokens.add(CharBuffer.wrap(input, lastMatch, matcher.start()));
+        tokenTypes.add(TokenType.TOKEN);
+      }
+
+      if (keepPunctuation && matcher.start(punctuationGroup) >= 0) {
+        tokens.add(CharBuffer.wrap(input, matcher.start(punctuationGroup),
+            matcher.end(punctuationGroup)));
+        tokenTypes.add(TokenType.PUNCTUATION);
+      }
+
+      lastMatch = matcher.end();
+    }
+    if (lastMatch < input.length()) {
+      tokens.add(CharBuffer.wrap(input, lastMatch, input.length()));
+      tokenTypes.add(TokenType.TOKEN);
+    }
+    
+    return tokens;
 	}
 	
 	
