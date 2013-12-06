@@ -31,8 +31,8 @@ import cc.twittertools.words.combiners.SlashTokenCombiner;
 import cc.twittertools.words.combiners.UrlCombiner;
 import cc.twittertools.words.dict.CompoundTokenDictionary;
 import cc.twittertools.words.dict.Dictionary;
-import cc.twittertools.words.dict.TokenDictionary;
 import cc.twittertools.words.dict.ExcessUnmappableTokens;
+import cc.twittertools.words.dict.TokenDictionary;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterators;
@@ -42,7 +42,6 @@ import com.twitter.common.text.combiner.StockTokenCombiner;
 import com.twitter.common.text.combiner.UserNameTokenCombiner;
 import com.twitter.common.text.filter.PunctuationFilter;
 import com.twitter.common.text.token.attribute.TokenType;
-import com.twitter.common.text.tokenizer.LatinTokenizer;
 
 /**
  * Converts text into vectors, it's as simple as that.
@@ -183,7 +182,7 @@ public class Vectorizer {
 			new PunctuationFilter(
 			  // combine stock symbol
 		      new StockTokenCombiner(
-		        // combine emoticon like ;) :-D 8D B-| 
+		        // combine emoticon like ;) :-D 8D B-|   but not asian ones like \(^^)/
 		        EmoticonCombiners.newAllEmoticonCombiner(
 		          // combine possessive form (e.g., apple's)
 		          new MyPossessiveContractionTokenCombiner(
