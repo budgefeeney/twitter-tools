@@ -97,9 +97,7 @@ public class TwitterStats implements Callable<Integer>
 	
 	private final Path datasetDirectory;
 	private final Path outputDir;
-	
-	private final static Writer sideWriter = new OutputStreamWriter (new ByteArrayOutputStream(), Charsets.UTF_8);
-	
+		
 	public TwitterStats(Path datasetDirectory, Path outputDir)
 	{
 		super();
@@ -424,20 +422,10 @@ public class TwitterStats implements Callable<Integer>
 	 */
 	private final static void writeSafely (Writer wtr, String fileDes, String text) throws IOException
 	{	try
-		{	if (text.equals("like"))
-				System.out.println("Here we go!");
-		
-			wtr.write(text);
-			wtr.flush();
-			
-			if (fileDes.equals("words"))
-			{	sideWriter.write (text);
-				sideWriter.flush();
-			}
+		{	wtr.write(text);
 		}
 		catch (MalformedInputException mie)
 		{	LOG.error("Can't write out the following line to the " + fileDes + " file due to a charset issue " + mie.getMessage() + "\n\t" + toByteStrSafely(text), mie);
-			wtr.write("Surely this should work");
 		}
 	}
 	
