@@ -171,11 +171,11 @@ public class TwitterStats implements Callable<Integer>
 		try (
 			FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(datasetDirectory); 
 			BufferedWriter dictionary = Files.newBufferedWriter (outputDir.resolve("words.txt"), Charsets.UTF_8);
-			BufferedWriter stocks = Files.newBufferedWriter (outputDir.resolve("stocks.txt"), Charsets.UTF_8);
+			BufferedWriter stocks     = Files.newBufferedWriter (outputDir.resolve("stocks.txt"), Charsets.UTF_8);
 			BufferedWriter addressees = Files.newBufferedWriter (outputDir.resolve("addressees.txt"), Charsets.UTF_8);
-			BufferedWriter hashtags = Files.newBufferedWriter (outputDir.resolve("hashtags.txt"), Charsets.UTF_8);
-			BufferedWriter smileys = Files.newBufferedWriter (outputDir.resolve("smileys.txt"), Charsets.UTF_8);
-			BufferedWriter urls = Files.newBufferedWriter (outputDir.resolve("urls.txt"), Charsets.UTF_8);
+			BufferedWriter hashtags   = Files.newBufferedWriter (outputDir.resolve("hashtags.txt"), Charsets.UTF_8);
+			BufferedWriter smileys    = Files.newBufferedWriter (outputDir.resolve("smileys.txt"), Charsets.UTF_8);
+			BufferedWriter urls       = Files.newBufferedWriter (outputDir.resolve("urls.txt"), Charsets.UTF_8);
 			BufferedWriter tokenizerErrors = Files.newBufferedWriter(outputDir.resolve("tokenizer-errors.txt"), Charsets.UTF_8)
 		)
 		{	
@@ -194,7 +194,7 @@ public class TwitterStats implements Callable<Integer>
 			  			String   account   = tidyStringKey (tweet.getAccount());
 			  			DateTime tweetDate = tweet.getLocalTime();
 			  			
-			  			if (excludedUsers.contains(account)
+			  			if (excludedUsers.contains (account)
 						   || tweetDate.isBefore(startDateIncl))
 			  				continue;
 
