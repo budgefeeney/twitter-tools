@@ -196,7 +196,7 @@ public class Vectorizer {
 			                // combine # + hashtag
 			                new HashtagTokenCombiner(
 			                  // combine @ + user name
-			                  new UserNameTokenCombiner(new LatinTokenizer.Builder().setKeepPunctuation(true).build())))))))));
+			                  new UserNameTokenCombiner(new BreakTokenizer.Builder().setKeepPunctuation(true).build())))))))));
 		
 		twitterTok.reset(text);
 		return new TwitterTokenStreamIterator (

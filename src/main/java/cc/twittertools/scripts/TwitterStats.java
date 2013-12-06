@@ -607,6 +607,10 @@ public class TwitterStats implements Callable<Integer>
 
 		String test = new String (new byte[] { 0x20, 0x2A, 0x20, 0x49, 0x20, 0x63, 0x61, 0x6E, 0x27, 0x74, 0x20, 0x64, 0x65, 0x61, 0x6C, 0x20, 0x77, 0x69, 0x74, 0x68, 0x20, 0x52, 0x61, 0x79, 0x2D, 0x4A, (byte) 0xF0, (byte) 0x9F, (byte) 0x98, (byte) 0x91, 0x0A }, Charsets.UTF_8);
 		
+		List<CharBuffer> bufs = split(test);
+		for (CharBuffer buf : bufs)
+			System.out.println(buf);
+		
 		System.out.println(test);
 		
 		Main main = new Main();
@@ -628,11 +632,6 @@ public class TwitterStats implements Callable<Integer>
 			}
 		}
 	
-		
-		List<CharBuffer> bufs = split(test);
-		
-		for (CharBuffer buf : bufs)
-			System.out.println (buf);
 		System.out.println();
 	}
 	
@@ -644,7 +643,7 @@ public class TwitterStats implements Callable<Integer>
     int punctuationGroup = 0;
     boolean keepPunctuation = false;
 		
-		String regex = "(?:[\\p{C}\\p{Z}&&[^\\n\\r]]+)|([\\p{P}\\p{M}\\p{S}\\n\\r])[\\p{C}\\p{Z}&&[^\\n\\r]]*";
+		String regex = "(?:[\\p{Cc}\\p{Z}&&[^\\n\\r]]+)|([\\p{P}\\p{M}\\p{S}\\n\\r])[\\p{Cc}\\p{Z}&&[^\\n\\r]]*";
 		Pattern delimiterPattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.CANON_EQ | Pattern.DOTALL);
     Matcher matcher = delimiterPattern.matcher(input);
     int lastMatch = 0;

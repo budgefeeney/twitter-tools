@@ -15,7 +15,11 @@ import com.twitter.common.text.token.TokenStream;
 * </ul>
 */
 public class AmpAcronymTokenCombiner extends ExtractorBasedTokenCombiner {
-	private static final Pattern AMP_ACRONYM = Pattern.compile("([A-Z][A-Z]?&[A-Z][A-Z]?)([^a-zA-Z]|$)");
+	// an acronym involving an ampersand consists of one or two upper-case
+	// letters, an ampersand, a further one or two upper-case letters, and
+	// maybe an S (any case), optionally prefixed by an apostrophe indicating
+	// a plural
+	private static final Pattern AMP_ACRONYM = Pattern.compile("([A-Z][A-Z]?&[A-Z][A-Z]?(?:'?[Ss])?)([^a-zA-Z]|$)");
 
 	public AmpAcronymTokenCombiner(TokenStream inputStream) {
 	  super(inputStream);

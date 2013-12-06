@@ -141,7 +141,8 @@ public class TwitterTokenStreamIterator implements Iterator<Pair<TokenType, Stri
 
 	/**
 	 * Is this a slash abbreviation, i.e. an abbreviation containing a single
-	 * slash. We use this to stop the stemmer taking it apart.
+	 * slash. We use this to stop the stemmer taking it apart. Exampls include
+	 * "f/c" for "forecast" and "s/w" for "software"
 	 */
 	public static boolean isSlashAbbrv (final String term)
 	{	if (term.length() > 5)
