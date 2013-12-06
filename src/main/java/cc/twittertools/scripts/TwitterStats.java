@@ -9,11 +9,9 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
 import java.nio.file.Files;
@@ -31,8 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.Charsets;
@@ -40,6 +36,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -597,78 +594,13 @@ public class TwitterStats implements Callable<Integer>
 	
 	public static void main (String[] args) throws Exception
 	{
-//		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
-//		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats2");
-//		
-//		TwitterStats stats = new TwitterStats (inputDir, outputDir);
-//		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);
-//		stats.setStartDateIncl(new DateTime (2013, 04, 01, 00, 00, 01, DateTimeZone.UTC));
-//		stats.call();
-
-		String test = new String (new byte[] { 0x20, 0x2A, 0x20, 0x49, 0x20, 0x63, 0x61, 0x6E, 0x27, 0x74, 0x20, 0x64, 0x65, 0x61, 0x6C, 0x20, 0x77, 0x69, 0x74, 0x68, 0x20, 0x52, 0x61, 0x79, 0x2D, 0x4A, (byte) 0xF0, (byte) 0x9F, (byte) 0x98, (byte) 0x91, 0x0A }, Charsets.UTF_8);
+		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
+		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/DatasetStats2");
 		
-		List<CharBuffer> bufs = split(test);
-		for (CharBuffer buf : bufs)
-			System.out.println(buf);
-		
-		System.out.println(test);
-		
-		Main main = new Main();
-		Vectorizer vec = main.newVectorizer();
-		
-		File tmpFile = File.createTempFile("out", ".txt");
-		tmpFile.deleteOnExit();
-		try (BufferedWriter wtr = Files.newBufferedWriter(tmpFile.toPath(), Charsets.UTF_8); )
-		{	// for (String test : new String[] { test0, test1 })
-			{	Iterator<Pair<TokenType, String>> tokens = vec.toWords(test);
-				List<String> words = new ArrayList<String>();
-				while (tokens.hasNext())
-				{	words.add (tokens.next().getValue());
-				}
-				for (String word : words)
-				{	System.out.println(word);
-					wtr.write(word);
-				}
-			}
-		}
-	
-		System.out.println();
-	}
-	
-	public final static List<CharBuffer> split (String input)
-	{	
-    List<CharBuffer> tokens = new ArrayList<CharBuffer>();
-    List<TokenType> tokenTypes = new ArrayList<TokenType>();
-    
-    int punctuationGroup = 0;
-    boolean keepPunctuation = false;
-		
-		String regex = "(?:[\\p{Cc}\\p{Z}&&[^\\n\\r]]+)|([\\p{P}\\p{M}\\p{S}\\n\\r])[\\p{Cc}\\p{Z}&&[^\\n\\r]]*";
-		Pattern delimiterPattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE | Pattern.CANON_EQ | Pattern.DOTALL);
-    Matcher matcher = delimiterPattern.matcher(input);
-    int lastMatch = 0;
-
-    
-    while (matcher.find()) {
-      if (matcher.start() != lastMatch) {
-        tokens.add(CharBuffer.wrap(input, lastMatch, matcher.start()));
-        tokenTypes.add(TokenType.TOKEN);
-      }
-
-      if (keepPunctuation && matcher.start(punctuationGroup) >= 0) {
-        tokens.add(CharBuffer.wrap(input, matcher.start(punctuationGroup),
-            matcher.end(punctuationGroup)));
-        tokenTypes.add(TokenType.PUNCTUATION);
-      }
-
-      lastMatch = matcher.end();
-    }
-    if (lastMatch < input.length()) {
-      tokens.add(CharBuffer.wrap(input, lastMatch, input.length()));
-      tokenTypes.add(TokenType.TOKEN);
-    }
-    
-    return tokens;
+		TwitterStats stats = new TwitterStats (inputDir, outputDir);
+		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);
+		stats.setStartDateIncl(new DateTime (2013, 04, 01, 00, 00, 01, DateTimeZone.UTC));
+		stats.call();
 	}
 	
 	
