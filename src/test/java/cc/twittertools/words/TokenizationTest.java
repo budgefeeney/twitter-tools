@@ -3,13 +3,9 @@ package cc.twittertools.words;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.text.BreakIterator;
 import java.util.Iterator;
-import java.util.Locale;
 
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.Charsets;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 

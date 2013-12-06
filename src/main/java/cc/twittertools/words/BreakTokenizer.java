@@ -1,7 +1,6 @@
 package cc.twittertools.words;
 
 import java.text.BreakIterator;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Preconditions;
