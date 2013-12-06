@@ -185,7 +185,6 @@ public class TwitterStats implements Callable<Integer>
 	  		Path currentFile = tweetFiles.next();
 	  		LOG.info ("Processing tweets in file: " + currentFile);
 	  		
-	  		currentFile = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider/DrugsMarijuana/KaylaStylez.1");
 	  		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
 				{	
 					while (rdr.hasNext())
