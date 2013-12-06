@@ -43,7 +43,12 @@ public class BreakTokenizer extends TokenStream {
 	    	termAttr.setLength(tokenEnd - tokenStart);
 	    	
 	    	DEBUG = termAttr.getTermString(); 
-	    	typeAttr.setType(isPunc(DEBUG) ? TokenType.PUNCTUATION : TokenType.TOKEN);
+	    	typeAttr.setType(
+	    		isPunc(DEBUG) 
+	    			? TokenType.PUNCTUATION
+	    			: isImage(DEBUG)
+	    				? TokenType.EMOTICON
+	    				: TokenType.TOKEN);
 	    	
 		    tokenStart = tokenEnd;
 		    tokenEnd   = iter.next();
@@ -63,6 +68,25 @@ public class BreakTokenizer extends TokenStream {
 	  private final static Pattern PUNC = Pattern.compile("\\p{P}+");
 	  private final static boolean isPunc(String str)
 	  {	return PUNC.matcher(str).matches();
+	  }
+	  
+	  private final static boolean isImage(String str)
+	  {	int codePoint = str.codePointAt(0);
+		
+	  	if (str.length() > 3)
+	  		return false;
+	  
+	  	if (str.length() == 2)
+	  		if (Character.isSurrogatePair(str.charAt(0), str.charAt(1)))
+	  			return true;
+	  
+		boolean isSingleChar = str.length() == 1;
+	  	boolean isCJKV = Character.isIdeographic(str.charAt(0));
+	  	boolean isSupp = Character.isSupplementaryCodePoint(str.charAt(0));
+	  	boolean isSymb = Character.getType(str.charAt(0)) == Character.OTHER_SYMBOL;
+	  	boolean isHigh = codePoint > 0xFFFF;
+	  	
+	  	return isSingleChar && ! isCJKV && (isSupp || isSymb || isHigh);
 	  }
 
 	  @Override
