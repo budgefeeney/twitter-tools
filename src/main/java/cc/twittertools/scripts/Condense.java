@@ -102,10 +102,9 @@ public class Condense implements Callable<Integer>
 				++count;
 			}
 
-			wtr.write(lastWord + '\t' + count + '\n');
+			wtr.write (lastWord + '\t' + count + '\n');
 			++uniqWordCount;
 		}
-		
 		
 		return uniqWordCount;
 	}
