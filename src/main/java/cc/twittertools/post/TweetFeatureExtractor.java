@@ -199,7 +199,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	  	}
   	}
   	
-  	// Write dictionaries out as a bit Python script
+  	// Write dictionaries out as a big Python script
   	// 
   	try (BufferedWriter wtr = Files.newBufferedWriter(outputDir.resolve("dicts.py"), Charsets.UTF_8); )
 	{	wtr.write("#!/usr/bin/python\n");
@@ -401,7 +401,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	{	// NOTE Every time extractEventFeatures() is changed, this needs to be changed too
 		Interval interval = new Interval(minDateIncl, maxDateExcl);
 	  	FeatureDimension dim = featSpec.dimensionality(userDict, interval);
-		String result = "feats = dict()";
+		String result = "feats = dict()\n";
 		
 		int step = 0;
 		if (featSpec.isAddresseeInFeatures())
