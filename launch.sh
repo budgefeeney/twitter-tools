@@ -15,11 +15,11 @@ params="$params --feat-author"
 params="$params --feat-woy"
 params="$params --feat-moy"
 params="$params --dict-addrs __null_dict"
-params="$params --dict-urls /Users/bryanfeeney/Desktop/DatasetStats/urls.txt"
-params="$params --dict-words /Users/bryanfeeney/Desktop/DatasetStats/dictionary.txt"
-params="$params --dict-stocks /Users/bryanfeeney/Desktop/DatasetStats/stocks.txt"
-params="$params --dict-smileys /Users/bryanfeeney/Desktop/DatasetStats/smileys.txt"
-params="$params --dict-tags /Users/bryanfeeney/Desktop/DatasetStats/hashtags.txt"
+params="$params --dict-urls /Users/bryanfeeney/Desktop/DatasetStats2/urls-sorted.dict"
+params="$params --dict-words /Users/bryanfeeney/Desktop/DatasetStats2/words-sorted.dict"
+params="$params --dict-stocks /Users/bryanfeeney/Desktop/DatasetStats2/stocks-sorted.dict"
+params="$params --dict-smileys /Users/bryanfeeney/Desktop/DatasetStats2/smileys-sorted.dict"
+params="$params --dict-tags /Users/bryanfeeney/Desktop/DatasetStats2/hashtags-sorted.dict"
 params="$params --selected-acs /Users/bryanfeeney/Dropbox/usershorter.txt"
 
 jar_name="twitter-tools"
@@ -27,5 +27,6 @@ jar_version="1.1.1"
 jar_dir="target"
 jar_file="$jar_dir/$jar_name-$jar_version-jar-with-dependencies.jar"
 
-#java -Xmx3000m -cp $jar_file cc.twittertools.scripts.Main $params
 echo $params
+java -Xmx3000m -cp $jar_file cc.twittertools.scripts.Main $params
+
