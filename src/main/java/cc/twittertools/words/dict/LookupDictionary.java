@@ -9,22 +9,26 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cern.colt.Arrays;
 
 
 
 /**
  * A non-threadsafe dictionary maintaining a lookup table of words to word IDs,
  * and a matching table of word IDs to words.
- * @author bryanfeeney
- *
  */
 public class LookupDictionary extends AbstractDictionary 
 {
-
+	private final static Logger LOG = LoggerFactory.getLogger(LookupDictionary.class);
+	
 	private static final int MAX_INITIAL_CAPACITY = 10000;
 	private final Map<String, Integer> words;
 	private final Map<Integer, String> wordIds;
@@ -181,11 +185,25 @@ public class LookupDictionary extends AbstractDictionary
 			return;
 		}
 		
+		writer.write (pyVarName + "_len = " + size + '\n');
 		writer.write (pyVarName + " = [ \\\n");
-		for (int wordId = 0; wordId < size; wordId++)
-		{	writer.write ("\t\"" + StringEscapeUtils.escapeJava(toWord(wordId)) + "\", \\\n");
+		String word = null;
+		try
+		{	
+			for (int wordId = 0; wordId < size; wordId++)
+			{	word = toWord(wordId);
+				writer.write ("\t\"" + StringEscapeUtils.escapeJava(word) + "\", \\\n");
+				word = null; // for debugging in the exception below
+			}
+		}
+		catch (Exception e)
+		{	String wordUtf8Bytes = word == null
+				? "null"
+				: Arrays.toString(Hex.encodeHex(word.getBytes(Charsets.UTF_8)));
+			LOG.error("Error whilst writing out the " + pyVarName + " dictionary to a Python file : " + e.getMessage() + ".  The token, rendered as UTF-8 bytes, encoded in hex, is " + wordUtf8Bytes);
 		}
 		writer.write ("\t]\n\n");
+		writer.flush();
 	}
 	
 	@Override
