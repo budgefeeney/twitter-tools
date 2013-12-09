@@ -85,25 +85,29 @@ public class Condense implements Callable<Integer>
 	{	String lastWord = NULL_WORD;
 		String word = null;
 		int count = 0;
-		int wordCount = 0;
+		int uniqWordCount = 0;
 		
 		try (BufferedReader rdr = Files.newBufferedReader(Paths.get(inputPath), Charsets.UTF_8);
 				 BufferedWriter wtr = Files.newBufferedWriter(Paths.get(outputPath), Charsets.UTF_8);)
 		{	
 			while ((word = rdr.readLine()) != null)
 			{	if (! word.equals(lastWord))
-				{	if (word != NULL_WORD)
+				{	if (lastWord != NULL_WORD)
 					{	wtr.write(lastWord + '\t' + count + '\n');
-						++wordCount;
+						++uniqWordCount;
 					}
 					lastWord = word;
 					count = 0;
 				}
 				++count;
 			}
+
+			wtr.write(lastWord + '\t' + count + '\n');
+			++uniqWordCount;
 		}
 		
-		return wordCount;
+		
+		return uniqWordCount;
 	}
 	
 	private Integer callUnsorted() throws Exception
@@ -113,7 +117,7 @@ public class Condense implements Callable<Integer>
 		
 		try (BufferedReader rdr = Files.newBufferedReader(Paths.get(inputPath), Charsets.UTF_8);)
 		{	while ((word = rdr.readLine()) != null)
-				map.put(word, map.get(word) + 1);
+				map.put(word, map.getInt(word) + 1);
 		}
 		
 		try (BufferedWriter wtr = Files.newBufferedWriter(Paths.get(outputPath), Charsets.UTF_8);)

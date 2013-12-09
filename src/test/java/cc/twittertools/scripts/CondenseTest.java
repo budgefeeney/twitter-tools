@@ -63,18 +63,20 @@ public class CondenseTest
 		
 		try (BufferedWriter wtr = Files.newBufferedWriter(inFileSorted,   Charsets.UTF_8);)
 		{	for (int w = 0; w < WORDS.length; w++)
-				for (int c = 0; c < COUNTS.length; c++)
+				for (int c = 0; c < COUNTS[w]; c++)
 					wtr.write(WORDS[w] + '\n');
 		}
 		
 		try (BufferedWriter wtr = Files.newBufferedWriter(inFileUnsorted, Charsets.UTF_8);)
 		{	int[] counts = Arrays.copyOf(COUNTS, COUNTS.length);
-			for (int i = 0; i < max(counts); i++)
-				for (int w = 0; w < WORDS.length; w++)
-					if (counts[w] > 0)
+			for (int i = 0, end = max(counts); i < end; i++)
+			{	for (int w = 0; w < WORDS.length; w++)
+				{	if (counts[w] > 0)
 					{	--counts[w];
 						wtr.write(WORDS[w] + '\n');
 					}
+				}
+			}
 		}
 	}
 
@@ -120,7 +122,7 @@ public class CondenseTest
 	}
 	
 	@Test
-	public void testUnorted() throws Exception
+	public void testUnsorted() throws Exception
 	{	Condense.main(new String[] {
 			"-i", inFileUnsorted.toString(),
 			"-o", outFile.toString(),
@@ -151,7 +153,7 @@ public class CondenseTest
 			}
 		}
 		
-		assertTrue(words.isEmpty());
+		assertTrue("The words " + words.toString() + " were not found in the written out file", words.isEmpty());
 	}
 	
 }
