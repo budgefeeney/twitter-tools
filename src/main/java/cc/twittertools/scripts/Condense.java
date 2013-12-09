@@ -5,11 +5,14 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.io.Charsets;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 
 /**
@@ -35,18 +38,41 @@ public class Condense implements Callable<Integer>
 	@Option(name="-s", aliases="--sorted", usage="Has this file been sorted in advance", metaVar=" ")
 	private boolean sorted = false;
 	
+	@Option(name="-h", aliases="--help", usage="Show this help message", metaVar=" ")
+	private boolean showHelp = false;
+	
 	private Condense()
 	{	
 	}
-	
-	/**
-	 * parses the command-line arguments
-	 */
-	public void parseArguments(String[] args)
-	{
+
+
+	/** Parses the arguments */
+	private void parseArguments(String[] args)
+	{	CmdLineParser parser = null;
+		try
+		{	parser = new CmdLineParser(this);
+			parser.parseArgument(args);
 		
+			if (showHelp)
+			{	System.out.println("Help for this command:");
+				showHelp (System.out, parser);
+				System.exit(0);
+			}
+		}
+		catch (CmdLineException e)
+		{	System.err.println (e.getMessage());
+			showHelp (System.err, parser);
+		}
+
 	}
-	
+
+	/** Shows the help message to the given stream. Needs the parser object to say what the options are. */
+	private void showHelp(PrintStream out, CmdLineParser parser)
+	{	out.println ("Usage: java -jar JARNAME.jar <options>");
+		if (parser != null)
+			parser.printUsage(out);
+	}
+
 	/**
 	 * Given an input file of words, one per line, writes out a tab-delimited
 	 * file of word-counts
@@ -86,17 +112,13 @@ public class Condense implements Callable<Integer>
 		map.defaultReturnValue(0);
 		
 		try (BufferedReader rdr = Files.newBufferedReader(Paths.get(inputPath), Charsets.UTF_8);)
-		{	
-			while ((word = rdr.readLine()) != null)
-			{	map.put(word, map.get(word) + 1);
-			}
+		{	while ((word = rdr.readLine()) != null)
+				map.put(word, map.get(word) + 1);
 		}
 		
-		try (BufferedReader rdr = Files.newBufferedReader(Paths.get(inputPath), Charsets.UTF_8);)
-		{	
-			while ((word = rdr.readLine()) != null)
-			{	map.put(word, map.get(word) + 1);
-			}
+		try (BufferedWriter wtr = Files.newBufferedWriter(Paths.get(outputPath), Charsets.UTF_8);)
+		{	for (Object2IntMap.Entry<String> entry : map.object2IntEntrySet())
+				wtr.write (entry.getKey() + '\t' + entry.getIntValue() + '\n');
 		}
 		
 		return map.size();
