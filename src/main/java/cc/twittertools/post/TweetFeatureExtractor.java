@@ -95,8 +95,11 @@ public class TweetFeatureExtractor implements Callable<Integer>
   /** do we skip an entire tweet if we can't map a single token to an identifier */
   private final boolean skipTweetOnUnmappableEventToken;
   
-  /** The minium amount of a tweets <em>characters</em> that must be tokenized for the tweet to be accepted */
+  /** The minium amount of a tweets <em>words</em> that must be tokenized for the tweet to be accepted */
   private final double minTokenizedAmt;
+  
+  /** The minimum number of tokens a tweet must contain to be included in the output */
+  private final int minTokensPerTweet = 3;
   
   private int maxTweetsToProcess = Integer.MAX_VALUE;
   
@@ -125,7 +128,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
     this.featSpec   = featureSpecification;
     
     this.skipTweetOnUnmappableEventToken = true;
-    this.minTokenizedAmt = 0.5;
+    this.minTokenizedAmt = 2.0 / 3.0;
     
     final int numAuthors;
     if (restrictedUserList == null)
@@ -343,6 +346,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 				catch (ExcessUnmappableTokens ute)
 				{	++skippedAsUnmappable;
 					LOG.info("Tweets with excess unmappable tokens skipped : " + skippedAsUnmappable + "/" + tweetCount + " (" + (100 * skippedAsUnmappable / Math.max(1, tweetCount)) + "%). Here " + ute.getProportionTokenized() + " of this tweet was tokenized only: " + tweet.getMsg());
+					LOG.info("Original error was " + ute.getMessage());
 				}
 				catch (Exception e)
 				{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
@@ -571,7 +575,11 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		// # with HASH_TAG etc.
 		
 		// TODO Awful hack ("text.toLowerCase()") as we haven't got a case-sensitive dictionary for URLs
-		for (int wordId : vectorizer.toInts(text.toLowerCase(), minTokenizedAmt))
+		int[] tokens =  vectorizer.toInts(text.toLowerCase(), minTokenizedAmt);
+		if (tokens.length < minTokensPerTweet)
+			throw new ExcessUnmappableTokens ((double) tokens.length, "Tweet contains only " + tokens.length + " tokens, which is less than the minimum of " + minTokensPerTweet + " and so it has been excluded");
+		
+		for (int wordId : tokens)
 		{	inc(wordFeatures, wordId);
 		}
 		

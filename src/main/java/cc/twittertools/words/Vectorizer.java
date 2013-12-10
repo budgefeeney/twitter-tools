@@ -228,8 +228,9 @@ public class Vectorizer {
 	 * <p>
 	 * This version skips the infrequent words check
 	 * @param text
-	 * @param minTokenizationAmt the minimum proportion of a tweets _characters_ where must be 
-	 * taken up by successfully parsed tokens for this conversion to be valid. Otherwise we throw
+	 * @param minTokenizationAmt the minimum proportion of a tweet's unigrams which must be
+	 * successfully tokenized, otherwise throw an {@link ExcessUnmappableTokens} exception
+	 * @return an int array corresponding to the words in the text
 	 */
 	public int[] toInts (String text, double minTokenizationAmt)
 	{	if (minWordCount > 1)
@@ -248,25 +249,24 @@ public class Vectorizer {
 	 * @param text
 	 * @param infrequentWords a collection of words that are to be skipped as they occur
 	 * too rarely
+	 * @param minTokenizationAmt the minimum proportion of a tweet's unigrams which must be
+	 * successfully tokenized, otherwise throw an {@link ExcessUnmappableTokens} exception
 	 * @return an int array corresponding to the words in the text
-	 * @param minTokenizationAmt the minimum proportion of a tweets _characters_ where must be 
-	 * taken up by successfully parsed tokens for this conversion to be valid. Otherwise we throw
 	 * a 
 	 */
 	private int[] toIntsInternal (String text, Map<TokenType, Set<String>> infrequentWords, double minTokenizationAmt)
-	{	int[] result = new int[text.length() / 5];
+	{	int[] result = new int[text.length() / 4]; // assume the average word is 4-chars long to guess the word-count
 		int numWords = 0;
-		int charCount = 0;
-		int tokenizedCharCount = 0;
+		int numTokenizedWords = 0;
 		
 		Iterator<Pair<TokenType, String>> words = toWords(text);
 		
 		while (words.hasNext())
-		{	Pair<TokenType, String> wordToken = words.next();
+		{	++numWords;
+			Pair<TokenType, String> wordToken = words.next();
 			TokenType tokenType = wordToken.getKey();
 			String    word      = wordToken.getValue();
 			
-			charCount += word.length();
 			if (contains(infrequentWords, wordToken))
 				continue;
 			if (tokenType == TokenType.TOKEN && ! numbersAllowed && DIGIT_REGEXP.matcher(word).find())
@@ -276,18 +276,17 @@ public class Vectorizer {
 			if (wordId == Dictionary.UNMAPPABLE_WORD || wordId == Dictionary.IGNORABLE_WORD)
 				continue;
 
-			result = ArrayUtils.add(result, numWords, wordId);
-			tokenizedCharCount += word.length();
-			++numWords;
+			result = ArrayUtils.add(result, numTokenizedWords, wordId);
+			++numTokenizedWords;
 		}
 		
-		double tokenizedAmt = (double) tokenizedCharCount / charCount;
+		double tokenizedAmt = (double) numTokenizedWords / numWords;
 		if (tokenizedAmt < minTokenizationAmt)
-			throw new ExcessUnmappableTokens(tokenizedAmt, "Only tokenized " + ((int) (100 * tokenizedAmt)) + "% of the given text, when the minimum was " + ((int) (100 * minTokenizationAmt)) + "%");
+			throw new ExcessUnmappableTokens(tokenizedAmt, "Only tokenized " + ((int) (100 * tokenizedAmt)) + "% of the given text's words, when the minimum was " + ((int) (100 * minTokenizationAmt)) + "%");
 		
-		return result.length == numWords
+		return result.length == numTokenizedWords
 			? result
-			: ArrayUtils.subarray(result, 0, numWords);
+			: ArrayUtils.subarray(result, 0, numTokenizedWords);
 	}
 
 	private boolean contains(Map<TokenType, Set<String>> infrequentWords, Pair<TokenType, String> wordToken) {
