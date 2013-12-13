@@ -98,6 +98,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   /** The minium amount of a tweets <em>characters</em> that must be tokenized for the tweet to be accepted */
   private final double minTokenizedAmt;
   
+  /** How many tweets to process before we quit */
   private int maxTweetsToProcess = Integer.MAX_VALUE;
   
   /** If not null, then only tweets tweeted or retweeted from these accounts will be included */
@@ -306,39 +307,39 @@ public class TweetFeatureExtractor implements Callable<Integer>
 					if (! isTweetsFromThisAccountIncluded(tweet.getAccount()))
 						continue filesLoop; // all tweets in a file belong to a single account
 	  		
-		  		// Do we include this tweet, or do we skip it.
-		  		if (stripRetweets && isRetweet(tweet))
-		  		{	++skippedAsRetweet;
-						LOG.info("Retweets skipped: " + skippedAsRetweet + "/" + tweetCount + " (" + (100 * skippedAsRetweet / Math.max(1, tweetCount)) + "%)");
-		  			continue;
-		  		}
-		  		if (tweet.getLocalTime().isBefore(minDateIncl) || maxDateExcl.isBefore(tweet.getLocalTime()))
-		  		{	LOG.info("Skipping tweet posted on " + tweet.getLocalTime() + " as it's outside the set time-range");
-		  			continue;
-		  		}
-		  		
-		  		// There are some duplicate tweets in the dataset. We <em>presume</em>
-		  		// files are sorted by name, and keep a track of each account's IDs
-		  		// so we can filter out already processed tweets.
-		  		String account = tweet.getAccount().trim().toLowerCase();
-		  		long   tweetId = tweet.getId();
-		  		if (! account.equals(lastAccount))
-		  		{	lastAccount = account;
-		  			tweetIDs.clear();
-		  		}
-		  		if (tweetIDs.contains(tweetId))
-		  		{	continue;
-		  		}
-		  		tweetIDs.add(tweetId);
-		  		
-		  		// TODO need some sort of "most-recent-date" idea for when we have an,
-		  		// incorrect date, which is something that occurs with retweets.
-		  	
-		  		++tweetCount;
-		  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
-		  		
-		  		wordMatrix.addRow(wordFeatures);
-		  		eventMatrix.addRow(eventFeatures);
+			  		// Do we include this tweet, or do we skip it.
+			  		if (stripRetweets && isRetweet(tweet))
+			  		{	++skippedAsRetweet;
+							LOG.info("Retweets skipped: " + skippedAsRetweet + "/" + tweetCount + " (" + (100 * skippedAsRetweet / Math.max(1, tweetCount)) + "%)");
+			  			continue;
+			  		}
+			  		if (tweet.getLocalTime().isBefore(minDateIncl) || maxDateExcl.isBefore(tweet.getLocalTime()))
+			  		{	LOG.info("Skipping tweet posted on " + tweet.getLocalTime() + " as it's outside the set time-range");
+			  			continue;
+			  		}
+			  		
+			  		// There are some duplicate tweets in the dataset. We <em>presume</em>
+			  		// files are sorted by name, and keep a track of each account's IDs
+			  		// so we can filter out already processed tweets.
+			  		String account = tweet.getAccount().trim().toLowerCase();
+			  		long   tweetId = tweet.getId();
+			  		if (! account.equals(lastAccount))
+			  		{	lastAccount = account;
+			  			tweetIDs.clear();
+			  		}
+			  		if (tweetIDs.contains(tweetId))
+			  		{	continue;
+			  		}
+			  		tweetIDs.add(tweetId);
+			  		
+			  		// TODO need some sort of "most-recent-date" idea for when we have an,
+			  		// incorrect date, which is something that occurs with retweets.
+			  	
+			  		++tweetCount;
+			  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
+			  		
+			  		wordMatrix.addRow(wordFeatures);
+			  		eventMatrix.addRow(eventFeatures);
 				}
 				catch (ExcessUnmappableTokens ute)
 				{	++skippedAsUnmappable;
