@@ -362,13 +362,23 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		}
 	}
 	
-	wordMatrix.writeToFile(wordsFile);
-	LOG.info ("Wrote tweet text features to " + wordsFile);
+	try
+	{	wordMatrix.writeToFile(wordsFile);
+		LOG.info ("Wrote tweet text features to " + wordsFile);
+	}
+	catch (IOException e)
+	{	LOG.error ("Error writing word features to Python sparse matrix file " + e.getMessage(), e);
+	}
 	
-	eventMatrix.writeToFile(eventsFile);
-	LOG.info ("Wrote tweet side features to " + eventsFile);
-  	
-  	return tweetCount;
+	try
+	{	eventMatrix.writeToFile(eventsFile);
+		LOG.info ("Wrote tweet side features to " + eventsFile);
+	}
+	catch (IOException e)
+	{	LOG.error ("Error writing side features to Python sparse matrix file " + e.getMessage(), e);
+	}
+  
+	return tweetCount;
   }
 
 
