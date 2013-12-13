@@ -2,7 +2,7 @@
 
 params="encode"
 params="$params --infile /Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider"
-params="$params --outfile /Users/bryanfeeney/Desktop/SmallDB-20"
+params="$params --outfile /Users/bryanfeeney/Desktop/SmallerDB-20"
 params="$params --skip-retweets"
 params="$params --start-date 20130501"
 params="$params --end-date 20131001"
@@ -20,7 +20,7 @@ params="$params --dict-words /Users/bryanfeeney/Desktop/DatasetStats2/words-sort
 params="$params --dict-stocks /Users/bryanfeeney/Desktop/DatasetStats2/stocks-sorted.dict"
 params="$params --dict-smileys /Users/bryanfeeney/Desktop/DatasetStats2/smileys-sorted.dict"
 params="$params --dict-tags /Users/bryanfeeney/Desktop/DatasetStats2/hashtags-sorted.dict"
-params="$params --selected-acs /Users/bryanfeeney/Dropbox/usershorter.txt"
+params="$params --selected-acs /Users/bryanfeeney/Dropbox/SideTopicDatasets/user-even-more-shorter.txt"
 
 jar_name="twitter-tools"
 jar_version="1.1.1"
