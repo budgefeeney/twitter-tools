@@ -8,9 +8,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntAVLTreeMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 
 import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
@@ -97,6 +95,9 @@ public class TwitterStats implements Callable<Integer>
 	
 	private final Path datasetDirectory;
 	private final Path outputDir;
+	  
+	/** Whether or not we should attempt to tokenize CJKV text */
+	private final boolean tokenizeCjkv = false;
 		
 	public TwitterStats(Path datasetDirectory, Path outputDir)
 	{
@@ -163,8 +164,8 @@ public class TwitterStats implements Callable<Integer>
 		String currentAccount = null;
 		DateTime lastDate     = null;
   	
-  	String lastAccount = "not_the_last_author";
-  	LongSet tweetIDs = new LongOpenHashSet(100_000);
+	  	String lastAccount = "not_the_last_author";
+	  	LongSet tweetIDs = new LongOpenHashSet(100_000);
 		
 		try (
 			FilesInFoldersIterator tweetFiles = new FilesInFoldersIterator(datasetDirectory); 
@@ -184,141 +185,144 @@ public class TwitterStats implements Callable<Integer>
 	  		LOG.info ("Processing tweets in file: " + currentFile);
 	  		
 	  		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
+			{	
+				while (rdr.hasNext())
 				{	
-					while (rdr.hasNext())
-					{	
-						try
-						{	Tweet    tweet     = rdr.next();
-			  			String   account   = tidyStringKey (tweet.getAccount());
-			  			DateTime tweetDate = tweet.getLocalTime();
-			  			
-			  			if (excludedUsers.contains (account)
-						   || tweetDate.isBefore(startDateIncl))
-			  				continue;
+					try
+					{	Tweet    tweet     = rdr.next();
+		  			String   account   = tidyStringKey (tweet.getAccount());
+		  			DateTime tweetDate = tweet.getLocalTime();
+		  			
+		  			if (excludedUsers.contains (account)
+					   || tweetDate.isBefore(startDateIncl))
+		  				continue;
 
-				  		// There are some duplicate tweets in the dataset. We <em>presume</em>
-				  		// files are sorted by name, and keep a track of each account's IDs
-				  		// so we can filter out already processed tweets.
-				  		long tweetId = tweet.getId();
-				  		if (! account.equals(lastAccount))
-				  		{	lastAccount = account;
-				  			tweetIDs.clear();
-				  		}
-				  		else if (tweetIDs.contains(tweetId))
-				  		{	continue;
-				  		}
-				  		tweetIDs.add(tweetId);
-			  			
-			  			++tweetCount;
-			  			
-			  			// Retweet statistics
-				  		if (! account.equals (tidyStringKey(tweet.getAuthor())))
-				  			inc (retweetsByUser, account);
-				  		else if (tweet.isRetweetFromMsg())
-				  			inc (rtRetweetsByUser, account);
-				  		else
-				  			inc (tweetsPerUser, account);
-				  		
-				  		// Inter-post time statistics
-				  		if (account.equals (currentAccount) && lastDate != null)
-				  		{	int interTweetTimeMins = (int) TimeUnit.MILLISECONDS.toMinutes(
-				  				lastDate.isBefore(tweetDate)
-				  				? new Interval (lastDate, tweetDate).toDurationMillis()
-				  				:	new Interval (tweetDate, lastDate).toDurationMillis()
-				  			);
-				  			inc (interPostTimeMins, interTweetTimeMins);
-				  		}
-				  		currentAccount = account;
-				  		lastDate       = tweetDate;
-				  		
-				  		// Total posts by date range (then until now)
-				  		Interval interval = new Interval (firstDay, tweetDate);
-				  		int dayOfTweet = (int) TimeUnit.MILLISECONDS.toDays(interval.toDurationMillis());
-				  		inc (postsSinceDay, dayOfTweet);
-				  		
-				  		// tweets per week
-				  		int year = tweetDate.getWeekyear();       // Jodatime Javadoc explains why this...
-				  		int week = tweetDate.getWeekOfWeekyear(); // ...makes sense even if it looks wrong
-				  		int time = year * 100 + week;
-				  		inc (tweetsPerWeek, time);
-				  		
-				  		// Dates of each user's first posts
-				  		DateTime accountsFirstPost = firstPostByUser.get(account);
-				  		if (accountsFirstPost == null || tweetDate.isBefore(accountsFirstPost))
-				  		{	firstPostByUser.put (account, tweetDate);
-				  			firstPostByUserAsDay.put (account, dayOfTweet);
-				  		}
-				  		DateTime accountsLastPost = lastPostByUser.get(account);
-				  		if (accountsLastPost == null || tweetDate.isAfter(accountsLastPost))
-				  		{	lastPostByUser.put (account, tweetDate);
-				  		}
-				  		
-				  		// Content statistics	
-				  		int wordCount   = 0;
-				  		int urlCount    = 0;
-				  		int hashCount   = 0;
-				  		int smileyCount = 0;
-				  		int addrsCount  = 0;
-				  		int stockCount  = 0;
-				  		
-				  		Iterator<Pair<TokenType, String>> iter = vec.toWords(tweet.getMsg());
-				  		while (iter.hasNext())
-				  		{	Pair<TokenType, String> tokenValue = iter.next();
-				  			switch (tokenValue.getKey())
-				  			{	case URL:
-				  					writeSafely(urls, "urls", tokenValue.getValue() + '\n');
-				  					++urlCount;
-				  					break;
-				  				case USERNAME:
-				  					writeSafely(addressees, "addressees", tokenValue.getValue() + '\n');
-				  					++addrsCount;
-				  					break;
-				  				case HASHTAG:
-				  					writeSafely (hashtags, "hashTags", tokenValue.getValue() + '\n');
-				  					++hashCount;
-				  					break;
-				  				case EMOTICON:
-				  					writeSafely (smileys, "emoticons", tokenValue.getValue() + '\n');
-				  					++smileyCount;
-				  					break;
-				  				case STOCK:
-				  					writeSafely (stocks, "stocks", tokenValue.getValue() + '\n');
-				  					++stockCount;
-				  					break;
-				  				case TOKEN:
-				  					++wordCount;
-				  					writeSafely (dictionary, "words", tokenValue.getValue() + '\n');
-				  				default:
-				  					break;
-				  			}
-				  		}
-				  		
-				  		checkForTokenizerError(tokenizerErrors, tweet, "URL",        urlCount,     6);
-				  		checkForTokenizerError(tokenizerErrors, tweet, "ADDRESSEES", addrsCount,  20);
-				  		checkForTokenizerError(tokenizerErrors, tweet, "HASHTAGS",   hashCount,   20);
-				  		checkForTokenizerError(tokenizerErrors, tweet, "EMOTICONS",  smileyCount, 10);
-				  		checkForTokenizerError(tokenizerErrors, tweet, "STOCKS",     stockCount,   6);
-				  		checkForTokenizerError(tokenizerErrors, tweet, "WORDS",      wordCount,   60);
-				  		
-				  		inc (wordsPerTweet,    wordCount);
-				  		inc (urlsPerTweet,     urlCount);
-				  		inc (hashTagsPerTweet, hashCount);
-				  		inc (smileysPerTweet,  smileyCount);
-				  		inc (addrsPerTweet,    addrsCount);
-				  		inc (stocksPerTweet,   stockCount);
-				  		inc (tokensPerTweet,   wordCount + urlCount + hashCount + smileyCount + addrsCount);
-						}
-						catch (Exception e)
-						{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
-							if (++corruptedTweetCount >= MAX_CORRUPTED_TWEETS_PER_FILE)
-							{	LOG.warn ("Encountered " + corruptedTweetCount + " corrupted tweets in the current file, so skipping it. The current file is " + currentFile);
-								continue filesLoop; // skip this file.
-							}
+			  		// There are some duplicate tweets in the dataset. We <em>presume</em>
+			  		// files are sorted by name, and keep a track of each account's IDs
+			  		// so we can filter out already processed tweets.
+			  		long tweetId = tweet.getId();
+			  		if (! account.equals(lastAccount))
+			  		{	lastAccount = account;
+			  			tweetIDs.clear();
+			  		}
+			  		else if (tweetIDs.contains(tweetId))
+			  		{	continue;
+			  		}
+			  		tweetIDs.add(tweetId);
+		  			
+		  			++tweetCount;
+		  			
+		  			// Retweet statistics
+			  		if (! account.equals (tidyStringKey(tweet.getAuthor())))
+			  			inc (retweetsByUser, account);
+			  		else if (tweet.isRetweetFromMsg())
+			  			inc (rtRetweetsByUser, account);
+			  		else
+			  			inc (tweetsPerUser, account);
+			  		
+			  		// Inter-post time statistics
+			  		if (account.equals (currentAccount) && lastDate != null)
+			  		{	int interTweetTimeMins = (int) TimeUnit.MILLISECONDS.toMinutes(
+			  				lastDate.isBefore(tweetDate)
+			  				? new Interval (lastDate, tweetDate).toDurationMillis()
+			  				:	new Interval (tweetDate, lastDate).toDurationMillis()
+			  			);
+			  			inc (interPostTimeMins, interTweetTimeMins);
+			  		}
+			  		currentAccount = account;
+			  		lastDate       = tweetDate;
+			  		
+			  		// Total posts by date range (then until now)
+			  		Interval interval = new Interval (firstDay, tweetDate);
+			  		int dayOfTweet = (int) TimeUnit.MILLISECONDS.toDays(interval.toDurationMillis());
+			  		inc (postsSinceDay, dayOfTweet);
+			  		
+			  		// tweets per week
+			  		int year = tweetDate.getWeekyear();       // Jodatime Javadoc explains why this...
+			  		int week = tweetDate.getWeekOfWeekyear(); // ...makes sense even if it looks wrong
+			  		int time = year * 100 + week;
+			  		inc (tweetsPerWeek, time);
+			  		
+			  		// Dates of each user's first posts
+			  		DateTime accountsFirstPost = firstPostByUser.get(account);
+			  		if (accountsFirstPost == null || tweetDate.isBefore(accountsFirstPost))
+			  		{	firstPostByUser.put (account, tweetDate);
+			  			firstPostByUserAsDay.put (account, dayOfTweet);
+			  		}
+			  		DateTime accountsLastPost = lastPostByUser.get(account);
+			  		if (accountsLastPost == null || tweetDate.isAfter(accountsLastPost))
+			  		{	lastPostByUser.put (account, tweetDate);
+			  		}
+			  		
+			  		// Content statistics	
+			  		int wordCount   = 0;
+			  		int urlCount    = 0;
+			  		int hashCount   = 0;
+			  		int smileyCount = 0;
+			  		int addrsCount  = 0;
+			  		int stockCount  = 0;
+			  		
+			  		Iterator<Pair<TokenType, String>> iter = vec.toWords(tweet.getMsg());
+			  		while (iter.hasNext())
+			  		{	Pair<TokenType, String> tokenValue = iter.next();
+			  			switch (tokenValue.getKey())
+			  			{	case URL:
+			  					writeSafely(urls, "urls", tokenValue.getValue() + '\n');
+			  					++urlCount;
+			  					break;
+			  				case USERNAME:
+			  					writeSafely(addressees, "addressees", tokenValue.getValue() + '\n');
+			  					++addrsCount;
+			  					break;
+			  				case HASHTAG:
+			  					writeSafely (hashtags, "hashTags", tokenValue.getValue() + '\n');
+			  					++hashCount;
+			  					break;
+			  				case EMOTICON:
+			  					writeSafely (smileys, "emoticons", tokenValue.getValue() + '\n');
+			  					++smileyCount;
+			  					break;
+			  				case STOCK:
+			  					writeSafely (stocks, "stocks", tokenValue.getValue() + '\n');
+			  					++stockCount;
+			  					break;
+			  				case TOKEN:
+			  					if (! tokenizeCjkv && containsCjkv(tokenValue.getValue()))
+			  						break;
+			  					++wordCount;
+			  					writeSafely (dictionary, "words", tokenValue.getValue() + '\n');
+			  					break;
+			  				default:
+			  					break;
+			  			}
+			  		}
+			  		
+			  		checkForTokenizerError(tokenizerErrors, tweet, "URL",        urlCount,     6);
+			  		checkForTokenizerError(tokenizerErrors, tweet, "ADDRESSEES", addrsCount,  20);
+			  		checkForTokenizerError(tokenizerErrors, tweet, "HASHTAGS",   hashCount,   20);
+			  		checkForTokenizerError(tokenizerErrors, tweet, "EMOTICONS",  smileyCount, 10);
+			  		checkForTokenizerError(tokenizerErrors, tweet, "STOCKS",     stockCount,   6);
+			  		checkForTokenizerError(tokenizerErrors, tweet, "WORDS",      wordCount,   60);
+			  		
+			  		inc (wordsPerTweet,    wordCount);
+			  		inc (urlsPerTweet,     urlCount);
+			  		inc (hashTagsPerTweet, hashCount);
+			  		inc (smileysPerTweet,  smileyCount);
+			  		inc (addrsPerTweet,    addrsCount);
+			  		inc (stocksPerTweet,   stockCount);
+			  		inc (tokensPerTweet,   wordCount + urlCount + hashCount + smileyCount + addrsCount);
+					}
+					catch (Exception e)
+					{	LOG.warn ("Error processing tweet from file " + currentFile + " : " + e.getMessage(), e);
+						if (++corruptedTweetCount >= MAX_CORRUPTED_TWEETS_PER_FILE)
+						{	LOG.warn ("Encountered " + corruptedTweetCount + " corrupted tweets in the current file, so skipping it. The current file is " + currentFile);
+							continue filesLoop; // skip this file.
 						}
 					}
-				
-					LOG.info ("Total tweets processed thus far : " + tweetCount);
 				}
+			
+				LOG.info ("Total tweets processed thus far : " + tweetCount);
+			}
 		  }
 		}
 		finally
@@ -326,6 +330,17 @@ public class TwitterStats implements Callable<Integer>
 		}
 		
 		return tweetCount;
+	}
+
+	/**
+	 * Does this string contain at least one CJKV character
+	 */
+	private boolean containsCjkv(String value)
+	{	for (int i = 0; i < value.length(); i++)
+		{	if (Character.isIdeographic(value.codePointAt(i)))
+				return true;
+		}
+		return false;
 	}
 
 	/**
