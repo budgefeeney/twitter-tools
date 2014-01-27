@@ -93,7 +93,7 @@ public class CompoundTokenDictionary implements TokenDictionary
 		int tokenTypeId = id(tokenType);
 		int wordId      = dicts[tokenTypeId].toInt(word);
 		
-		return cumulativeCapacity[tokenTypeId - 1] + wordId;
+		return wordId < 0 ? wordId : cumulativeCapacity[tokenTypeId - 1] + wordId;
 	}
 	
 	@Override
