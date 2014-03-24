@@ -33,6 +33,7 @@ public class CsrShortMatrixBuilder
 	 */
 	public CsrShortMatrixBuilder(int cols, int rowSizeHint, int nonZeroColSizeHint)
 	{	this.cols = cols;
+		this.rows = 0;
 		
 		indices = new IntArrayList(rowSizeHint * nonZeroColSizeHint);
 		indptr  = new IntArrayList(rowSizeHint);
@@ -67,6 +68,7 @@ public class CsrShortMatrixBuilder
 			data.add (entry.getShortValue());
 		}
 		indptr.add (indices.size());
+		++rows;
 	}
 
 	public IntList getIndices()
