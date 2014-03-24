@@ -228,5 +228,10 @@
       <artifactId>text</artifactId>
       <version>0.1.9</version>
     </dependency>
+    <dependency>
+      <groupId>ucl.feeney.bryan</groupId>
+      <artifactId>numpy-writer</artifactId>
+      <version>1.0.0</version>
+    </dependency>
   </dependencies>
 </project>

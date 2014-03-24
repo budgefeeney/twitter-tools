@@ -29,7 +29,7 @@ import org.joda.time.Interval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cc.twittertools.numpy.CsrShortMatrixBuilder;
+import ucl.feeney.bryan.numpy.CsrShortMatrixBuilder;
 import cc.twittertools.util.FilesInFoldersIterator;
 import cc.twittertools.words.Vectorizer;
 import cc.twittertools.words.dict.Dictionary;

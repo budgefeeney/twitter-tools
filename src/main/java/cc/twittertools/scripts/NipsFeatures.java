@@ -20,7 +20,7 @@ import org.apache.commons.io.Charsets;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 
-import cc.twittertools.numpy.CsrShortMatrixBuilder;
+import ucl.feeney.bryan.numpy.CsrShortMatrixBuilder;
 import cc.twittertools.words.dict.LookupDictionary;
 
 /**
