@@ -56,7 +56,7 @@ public class NipsFeatures {
 	{	List<String> pyDictVars = new ArrayList<>(6);
 		String pyDict;
 		
-		Path pyDictsFile = Paths.get(outPath).resolve("dicts.py");
+		Path pyDictsFile = Paths.get(outPath).resolve("feats.py");
 		try (BufferedWriter pyDictWtr = Files.newBufferedWriter(pyDictsFile, DEFAULT_CHARSET);)
 		{
 			for (String tagFile : new String[] { "authors.txt", "cats.txt", "refs.txt" })
