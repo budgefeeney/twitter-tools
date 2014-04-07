@@ -34,7 +34,7 @@ public class NipsFeatures {
 	private final static short ONE = 1;
 	private static final int MAX_TAGS_APPROX = 30;
 	private final static String IN_PATH  = "/Users/bryanfeeney/Workspace/TextModelling/LdaJava/trunk/src/main/resources/corpora/nipsish";
-	private final static String OUT_PATH = "/Users/bryanfeeney/Desktop/NIPS";
+	private final static String OUT_PATH = "/Users/bryanfeeney/Desktop/NIPS2";
 	
 	
 	private NipsFeatures() {
@@ -52,11 +52,12 @@ public class NipsFeatures {
 	 * @param outPath the folder where the output will be stored
 	 * @throws Exception
 	 */
-	public static void genDictsAndMatrices(String inPath, String outPath) throws Exception
+	public static void genDictsAndMatrices(String inPath, String outPathName) throws Exception
 	{	List<String> pyDictVars = new ArrayList<>(6);
 		String pyDict;
 		
-		Path pyDictsFile = Paths.get(outPath).resolve("feats.py");
+		Path outPath = Paths.get(outPathName);
+		Path pyDictsFile = outPath.resolve("feats.py");
 		try (BufferedWriter pyDictWtr = Files.newBufferedWriter(pyDictsFile, DEFAULT_CHARSET);)
 		{
 			for (String tagFile : new String[] { "authors.txt", "cats.txt", "refs.txt" })
@@ -64,8 +65,8 @@ public class NipsFeatures {
 				{	System.out.print ("Processing " + tagFile + " (" + minOccurenceCount + ")... "); System.out.flush();
 					
 					String dictName = tagFile.replace(".txt", ".dict");
-					genDict(inPath, tagFile, outPath, dictName);
-					pyDict = genFeatureMatrix(inPath, tagFile, outPath, dictName, pyDictWtr, minOccurenceCount);
+					genDict(inPath, tagFile, outPathName, dictName);
+					pyDict = genFeatureMatrix(inPath, tagFile, outPathName, dictName, pyDictWtr, minOccurenceCount);
 					
 					pyDictVars.add(pyDict);
 					System.out.println ("Done");
@@ -119,7 +120,9 @@ public class NipsFeatures {
 		{	vector.clear();
 			String[] tags = tagLine.split("\\s+");
 			for (int t = 1; t < tags.length; t++) // first "tag" is actually the filename
-			{	vector.put(dict.toInt(tags[t]), ONE);
+			{	int id = dict.toInt(tags[t]);
+				if (id >= 0)
+					vector.put(dict.toInt(tags[t]), ONE);
 			}
 			matrix.addRow(vector);
 		}
