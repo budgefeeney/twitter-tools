@@ -23,7 +23,7 @@ import com.google.common.collect.Sets;
  * of the person from whose feed we found the tweet. These two fields will
  * differ in the case of retweets, the account is the name of the person
  * who retweeted the tweet, the author is the name of the person who
- * orignially wrote it.
+ * originally wrote it.
  * @author bryanfeeney
  *
  */

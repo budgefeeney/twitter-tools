@@ -272,7 +272,8 @@ public class TweetFeatureExtractor implements Callable<Integer>
    * @throws Exception 
    */
   private int extractAndWriteFeatures (Iterator<Path> tweetFiles, Path wordsFile, Path eventsFile) throws Exception
-  {	Interval interval = new Interval(minDateIncl, maxDateExcl);
+  {	Set<Int2ShortMap> pastTweetsInFile = new HashSet<>();
+	Interval interval = new Interval(minDateIncl, maxDateExcl);
   	FeatureDimension dim = featSpec.dimensionality(userDict, interval);
     	
   	CsrShortMatrixBuilder wordMatrix
@@ -302,7 +303,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   		LOG.info ("Processing tweets in file: " + currentFile);
   		
 		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
-		{	
+		{	pastTweetsInFile.clear();
 			while (rdr.hasNext() && tweetCount < maxTweetsToProcess)
 			{	
 				try
@@ -337,11 +338,15 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			  		
 			  		// TODO need some sort of "most-recent-date" idea for when we have an,
 			  		// incorrect date, which is something that occurs with retweets.
-			  	
-			  		++tweetCount;
-			  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
-			  		
-			  		wordMatrix.addRow(wordFeatures);
+
+			  		extractFeatures(tweet, dim, wordFeatures, eventFeatures);
+					if (pastTweetsInFile.contains(wordFeatures))
+						continue;
+
+					pastTweetsInFile.add(wordFeatures);
+					++tweetCount;
+
+					wordMatrix.addRow(wordFeatures);
 			  		eventMatrix.addRow(eventFeatures);
 				}
 				catch (ExcessUnmappableTokens ute)
