@@ -78,7 +78,7 @@ public class TweetFeatureExtractorTest
 	{	try (SavedTweetReader rdr = new SavedTweetReader(tweetsFile.toPath()); )
 		{	int i = 0;
 			while (rdr.hasNext())
-			{	Tweet tweet = rdr.next();
+			{	cc.twittertools.post.old.Tweet tweet = rdr.next();
 				
 				assertEquals ("charlie_whiting", tweet.getAccount());
 				assertEquals (NAMES[i++], tweet.getAuthor());

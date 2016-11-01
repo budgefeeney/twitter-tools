@@ -45,10 +45,10 @@ public class TweetTranslator implements Callable<Integer>
         TweetWriter wrtr = new TweetWriter (outputPath);
     )
     {
-      Iterator<Tweet> tweets = new TweetReader(rdr);
+      Iterator<cc.twittertools.post.old.Tweet> tweets = new TweetReader(rdr);
       
       while (tweets.hasNext())
-      { Tweet tweet = tweets.next();
+      { cc.twittertools.post.old.Tweet tweet = tweets.next();
         ++count;
         printProgress (count);
           

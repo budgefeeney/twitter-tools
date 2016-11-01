@@ -17,3 +17,5 @@ etc/run.sh
 *.log
 
 nohup.out
+
+.idea/

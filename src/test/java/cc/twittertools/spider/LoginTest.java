@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -20,6 +21,7 @@ import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Response;
 import com.ning.http.client.extra.ThrottleRequestFilter;
+import sun.util.logging.PlatformLogger;
 
 public class LoginTest 
 {
@@ -42,13 +44,15 @@ public class LoginTest
   @Before
   public void setUp() throws Exception
   {
+    LOG.setLevel(Level.ALL);
+
     AsyncHttpClientConfig config = new AsyncHttpClientConfig.Builder()
     .addRequestFilter(new ThrottleRequestFilter(MAX_CONNECTIONS))
     .setConnectionTimeoutInMs(CONNECTION_TIMEOUT)
     .setIdleConnectionInPoolTimeoutInMs(IDLE_CONNECTION_TIMEOUT)
     .setRequestTimeoutInMs(REQUEST_TIMEOUT)
     .setMaxRequestRetry(0)
-    .setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
+    //.setProxyServer(new ProxyServer ("cornillon.grenoble.xrce.xerox.com", 8000))
     .setFollowRedirects(true)
     .build();
     
@@ -90,7 +94,7 @@ public class LoginTest
     Thread.sleep(TimeUnit.MINUTES.toMillis(10));
   }
   
-  
+  @Test
   public void testFollowers() throws Exception
   {
     String authZHeader = buildHeader();

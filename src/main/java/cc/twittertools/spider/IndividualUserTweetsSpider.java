@@ -151,7 +151,7 @@ implements JmxSelfNaming, Callable<Integer> {
         List<Tweet> tweets;
         final String pageUrl = "https://twitter.com/" + user;
         responseBody = makeHttpRequest (pageUrl);
-        tweets = htmlParser.parse (responseBody);
+        tweets = htmlParser.parse (user, responseBody);
         tweets = removeUndesireableTweets (tweets, lastTweetId);
         Tweet lastTweet = removeLastAuthoredTweet (user, tweets);
          
@@ -165,7 +165,7 @@ implements JmxSelfNaming, Callable<Integer> {
           LOG.debug("Have accumulated " + aggregateTweets.size() + " tweets for user " + user + " in category " + category + " after processing page " + page);
           
           responseBody = makeHttpRequest (jsonTweetsUrl(user, lastTweet.getId()), pageUrl);
-          tweets = jsonParser.parse(responseBody);
+          tweets = jsonParser.parse(user, responseBody);
           tweets = removeUndesireableTweets(tweets, lastTweetId);
           if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
           { LOG.warn ("Only got " + tweets.size() + " tweets for the most recent request for user " + user + " in category " + category + " on page " + page + " with ID " + lastTweet.getId());
@@ -229,14 +229,15 @@ implements JmxSelfNaming, Callable<Integer> {
   private String makeHttpRequest(String url) throws IOException, HttpException {
     return makeHttpRequest(url, null);
   }
-    
+
+
   private String makeHttpRequest(String url, String referrerUrl) throws IOException, HttpException {
     String responseBody;
     GetMethod req = new GetMethod(url);
     req.addRequestHeader(new Header("Accept-Charset", "utf-8"));
     req.addRequestHeader(new Header("Accept-Language", "en-US,en;q=0.8"));
-    req.addRequestHeader(new Header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"));
-    req.addRequestHeader(new Header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/536.30.1 (KHTML, like Gecko) Version/6.0.5 Safari/536.30.1"));
+    req.addRequestHeader(new Header("Accept", "Accept\ttext/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"));
+    req.addRequestHeader(new Header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/601.7.8 (KHTML, like Gecko) Version/9.1.3 Safari/601.7.8"));
     if (! StringUtils.isBlank(referrerUrl))
       req.addRequestHeader(new Header("Referer", referrerUrl));
     req.setFollowRedirects(true);
@@ -405,7 +406,7 @@ implements JmxSelfNaming, Callable<Integer> {
    */
   private final static String jsonTweetsUrl (String user, long id)
   {
-    final String FMT = "https://twitter.com/i/profiles/show/%1$s/timeline/with_replies?include_available_features=1&include_entities=1&max_id=%2$d";
+    final String FMT  = "https://twitter.com/i/profiles/show/%1$s/timeline/tweets?composed_count=0&include_available_features=1&include_entities=1&include_new_items_bar=true&interval=30000&latent_count=0&min_position=%2$d\n";
     return String.format(FMT, user, id);
   }
   
@@ -436,12 +437,13 @@ implements JmxSelfNaming, Callable<Integer> {
   {    
     BasicConfigurator.configure();
     org.apache.log4j.Logger.getRootLogger().setLevel(Level.DEBUG);
-    Path outputDir = Paths.get("/home/bfeeney/Desktop");
+    Path outputDir = Paths.get("/Users/bryanfeeney/Desktop");
     IndividualUserTweetsSpider tweetsSpider = 
       new IndividualUserTweetsSpider (
         new Throttle(),
         new ProgressMonitor(),
         "misc",
+        //Collections.singletonList("charlie_whiting"),
         Collections.singletonList("rtraister"),
         outputDir
     );

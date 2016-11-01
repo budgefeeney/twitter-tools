@@ -24,7 +24,7 @@ public enum Sigil {
   private final int paramCount;
   
   private Sigil (int paramCount, String... sigils)
-  { assert paramCount > 0    : "Param count must be non negative";
+  { assert paramCount >= 0   : "Param count must be non negative";
     assert paramCount < 2    : "More than one parameter per sigil not yet supported";
     assert sigils.length > 0 : "Need to supply at least one sigil";
     for (String sigil : sigils)
@@ -38,7 +38,7 @@ public enum Sigil {
    * Strip all instance of the given metadata from this message identified
    * by this sigil. Reasonably optimised.
    */
-  String stripFromMsg (String msg, String... params)
+  public String stripFromMsg (String msg, String... params)
   { assert params.length == paramCount : "Need to provide " + paramCount + " paramters for the sigil " + this + " but only " + params.length + " were provided";
     
     for (String sigil : sigils)

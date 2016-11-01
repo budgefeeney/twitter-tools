@@ -40,7 +40,7 @@ public class TweetWriter implements AutoCloseable
   { this.writer = Files.newBufferedWriter(path, Charsets.UTF_8);
   }
   
-  public void writeTweet (Tweet tweet) throws IOException
+  public void writeTweet (cc.twittertools.post.old.Tweet tweet) throws IOException
   { String hashTags   = comma.join(tweet.getHashTags());
     String addressees = comma.join(tweet.getAddressees());
     

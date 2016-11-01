@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cc.twittertools.post.SavedTweetReader;
-import cc.twittertools.post.Tweet;
+import cc.twittertools.post.old.Tweet;
 import cc.twittertools.util.FilesInFoldersIterator;
 import cc.twittertools.util.PathUtils;
 import cc.twittertools.words.Vectorizer;

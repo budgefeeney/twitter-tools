@@ -23,8 +23,8 @@ public class TweetReaderTest
   
   @Test
   public void testReader() throws IOException
-  { Tweet tweet;
-    Iterator<Tweet> tweets = new TweetReader (INPUT.iterator());
+  { cc.twittertools.post.old.Tweet tweet;
+    Iterator<cc.twittertools.post.old.Tweet> tweets = new TweetReader (INPUT.iterator());
     
     assertTrue (tweets.hasNext());
     tweet = tweets.next();

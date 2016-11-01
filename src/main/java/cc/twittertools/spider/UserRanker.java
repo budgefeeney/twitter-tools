@@ -29,7 +29,6 @@ import cc.twittertools.post.Tweet;
 import com.google.common.base.Charsets;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Response;
 import com.ning.http.client.extra.ThrottleRequestFilter;
 
@@ -126,7 +125,7 @@ public class UserRanker
                   .execute();
         
         String htmlBody = resp.get().getResponseBody();
-        List<Tweet> tweets = htmlParser.parse(htmlBody);
+        List<Tweet> tweets = htmlParser.parse(user.getName(), htmlBody);
         
         // Time period covered by the most recent 20 tweets
         Duration interTweetDuration = tweets.size() < STD_TWEETS_PER_PAGE

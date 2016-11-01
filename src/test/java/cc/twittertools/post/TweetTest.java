@@ -10,11 +10,11 @@ import com.google.common.collect.Sets;
 
 public class TweetTest
 {
-  private Tweet tweet;
+  private cc.twittertools.post.old.Tweet tweet;
   
   @Before
   public void setUp()
-  { tweet = new Tweet (
+  { tweet = new cc.twittertools.post.old.Tweet(
       /* hashTags = */    Sets.newHashSet("boonykid", "sitdown", "howareyouathug"),
       /* users = */       "dezzy_F_babyy",
       /* msg = */         "RT @LoveKayla_xoxo: #howareyouathug and u aint lived in the hood a day in yo life? you\u0027s a #boonykid #sitdown somewhere lol",

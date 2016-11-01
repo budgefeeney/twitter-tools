@@ -13,7 +13,7 @@ import cc.twittertools.spider.IndividualUserTweetsSpider;
  * also definitely different to the JSON format parsed by {@link TweetReader}
  * @author bryanfeeney
  */
-public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
+public class SavedTweetReader implements AutoCloseable, Iterator<cc.twittertools.post.old.Tweet>
 {
   private static final class TweetsFileIterator implements Iterator<Path>
   { private final Path dir;
@@ -58,7 +58,7 @@ public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
   private       Path       currentFile;
   private       String     currentAccount;
   
-  private       Tweet      nextTweet = null;
+  private cc.twittertools.post.old.Tweet nextTweet = null;
   private       Exception  nextError = null;
   
   public SavedTweetReader (Iterator<Path> files) throws IOException
@@ -88,11 +88,11 @@ public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
       	
       	if (currentFile != lines.getCurrentFile())
       	{	currentFile    = lines.getCurrentFile();
-      		currentAccount = Tweet.userNameFromFile(currentFile);
+      		currentAccount = cc.twittertools.post.old.Tweet.userNameFromFile(currentFile);
       	}
       
         if (line != null)
-          nextTweet = Tweet.fromShortTabDelimString(currentAccount, line);
+          nextTweet = cc.twittertools.post.old.Tweet.fromShortTabDelimString(currentAccount, line);
       }
     
       return nextTweet != null;
@@ -104,14 +104,14 @@ public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
   }
 
   @Override
-  public Tweet next() {
+  public cc.twittertools.post.old.Tweet next() {
     if (nextError != null)
     { Exception errVal = nextError;
       nextError        = null;
       throw new RuntimeException ("Error fetching next tweet : " + errVal.getMessage(), errVal);
     }
     
-    Tweet retVal = nextTweet;
+    cc.twittertools.post.old.Tweet retVal = nextTweet;
     nextTweet    = null;
     return retVal;
   }

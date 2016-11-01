@@ -1,280 +1,78 @@
 package cc.twittertools.post;
 
-import java.nio.file.Path;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
+import cc.twittertools.post.embed.Retweet;
+import cc.twittertools.post.embed.Webpage;
 import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.Period;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
-import com.google.common.collect.Sets;
+import java.util.Optional;
 
 /**
- * All the records of a tweet from twitter. Generally the fields should be
- * fairly obvious. However there is one issue which is the distrinction
- * between "author" and "account". The author is the username of the person
- * who <em>originally</em> wrote the tweet. The "account" is the username
- * of the person from whose feed we found the tweet. These two fields will
- * differ in the case of retweets, the account is the name of the person
- * who retweeted the tweet, the author is the name of the person who
- * orignially wrote it.
- * @author bryanfeeney
+ * A representation of a Tweet. Tweets are now complex:
  *
+ * <ul>
+ * <li>There is a simple tweet, which is the user posting text
+ * <li>There is a simple tweet with a link to a page: Twitter may embed a fragment of that page in the timeline.</li>
+ * <li>There is a simple retweet, where another author's tweet appears directly in this account
+ * <li>There is a complex retweet, where another author's tweet appears in this account with
+ * commentary
+ * <li>There is a manual tweet, where using copy & paste and sigils like "RT" users (or more likely the
+ * apps they use) indicate a tweet's content has come from elsewhere
+ * <li>Tweets may be nested, this author may retweet without commentary a tweet which itself retweets with commentary
+ * a third tweet
+ * </ul>
+ *
+ * Consequently note there is a distinction between author and account, and ID and requestedID. In each case
+ * the latter refers to the page we're looking at, and the former refers to the original tweet and its author.
  */
-public class Tweet
-{
-  /**
-   *  Sample is 3:37 PM - 24 Jan 11 
-   *  
-   *  <p>We use the UTC time zone to avoid impossible times (e.g. 00:30 the day
-   *  the clocks move forward).
-   */
-  public final static DateTimeFormatter TWITTER_FMT =
-      DateTimeFormat.forPattern("h:m a - d MMM yy").withZone(DateTimeZone.UTC);
-  
-	private static final Pattern ENDS_WITH_DIGITS = Pattern.compile("\\.\\d+$");
-  
-  private final DateTime localTime;
-  private final DateTime utcTime;
-  private final Set<String> hashTags;
-  private final String author;
-  private final String account;
-  private final String msg;
-  private final Set<String> addressees;
-  private final long id;
-  private final long requestedId;
-  private final boolean isRetweetFromId;
-  private final boolean isRetweetFromMsg;
-  
+public final class Tweet extends Retweet {
 
-  public Tweet (long id, long reqId, String date, String author, String msg) {
-    this(id, reqId, null, TWITTER_FMT.parseDateTime(date), author, msg);
-  }
-  
-  public Tweet (String account, long id, long reqId, DateTime utcTime, DateTime localTime, String author, String msg) {
-  	this(
-	      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
-	      /* account = */      account,
-	      /* author = */       author,
-	      /* msg = */          msg,
-	      /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
-	      /* id = */           id,
-	      /* requestedId = */  reqId,
-	      /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
-	      /* utcTime = */      utcTime,
-	      /* localTime = */    localTime
-	    );
-  }
-  
-  
-  public Tweet (long id, long reqId, DateTime utcTime, DateTime localTime, String author, String msg) {
-    this(
-      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
-      /* author = */       author,
-      /* msg = */          msg,
-      /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
-      /* id = */           id,
-      /* requestedId = */  reqId,
-      /* isRetweetFromMsg = */ ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty(),
-      /* utcTime = */      utcTime,
-      /* localTime = */    localTime
-    );
-  }
-  
-  public Tweet(Set<String> hashTags, String author, String msg, Set<String> addressees,
-      long id, long requestedId, boolean isRetweetFromMsg, DateTime utcTime, DateTime localTime) {
-  	 this(
-  	      /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
-  	      /* account = */      author, // <--- This is the extra field handled by this constructor
-  	      /* author = */       author,
-  	      /* msg = */          msg,
-  	      /* addressees = */   Sets.newHashSet(Sigil.ADDRESSEE.extractSigils(msg).getRight()),
-  	      /* id = */           id,
-  	      /* requestedId = */  requestedId,
-  	      /* isRetweetFromMsg = */ isRetweetFromMsg,
-  	      /* utcTime = */      utcTime,
-  	      /* localTime = */    localTime
-  	    );
-  }
-  
-  public Tweet(Set<String> hashTags, String account, String author, String msg, Set<String> addressees,
-      long id, long requestedId, boolean isRetweetFromMsg, DateTime utcTime, DateTime localTime) {
-    super();
-    assert hashTags != null              : "Hash tags set can be empty but not null";
-    assert ! StringUtils.isBlank(author) : "Username can be neither blank nor null";
-    assert msg != null                   : "Message cannot be null";
-    assert addressees != null            : "Addressees cannot be null";
-    assert id > 0                        : "ID must be strictly positive";
-    assert requestedId > 0               : "Requested ID must be strictly positive";
-    
-    this.hashTags   = hashTags;
-    this.author     = author;
-    this.account    = account;
-    this.msg        = msg;
-    this.addressees = addressees;
-    this.id         = id;
-    this.requestedId      = requestedId;
-    this.isRetweetFromId  = id != requestedId;
-    this.isRetweetFromMsg = isRetweetFromMsg;
-    this.utcTime   = utcTime;
-    this.localTime = localTime;
-  }
-  
+    private final DateTime localTime;
+    private final DateTime utcTime;
 
-  public Set<String> getHashTags() {
-    return hashTags;
-  }
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime) {
+        this(id, author, msg, utcTime, localTime, Optional.empty(), Optional.empty());
+    }
 
-  public String getAuthor() {
-    return author;
-  }
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Webpage embeddedWebpage) {
+        this(id, author, msg, utcTime, localTime, Optional.of(embeddedWebpage), Optional.empty());
+    }
 
-  public String getAccount() {
-    return account;
-  }
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Retweet embeddedRetweet) {
+        this(id, author, msg, utcTime, localTime, Optional.empty(), Optional.of(embeddedRetweet));
+    }
 
-  public String getMsg() {
-    return msg;
-  }
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Webpage embeddedPage, Retweet embeddedRetweet) {
+        this(id, author, msg, utcTime, localTime, Optional.of(embeddedPage), Optional.of(embeddedRetweet));
+    }
 
-  public Set<String> getAddressees() {
-    return addressees;
-  }
-
-  public long getId() {
-    return id;
-  }
-
-  public long getRequestedId() {
-    return requestedId;
-  }
-
-  public boolean isRetweetFromId() {
-    return isRetweetFromId;
-  }
-
-  public boolean isRetweetFromMsg() {
-    return isRetweetFromMsg;
-  }
-  
-  public DateTime getLocalTime() {
-    return localTime;
-  }
-  
-  public DateTime getUtcTime() {
-    return utcTime;
-  }
-  
-  @Override
-  public String toString()
-  { return localTime + " - @" + author + " : \t " + msg;
-  }
-
-  @Override
-  public int hashCode() {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + (int) (id ^ (id >>> 32));
-    return result;
-  }
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Optional<Webpage> embeddedPage, Optional<Retweet> embeddedRetweet) {
+        super(id, author, msg, embeddedPage, embeddedRetweet);
+        this.localTime = localTime;
+        this.utcTime   = utcTime;
+    }
 
 
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj)
-      return true;
-    if (obj == null)
-      return false;
-    if (getClass() != obj.getClass())
-      return false;
-    Tweet other = (Tweet) obj;
-    if (id != other.id)
-      return false;
-    return true;
-  }
+    public DateTime getLocalTime() {
+        return localTime;
+    }
+    public DateTime getUtcTime() {
+        return utcTime;
+    }
 
+    @Override
+    public String toString() {
+        return getLocalTime().toString() + super.toString();
+    }
 
-  public String getMsgLessSigils() {
-    String msg = this.msg;
-    for (String addressee : addressees)
-      msg = Sigil.ADDRESSEE.stripFromMsg(msg, addressee);
-    for (String hashTag : hashTags)
-      msg = Sigil.HASH_TAG.stripFromMsg(msg, hashTag);
-    if (isRetweetFromMsg)
-      msg = Sigil.RETWEET.stripFromMsg(msg);
-    
-    return msg;
-  }
-  
-  /**
-   * Return a tab delimited string with all this tweets raw information
-   * terminated by a newline.
-   */
-  public String toShortTabDelimString()
-  {
-    return 
-    /* 0 */          this.getAuthor()
-    /* 1 */ + '\t' + this.getId()
-    /* 2 */ + '\t' + this.getRequestedId()
-    /* 3 */ + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getUtcTime())
-    /* 4 */ + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getLocalTime())
-    /* 5 */ + '\t' + toTimeZoneString (new Period (this.getUtcTime(), this.getLocalTime()))
-    /* 6 */ + '\t' + this.getMsg()
-    + '\n';
-  }
+    @Override
+    public String toShortTabDelimString() {
+        return super.toString()
+                + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getLocalTime())
+                + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getUtcTime());
+    }
 
-  public static final String toTimeZoneString (Period period)
-  {
-    
-    int hours = period.getDays() * 24 + period.getHours();
-    int mins  = period.getMinutes();
-    
-    // round minutes to the nearest 15min interval
-    mins = ((mins + 2) / 15) * 15;
-    
-    return String.format ("%+03d:%02d", hours, mins);
-  }
-  
-  /**
-   * Parses a line created by {@link #toShortTabDelimString()} back into
-   * a {@link Tweet}. Will throw raw exceptions if the line
-   * @param line
-   * @return
-   */
-  public static Tweet fromShortTabDelimString(String account, String line)
-  { if ((line = StringUtils.trimToEmpty(line)).isEmpty())
-      return null;
-  
-    String[] parts = StringUtils.split(line, '\t');
-    return new Tweet (
-    		account,
-        Long.parseLong(parts[1]),
-        Long.parseLong(parts[2]),
-        ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[3]),
-        ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[4]),
-        parts[0],
-        parts[6]
-    );
-  }
-  
+    // ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[3])
 
-  /**
-   * Given a tweets file determins what the username should be.
-   * @param file
-   * @return
-   */
-  public static String userNameFromFile(Path file)
-	{	String fileName = file.getFileName().toString();
-		Matcher m = ENDS_WITH_DIGITS.matcher(fileName);
-		return m.find()
-		 ? fileName.substring (0, m.start())
-		 : fileName;
-	}
-  
 }

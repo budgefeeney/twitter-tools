@@ -1,6 +1,7 @@
 package cc.twittertools.post;
 
-import static cc.twittertools.post.Tweet.userNameFromFile;
+import static cc.twittertools.post.old.Tweet.userNameFromFile;
+
 import it.unimi.dsi.fastutil.ints.Int2ShortMap;
 import it.unimi.dsi.fastutil.ints.Int2ShortOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -294,7 +295,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	
   	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
   	// file. For this reason the next-file loop is labelled.
-  	Tweet tweet = null;
+  	cc.twittertools.post.old.Tweet tweet = null;
   	filesLoop:while (tweetFiles.hasNext())
   	{	
   		int corruptedTweetCount = 0;
@@ -389,7 +390,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
    *     <li>If the message contains a retweet marker ("RT") it's a retweet
    * </ul>
    */
-	private boolean isRetweet(Tweet tweet)
+	private boolean isRetweet(cc.twittertools.post.old.Tweet tweet)
 	{	return tweet.isRetweetFromId() || tweet.isRetweetFromMsg() || ! tweet.getAccount().equals(tweet.getAuthor());
 	}
 
@@ -404,7 +405,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
    * @param eventFeatures the features extracted from other information about
    * the tweet, see {@link FeatureSpecification} for more on these.
    */
-	private void extractFeatures(Tweet tweet, FeatureDimension dim, Int2ShortMap wordFeatures, Int2ShortMap eventFeatures)
+	private void extractFeatures(cc.twittertools.post.old.Tweet tweet, FeatureDimension dim, Int2ShortMap wordFeatures, Int2ShortMap eventFeatures)
 	{	List<String> addressees = extractWordFeatures(tweet, wordFeatures);
 		extractEventFeatures(tweet, dim, addressees, eventFeatures);
 	}
@@ -475,7 +476,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	 * class's configuration. The given map is cleared and filled with the
 	 * encoded features.
 	 */
-	private void extractEventFeatures(Tweet tweet, FeatureDimension dim, List<String> addressees, Int2ShortMap eventFeatures)
+	private void extractEventFeatures(cc.twittertools.post.old.Tweet tweet, FeatureDimension dim, List<String> addressees, Int2ShortMap eventFeatures)
 	{	// NOTE Change eventFeatureSchema() whenever you change this method
 		
 		eventFeatures.clear();
@@ -567,7 +568,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	 * @param wordFeatures the bag of word ID counts.
 	 * @return the list of addressees
 	 */
-	private List<String> extractWordFeatures(Tweet tweet, Int2ShortMap wordFeatures)
+	private List<String> extractWordFeatures(cc.twittertools.post.old.Tweet tweet, Int2ShortMap wordFeatures)
 	{ wordFeatures.clear();
 		
 		String text = tweet.getMsg();

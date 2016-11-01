@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
 
+import cc.twittertools.post.old.Tweet;
 import org.apache.commons.lang.StringUtils;
 
 import com.google.common.base.Predicate;

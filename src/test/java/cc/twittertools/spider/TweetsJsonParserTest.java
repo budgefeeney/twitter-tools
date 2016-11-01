@@ -59,10 +59,10 @@ public class TweetsJsonParserTest
   @Test
   public void testParser() throws Exception
   { 
-    List<Tweet> tweets = parser.parse("  \t \n");
+    List<Tweet> tweets = parser.parse("", "  \t \n");
     assertThat(tweets, allOf(notNullValue(), empty()));
     
-    tweets = parser.parse(sampleJson);
+    tweets = parser.parse(USER, sampleJson);
     System.out.println (StringUtils.join(tweets, "\n\n"));
     
     assertThat(tweets, allOf(notNullValue(), hasSize(20)));
@@ -72,8 +72,8 @@ public class TweetsJsonParserTest
     assertEquals(tweets.get(3).getMsgLessSigils(), " Well, Lauda texting Hunt was a bit much, but it did move the story along.");
     assertEquals(tweets.get(3).getAddressees(), Sets.newHashSet("willbuxton"));
     assertEquals(tweets.get(3).getHashTags(), Sets.newHashSet());
-    assertFalse(tweets.get(3).isRetweetFromId());
-    assertFalse(tweets.get(3).isRetweetFromMsg());
+    assertFalse(tweets.get(3).containsRetweet());
+    assertFalse(tweets.get(3).isManualRetweet());
     assertEquals(tweets.get(3).getId(), 335198740673593344L);
     
     assertEquals(tweets.get(16).getAuthor(), "charlie_whiting");
@@ -81,8 +81,8 @@ public class TweetsJsonParserTest
     assertEquals(tweets.get(16).getMsgLessSigils(), "I'm probably not the only one hoping that the new 2014 engines bring some reliability variance back into the sport. !");
     assertEquals(tweets.get(16).getAddressees(), Sets.newHashSet());
     assertEquals(tweets.get(16).getHashTags(), Sets.newHashSet("KABLAMMO"));
-    assertFalse(tweets.get(16).isRetweetFromId());
-    assertFalse(tweets.get(16).isRetweetFromMsg());
+    assertFalse(tweets.get(16).containsRetweet());
+    assertFalse(tweets.get(16).isManualRetweet());
     assertEquals(tweets.get(16).getId(), 335019189523857410L);
     
   }
