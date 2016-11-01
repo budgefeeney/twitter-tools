@@ -14,10 +14,10 @@ import java.util.Optional;
 /**
  * If Twitter sees a URL in a tweet, it can optionally inject a "card" containing the
  * an excerpt of the page's content. This is a separate download. This version of a
- * {@link Webpage} link contains the oringal link, the link to the info card, and
+ * {@link WebExcerpt} link contains the original link, the link to the info card, and
  * optionally the card's title and body if they're downloaded separately.
  */
-public final class Webpage {
+public final class WebExcerpt {
     private final static class Excerpt {
         private final String title;
         private final String body;
@@ -69,11 +69,11 @@ public final class Webpage {
     private       Optional<Excerpt> excerpt;
 
 
-    public Webpage(URI uri, URI cardUri) {
+    public WebExcerpt(URI uri, URI cardUri) {
         this (uri, cardUri, Optional.empty());
     }
 
-    public Webpage(URI uri, URI cardUri, Optional<Excerpt> excerpt) {
+    public WebExcerpt(URI uri, URI cardUri, Optional<Excerpt> excerpt) {
         Objects.requireNonNull(uri, "URI cannot be null");
         Objects.requireNonNull(cardUri, "Card URI cannot be null");
 
@@ -103,11 +103,11 @@ public final class Webpage {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        Webpage webpage = (Webpage) o;
+        WebExcerpt webExcerpt = (WebExcerpt) o;
 
-        if (!uri.equals(webpage.uri)) return false;
-        if (!cardUri.equals(webpage.cardUri)) return false;
-        return excerpt.equals(webpage.excerpt);
+        if (!uri.equals(webExcerpt.uri)) return false;
+        if (!cardUri.equals(webExcerpt.cardUri)) return false;
+        return excerpt.equals(webExcerpt.excerpt);
 
     }
 
@@ -140,7 +140,7 @@ public final class Webpage {
 
 
 
-    public static Webpage fromShortTabDelimString(String[] parts, int from) {
+    public static WebExcerpt fromShortTabDelimString(String[] parts, int from) {
         if (parts.length <= from) {
             return null;
         }
@@ -157,6 +157,6 @@ public final class Webpage {
             ));
         }
 
-        return new Webpage(uri, cardUri, excerpt);
+        return new WebExcerpt(uri, cardUri, excerpt);
     }
 }

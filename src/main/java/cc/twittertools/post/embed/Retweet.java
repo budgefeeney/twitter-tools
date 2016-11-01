@@ -19,12 +19,12 @@ public class Retweet {
     private final Set<String> addressees;
     private final long id;
 
-    private final Optional<Webpage> embeddedPage;
+    private final Optional<WebExcerpt> embeddedPage;
     private final Optional<Retweet> embeddedRetweet;
     private final boolean isManualRetweet;
 
 
-    public Retweet (long id, String author, String msg, Optional<Webpage> embeddedPage, Optional<Retweet> embeddedRetweet) {
+    public Retweet (long id, String author, String msg, Optional<WebExcerpt> embeddedPage, Optional<Retweet> embeddedRetweet) {
         this(
           /* hashTags = */     Sets.newHashSet(Sigil.HASH_TAG.extractSigils(msg).getRight()),
           /* author = */       author,
@@ -38,7 +38,7 @@ public class Retweet {
 
 
     public Retweet(Set<String> hashTags, String author, String msg, Set<String> addressees,
-                 long id, Optional<Webpage> embeddedPage, Optional<Retweet> embeddedRetweet) {
+                   long id, Optional<WebExcerpt> embeddedPage, Optional<Retweet> embeddedRetweet) {
         super();
 
         assert hashTags != null              : "Hash tags set can be empty but not null";
@@ -51,8 +51,8 @@ public class Retweet {
             Retweet e = embeddedRetweet.get();
             msg = StringUtils.replaceOnce(msg, "https://twitter.com/" + e.getAuthor().toLowerCase() + "/status/" + e.getId(), "");
         }
-        if (getEmbeddedPage().isPresent()) {
-            Webpage e = embeddedPage.get();
+        if (embeddedPage.isPresent()) {
+            WebExcerpt e = embeddedPage.get();
             msg = StringUtils.replace(msg, e.getUri().toASCIIString(), "");
         }
 
@@ -87,7 +87,7 @@ public class Retweet {
         return id;
     }
 
-    public Optional<Webpage> getEmbeddedPage() {
+    public Optional<WebExcerpt> getEmbeddedPage() {
         return embeddedPage;
     }
 
@@ -143,7 +143,7 @@ public class Retweet {
             this.getAuthor()
             + '\t' + this.getId()
             + '\t' + this.getMsg()
-            + '\t' + this.embeddedPage.map(Webpage::toShortTabDelimString).orElse(Webpage.emptyShortTabDelimString())
+            + '\t' + this.embeddedPage.map(WebExcerpt::toShortTabDelimString).orElse(WebExcerpt.emptyShortTabDelimString())
             + '\t' + this.embeddedRetweet.map(Retweet::toShortTabDelimString).orElse("FUCK!");
     }
 

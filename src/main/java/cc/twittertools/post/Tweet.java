@@ -2,7 +2,7 @@ package cc.twittertools.post;
 
 
 import cc.twittertools.post.embed.Retweet;
-import cc.twittertools.post.embed.Webpage;
+import cc.twittertools.post.embed.WebExcerpt;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 
@@ -35,19 +35,19 @@ public final class Tweet extends Retweet {
         this(id, author, msg, utcTime, localTime, Optional.empty(), Optional.empty());
     }
 
-    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Webpage embeddedWebpage) {
-        this(id, author, msg, utcTime, localTime, Optional.of(embeddedWebpage), Optional.empty());
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, WebExcerpt embeddedWebExcerpt) {
+        this(id, author, msg, utcTime, localTime, Optional.of(embeddedWebExcerpt), Optional.empty());
     }
 
     public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Retweet embeddedRetweet) {
         this(id, author, msg, utcTime, localTime, Optional.empty(), Optional.of(embeddedRetweet));
     }
 
-    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Webpage embeddedPage, Retweet embeddedRetweet) {
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, WebExcerpt embeddedPage, Retweet embeddedRetweet) {
         this(id, author, msg, utcTime, localTime, Optional.of(embeddedPage), Optional.of(embeddedRetweet));
     }
 
-    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Optional<Webpage> embeddedPage, Optional<Retweet> embeddedRetweet) {
+    public Tweet(long id, String author, String msg, DateTime utcTime, DateTime localTime, Optional<WebExcerpt> embeddedPage, Optional<Retweet> embeddedRetweet) {
         super(id, author, msg, embeddedPage, embeddedRetweet);
         this.localTime = localTime;
         this.utcTime   = utcTime;

@@ -8,7 +8,7 @@ import java.util.Optional;
 
 import cc.twittertools.post.Tweet;
 import cc.twittertools.post.embed.Retweet;
-import cc.twittertools.post.embed.Webpage;
+import cc.twittertools.post.embed.WebExcerpt;
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.jsoup.Jsoup;
@@ -86,7 +86,7 @@ public class TweetsHtmlParser
 
         embeddedTweet = new Retweet(eId, eAuthor, eBody, readOptionalWebpageExcerpt(embed, body), Optional.empty());
       }
-      
+
       if (author.equalsIgnoreCase(account)) {
         result.add(new Tweet(id, author, body, utcDate, localDate, readOptionalWebpageExcerpt(tweet, body), Optional.ofNullable(embeddedTweet)));
       } else {
@@ -116,7 +116,7 @@ public class TweetsHtmlParser
             .replaceAll("http://", " http://");
   }
 
-  private Optional<Webpage> readOptionalWebpageExcerpt(Element parent, String body) {
+  private Optional<WebExcerpt> readOptionalWebpageExcerpt(Element parent, String body) {
     Elements embeddedUrls = parent.select("div.js-macaw-cards-iframe-container");
     if (embeddedUrls.isEmpty()) {
       return Optional.empty();
@@ -138,6 +138,6 @@ public class TweetsHtmlParser
     URI uri = URI.create(body.substring(start, end));
     URI cardUri = URI.create("https://twitter.com" + embeddedUrls.get(0).attr("data-src"));
 
-    return Optional.of(new Webpage(uri, cardUri));
+    return Optional.of(new WebExcerpt(uri, cardUri));
   }
 }
