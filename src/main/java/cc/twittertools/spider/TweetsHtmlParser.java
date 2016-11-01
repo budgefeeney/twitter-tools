@@ -62,6 +62,11 @@ public class TweetsHtmlParser
       String idStr  = StringUtils.substringAfterLast(href, "/");
       long   id     = Long.parseLong(idStr);
 
+      Elements emoticons = tweet.select("img.Emoji");
+      for (Element emo : emoticons) {
+        emo.prependText(emo.attr("alt"));
+      }
+
       DateTime localDate = cc.twittertools.post.old.Tweet.TWITTER_FMT.parseDateTime(header.attr("title"));
       DateTime utcDate   = new DateTime(Long.parseLong(header.select("span.js-short-timestamp").attr("data-time-ms")));
 
