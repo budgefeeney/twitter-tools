@@ -83,7 +83,7 @@ public class TweetsHtmlParser
         String eHref  = embed.attr("href");
         String eAuthor = StringUtils.substringBefore(eHref.substring(1), "/");
         String eIdStr  = StringUtils.substringAfterLast(eHref, "/");
-        long   eId     = Long.parseLong(idStr);
+        long   eId     = Long.parseLong(eIdStr);
 
         Element eBodyTag = embed.select("div.QuoteTweet-text").get(0);
         eBodyTag.select("span.u-hidden").remove();
@@ -100,7 +100,7 @@ public class TweetsHtmlParser
 
         // The ID we read in earlier is actually the ID of the retweeted tweet.
         // We have to look into another tag to find the ID of the account-holder's retweet.
-        Elements primeTweetIdTags = tweet.select("div.class");
+        Elements primeTweetIdTags = tweet.select("div.tweet");
         final long primeTweetId;
         if (primeTweetIdTags.isEmpty() || ! primeTweetIdTags.get(0).hasAttr("data-retweet-id")) {
           primeTweetId = 1L;

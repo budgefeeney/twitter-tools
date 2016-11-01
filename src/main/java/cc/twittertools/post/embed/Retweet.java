@@ -49,11 +49,11 @@ public class Retweet {
 
         if (embeddedRetweet.isPresent()) {
             Retweet e = embeddedRetweet.get();
-            msg = StringUtils.replaceOnce(msg, "https://twitter.com/" + e.getAuthor().toLowerCase() + "/status/" + e.getId(), "");
+            msg = removeFirstCaseInsensitive(msg, "https://twitter.com/" + e.getAuthor() + "/status/" + e.getId());
         }
         if (embeddedPage.isPresent()) {
             WebExcerpt e = embeddedPage.get();
-            msg = StringUtils.replace(msg, e.getUri().toASCIIString(), "");
+            msg = removeFirstCaseInsensitive(msg, e.getUri().toASCIIString());
         }
 
         this.hashTags   = hashTags;
@@ -64,6 +64,18 @@ public class Retweet {
         this.embeddedPage    = embeddedPage;
         this.embeddedRetweet = embeddedRetweet;
         this.isManualRetweet = ! Sigil.RETWEET.extractSigils(msg).getRight().isEmpty();
+    }
+
+    public static String removeFirstCaseInsensitive (String haystack, String needle) {
+        String lwrHaystack = haystack.toLowerCase();
+        String lwrNeedle   = needle.toLowerCase();
+
+        int pos = lwrHaystack.indexOf(lwrNeedle);
+        if (pos > 0) {
+            haystack = haystack.substring(0, pos)
+                     + haystack.substring(pos + needle.length());
+        }
+        return haystack;
     }
 
     public Set<String> getHashTags() {

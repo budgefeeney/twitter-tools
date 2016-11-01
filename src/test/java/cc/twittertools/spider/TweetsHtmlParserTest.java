@@ -31,8 +31,9 @@ public class TweetsHtmlParserTest
   
   public TweetsHtmlParserTest() throws IOException, URISyntaxException
   { sampleUser = "rtraister";
+    String variant = "-3";
     try (
-      BufferedReader rdr = Files.newBufferedReader(Paths.get(Resources.getResource(sampleUser + "2016.html").toURI()), Charsets.UTF_8)
+      BufferedReader rdr = Files.newBufferedReader(Paths.get(Resources.getResource(sampleUser + "2016" + variant + ".html").toURI()), Charsets.UTF_8)
     )
     {
       StringBuilder input = new StringBuilder();
