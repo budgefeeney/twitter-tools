@@ -163,8 +163,12 @@ implements JmxSelfNaming, Callable<Integer> {
           ++page;
           aggregateTweets.addAll(tweets);
           LOG.debug("Have accumulated " + aggregateTweets.size() + " tweets for user " + user + " in category " + category + " after processing page " + page);
-          
-          responseBody = makeHttpRequest (jsonTweetsUrl(user, lastTweet.getId()), pageUrl);
+
+          // Code first, real second
+          // https://twitter.com/i/profiles/show/rtraister/timeline/tweets?composed_count=0&include_available_features=1&include_entities=1&include_new_items_bar=true&interval=30000&latent_count=0&min_position=793275015328329728
+          // https://twitter.com/i/profiles/show/rtraister/timeline/tweets?include_available_features=1&include_entities=1&max_position=793210916678541312&reset_error_state=false
+          String jsonUrl = jsonTweetsUrl(user, lastTweet.getId());
+          responseBody = makeHttpRequest (jsonUrl, pageUrl);
           tweets = jsonParser.parse(user, responseBody);
           tweets = removeUndesireableTweets(tweets, lastTweetId);
           if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
@@ -406,7 +410,8 @@ implements JmxSelfNaming, Callable<Integer> {
    */
   private final static String jsonTweetsUrl (String user, long id)
   {
-    final String FMT  = "https://twitter.com/i/profiles/show/%1$s/timeline/tweets?composed_count=0&include_available_features=1&include_entities=1&include_new_items_bar=true&interval=30000&latent_count=0&min_position=%2$d\n";
+    //final String FMT  = "https://twitter.com/i/profiles/show/%1$s/timeline/tweets?composed_count=0&include_available_features=1&include_entities=1&include_new_items_bar=true&interval=30000&latent_count=0&min_position=%2$d\n";
+    final String FMT = "https://twitter.com/i/profiles/show/%1$s/timeline/tweets?include_available_features=1&include_entities=1&max_position=%2$d&reset_error_state=false";
     return String.format(FMT, user, id);
   }
   
