@@ -40,7 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import cc.twittertools.post.SavedTweetReader;
-import cc.twittertools.post.old.Tweet;
+import cc.twittertools.post.Tweet;
 import cc.twittertools.util.FilesInFoldersIterator;
 import cc.twittertools.util.PathUtils;
 import cc.twittertools.words.Vectorizer;
@@ -77,7 +77,10 @@ public class TwitterStats implements Callable<Integer>
 	private final Map<String, DateTime> firstPostByUser;
 	private final Object2IntMap<String> firstPostByUserAsDay;
 	private final Int2IntMap            interPostTimeMins;
-	private final Map<String, MutableInt> retweetsByUser;
+	private final Map<String, MutableInt> emptyRetweet;
+	private final Map<String, MutableInt> emptyRetweetRetweet;
+	private final Map<String, MutableInt> commentRetweet;
+	private final Map<String, MutableInt> commentRetweetRetweet;
 	private final Map<String, MutableInt> rtRetweetsByUser;
 	private final Map<String, MutableInt> tweetsPerUser;
 	private final Int2IntMap            tweetsPerWeek;
@@ -119,8 +122,11 @@ public class TwitterStats implements Callable<Integer>
 //		addresseeCounts      = new Object2IntAVLTreeMap<>();
 //		urlCounts            = new Object2IntAVLTreeMap<>();
 //		wordCounts           = new Object2IntAVLTreeMap<>();
-//		
-		retweetsByUser       = new HashMap<>(   20_000, 0.75f);
+//
+		emptyRetweet         = new HashMap<>(   20_000, 0.75f);
+		emptyRetweetRetweet  = new HashMap<>(   20_000, 0.75f);
+		commentRetweet       = new HashMap<>(   20_000, 0.75f);
+		commentRetweetRetweet= new HashMap<>(   20_000, 0.75f);
 		rtRetweetsByUser     = new HashMap<>(   20_000, 0.75f);
 		tweetsPerUser        = new HashMap<>(   20_000, 0.75f);
 		
@@ -190,7 +196,7 @@ public class TwitterStats implements Callable<Integer>
 				{	
 					try
 					{	Tweet    tweet     = rdr.next();
-		  			String   account   = tidyStringKey (tweet.getAccount());
+		  			String   account   = tidyStringKey (tweet.getAuthor());
 		  			DateTime tweetDate = tweet.getLocalTime();
 		  			
 		  			if (excludedUsers.contains (account)
@@ -213,12 +219,26 @@ public class TwitterStats implements Callable<Integer>
 		  			++tweetCount;
 		  			
 		  			// Retweet statistics
-			  		if (! account.equals (tidyStringKey(tweet.getAuthor())))
-			  			inc (retweetsByUser, account);
-			  		else if (tweet.isRetweetFromMsg())
-			  			inc (rtRetweetsByUser, account);
-			  		else
-			  			inc (tweetsPerUser, account);
+			  		if (tweet.containsRetweet()) {
+						if (tweet.getMsg().isEmpty()) {
+							if (tweet.getEmbeddedRetweet().get().containsRetweet()) {
+								inc(emptyRetweetRetweet, account);
+							} else {
+								inc(emptyRetweet, account);
+							}
+						} else {
+							if (tweet.getEmbeddedRetweet().get().containsRetweet()) {
+								inc(commentRetweetRetweet, account);
+							} else {
+								inc(commentRetweet, account);
+							}
+						}
+					}
+			  		else if (tweet.isManualRetweet()) {
+						inc(rtRetweetsByUser, account);
+					} else {
+						inc(tweetsPerUser, account);
+					}
 			  		
 			  		// Inter-post time statistics
 			  		if (account.equals (currentAccount) && lastDate != null)
@@ -353,7 +373,7 @@ public class TwitterStats implements Callable<Integer>
 	{	try
 		{
 			if (testValue > expectedMax)
-				tokenizerErrors.write(testName + "\t" + testValue + "\t" + tweet.toShortTabDelimString());
+				tokenizerErrors.write(testName + "\t" + testValue + "\t" + Tweet.WRITER.asTabDelimStr(tweet));
 		}
 		catch (IOException ioe)
 		{	LOG.error("Can't write out invalid tweet from with " + testName + " > " + expectedMax);
@@ -378,7 +398,12 @@ public class TwitterStats implements Callable<Integer>
 					get (firstPostByUserAsDay, user) + '\t' +
 					lastPostByUser.get(user)         + '\t' +
 					get (tweetsPerUser, user)        + '\t' +
-					get (retweetsByUser, user)       + '\t' +
+
+					get (emptyRetweet, user)         + '\t' +
+					get (emptyRetweetRetweet, user)  + '\t' +
+					get (commentRetweet, user)       + '\t' +
+					get (commentRetweetRetweet, user)+ '\t' +
+
 					get (rtRetweetsByUser, user)     + '\n'
 				);
 		}
