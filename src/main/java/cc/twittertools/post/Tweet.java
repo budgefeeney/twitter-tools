@@ -6,6 +6,7 @@ import cc.twittertools.post.embed.WebExcerpt;
 import cc.twittertools.post.tabwriter.TabWriter;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
+import org.joda.time.Period;
 
 import java.util.Optional;
 
@@ -73,9 +74,20 @@ public final class Tweet extends Retweet {
         public String asTabDelimStr(Tweet value) {
             return     ISODateTimeFormat.dateTimeNoMillis().print(value.getLocalTime())
               + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(value.getUtcTime())
+              + '\t' + toTimeZoneString (new Period (value.getUtcTime(), value.getLocalTime()))
               + '\t' + Retweet.WRITER.asTabDelimStr(value);
         }
 
+		public final String toTimeZoneString (Period period)
+		{   int hours = period.getDays() * 24 + period.getHours();
+		    int mins  = period.getMinutes();
+		    
+		    // round minutes to the nearest 15min interval
+		    mins = ((mins + 2) / 15) * 15;
+		    
+		    return String.format ("%+03d:%02d", hours, mins);
+		}
+        
         @Override
         public Pair<Tweet, Integer> fromTabDelimParts(String[] parts, int from) {
             DateTime localTime = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[from + 0]);
@@ -83,7 +95,7 @@ public final class Tweet extends Retweet {
 
             // a bit of a hack this, the "retweet" is actually this "tweet"
             // a good example of why inheritance is worse than composition. Oh well :-/
-            Pair<Retweet, Integer> rtPair = Retweet.WRITER.fromTabDelimParts(parts, from + 2);
+            Pair<Retweet, Integer> rtPair = Retweet.WRITER.fromTabDelimParts(parts, from + 3);
             Retweet rt = rtPair.getLeft();
 
             return Pair.of (

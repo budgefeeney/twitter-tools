@@ -622,7 +622,7 @@ public class TwitterStats implements Callable<Integer>
 	public static void main (String[] args) throws Exception
 	{
 		Path inputDir  = Paths.get("/Users/bryanfeeney/opt/twitter-tools-spider/src/test/resources/spider");
-		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/SmallDB-NoCJK/Stats");
+		Path outputDir = Paths.get("/Users/bryanfeeney/Desktop/BiggerDB-WithFeats/Stats");
 		
 		TwitterStats stats = new TwitterStats (inputDir, outputDir);
 		stats.setExcludedUsers(DEFAULT_EXCLUDED_USERS);

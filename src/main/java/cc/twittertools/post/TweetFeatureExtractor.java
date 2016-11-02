@@ -273,13 +273,14 @@ public class TweetFeatureExtractor implements Callable<Integer>
    * @throws Exception 
    */
   private int extractAndWriteFeatures (Iterator<Path> tweetFiles, Path wordsFile, Path eventsFile) throws Exception
-  {	Interval interval = new Interval(minDateIncl, maxDateExcl);
+  {	Set<Int2ShortMap> pastTweetsInFile = new HashSet<>();
+	Interval interval = new Interval(minDateIncl, maxDateExcl);
   	FeatureDimension dim = featSpec.dimensionality(userDict, interval);
     	
   	CsrShortMatrixBuilder wordMatrix
-  		= new CsrShortMatrixBuilder(vectorizer.getDict().capacity(), 1_000_000, 30);
+  		= new CsrShortMatrixBuilder(vectorizer.getDict().capacity(), 2_500_000, 30);
   	CsrShortMatrixBuilder eventMatrix 
-  		= new CsrShortMatrixBuilder(dim.getTotal(), 1_000_000, 10);
+  		= new CsrShortMatrixBuilder(dim.getTotal(), 2_500_000, 10);
   	
   	Int2ShortMap wordFeatures  = new Int2ShortOpenHashMap(MAX_WORDS_PER_TWEET);
   	Int2ShortMap eventFeatures = new Int2ShortOpenHashMap(featSpec.maxNonZeroFeatures());
@@ -303,7 +304,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   		LOG.info ("Processing tweets in file: " + currentFile);
   		
 		try (SavedTweetReader rdr = new SavedTweetReader(currentFile); )
-		{	
+		{	pastTweetsInFile.clear();
 			while (rdr.hasNext() && tweetCount < maxTweetsToProcess)
 			{	
 				try
@@ -338,11 +339,15 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			  		
 			  		// TODO need some sort of "most-recent-date" idea for when we have an,
 			  		// incorrect date, which is something that occurs with retweets.
-			  	
-			  		++tweetCount;
-			  		extractFeatures (tweet, dim, wordFeatures, eventFeatures);
-			  		
-			  		wordMatrix.addRow(wordFeatures);
+
+			  		extractFeatures(tweet, dim, wordFeatures, eventFeatures);
+					if (pastTweetsInFile.contains(wordFeatures))
+						continue;
+
+					pastTweetsInFile.add(wordFeatures);
+					++tweetCount;
+
+					wordMatrix.addRow(wordFeatures);
 			  		eventMatrix.addRow(eventFeatures);
 				}
 				catch (ExcessUnmappableTokens ute)

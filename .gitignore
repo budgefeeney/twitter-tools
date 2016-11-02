@@ -18,4 +18,5 @@ etc/run.sh
 
 nohup.out
 
-.idea/
+*.iml
+.idea/*
