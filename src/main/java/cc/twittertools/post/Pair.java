@@ -24,7 +24,7 @@ public final class Pair<L,R> implements Map.Entry<L, R>
    * types
    */
   public final static <K, V> Pair<K, V> of (K left, V right)
-  { return new Pair<K, V>(left, right);
+  { return new Pair<>(left, right);
   }
   
   @Override

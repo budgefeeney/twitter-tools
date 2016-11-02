@@ -1,9 +1,13 @@
 package cc.twittertools.post.embed;
 
+import cc.twittertools.post.Pair;
 import cc.twittertools.post.Sigil;
 import cc.twittertools.post.old.Tweet;
+import cc.twittertools.post.tabwriter.TabWriter;
 import com.google.common.collect.Sets;
+import com.sun.org.apache.regexp.internal.RE;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.mutable.MutableInt;
 
 import java.util.Optional;
 import java.util.Set;
@@ -103,6 +107,39 @@ public class Retweet {
         return embeddedPage;
     }
 
+    public Optional<Retweet> getEmbeddedRetweet() {
+        return embeddedRetweet;
+    }
+
+
+    /**
+     * Returns the text of this message, all retweets, and any text ex
+     * @return
+     */
+    public String getAllText(boolean includeWebExcerpts) {
+        return getMsg()
+                + ' '
+                + getEmbeddedPage().flatMap(WebExcerpt::getExcerpt)
+                .map(e -> e.getTitle() + " " + e.getBody())
+                .orElse("")
+                + ' '
+                + getEmbeddedRetweet().map(r -> r.getAllText(includeWebExcerpts))
+                .orElse("");
+    }
+
+    /**
+     * Does this tweet/retweet itself contain a retweeted tweet
+     * <p>
+     * Modern twitter allows nested retweets
+     * @return
+     */
+    public boolean containsRetweet() {
+        return embeddedRetweet.isPresent();
+    }
+    public boolean isManualRetweet() {
+        return isManualRetweet;
+    }
+
     @Override
     public String toString()
     { return  "@"
@@ -146,43 +183,33 @@ public class Retweet {
         return msg;
     }
 
-    /**
-     * Return a tab delimited string with all this tweets raw information
-     * terminated by a newline.
-     */
-    public String toShortTabDelimString()
-    {   return
-            this.getAuthor()
-            + '\t' + this.getId()
-            + '\t' + this.getMsg()
-            + '\t' + this.embeddedPage.map(WebExcerpt::toShortTabDelimString).orElse(WebExcerpt.emptyShortTabDelimString())
-            + '\t' + this.embeddedRetweet.map(Retweet::toShortTabDelimString).orElse("FUCK!");
-    }
 
-    /**
-     * Parses a line created by {@link #toShortTabDelimString()} back into
-     * a {@link Tweet}. Will throw raw exceptions if the line
-     */
-    public static Retweet fromShortTabDelimString(String account, String[] parts, int from)
-    {
-        if (parts.length <= from) {
-            return null;
+    public static final TabWriter<Retweet> WRITER = new TabWriter<Retweet>() {
+        @Override
+        public String asTabDelimStr(Retweet val) {
+            return
+                         val.getAuthor()
+                + '\t' + val.getId()
+                + '\t' + val.getMsg()
+                + '\t' + WebExcerpt.WRITER.asTabDelimStr(val.getEmbeddedPage())
+                + '\t' + asTabDelimStr(val.getEmbeddedRetweet());
         }
 
-        return null;
-    }
+        @Override
+        public Pair<Retweet, Integer> fromTabDelimParts(String[] parts, int from) {
+            String author = parts[from + 0];
+            long   id     = Long.parseLong(parts[from + 1]);
+            String msg    = parts[from + 2];
 
-    /**
-     * Does this tweet/retweet itself contain a retweeted tweet
-     * <p>
-     * Modern twitter allows nested retweets
-     * @return
-     */
-    public boolean containsRetweet() {
-        return embeddedRetweet.isPresent();
-    }
-    public boolean isManualRetweet() {
-        return isManualRetweet;
-    }
+            Pair<Optional<WebExcerpt>, Integer> exPair =
+                    WebExcerpt.WRITER.optFromTabDelimParts(parts, from + 3);
+            Pair<Optional<Retweet>, Integer> rtPair =
+                    this.optFromTabDelimParts(parts, exPair.getRight());
+
+            return Pair.of (new Retweet(id, author, msg, exPair.getLeft(), rtPair.getLeft()),
+                            rtPair.getRight());
+        }
+    };
+
 
 }

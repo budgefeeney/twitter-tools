@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import javax.management.JMException;
 
@@ -71,7 +72,7 @@ public class UserTweetsSpider
     try (
       BufferedReader rdr = Files.newBufferedReader (inputPath, Charsets.UTF_8)
     )
-    { String line = null;
+    { String line;
       while ((line = rdr.readLine()) != null)
       { if ((line = line.trim()).isEmpty())
           continue;
@@ -122,11 +123,9 @@ public class UserTweetsSpider
     jmxServer.register(progress);
     
     for (Map.Entry<String, Set<TwitterUser>> entry : users.entrySet())
-    { List<String> userNames = Lists.transform(new ArrayList<>(entry.getValue()), new Function<TwitterUser, String>() {
-        @Override public String apply(TwitterUser input){
-          return input.getName();
-        }
-      });
+    { List<String> userNames = entry.getValue().stream()
+                                    .map(TwitterUser::getName)
+                                    .collect(Collectors.toList());
       
       IndividualUserTweetsSpider task = 
         newIndividualSpider(throttle, progress, entry.getKey(), userNames);

@@ -5,6 +5,8 @@ package cc.twittertools.post.embed;
  */
 
 
+import cc.twittertools.post.Pair;
+import cc.twittertools.post.tabwriter.TabWriter;
 import org.apache.commons.lang3.StringUtils;
 
 import java.net.URI;
@@ -18,7 +20,7 @@ import java.util.Optional;
  * optionally the card's title and body if they're downloaded separately.
  */
 public final class WebExcerpt {
-    private final static class Excerpt {
+    public final static class Excerpt {
         private final String title;
         private final String body;
 
@@ -60,6 +62,21 @@ public final class WebExcerpt {
         public String toString() {
             return StringUtils.left(title, 20) + "...";
         }
+
+        static final TabWriter<Excerpt> WRITER = new TabWriter<Excerpt>() {
+            @Override
+            public String asTabDelimStr(Excerpt value) {
+                return value.getTitle() + '\t' + value.getBody();
+            }
+
+            @Override
+            public Pair<Excerpt, Integer> fromTabDelimParts(String[] parts, int from) {
+                String title   = parts[from + 0];
+                String body    = parts[from + 1];
+
+                return Pair.of(new Excerpt(title, body), from + 2);
+            }
+        };
     }
 
 
@@ -132,13 +149,6 @@ public final class WebExcerpt {
         return common + '\t' + excerptString;
     }
 
-    public static String emptyShortTabDelimString() {
-        return "" + '\t' + ""
-                  + '\t'
-                  + "" + '\t' + "" + '\t' + "";
-    }
-
-
 
     public static WebExcerpt fromShortTabDelimString(String[] parts, int from) {
         if (parts.length <= from) {
@@ -159,4 +169,24 @@ public final class WebExcerpt {
 
         return new WebExcerpt(uri, cardUri, excerpt);
     }
+
+    public final static TabWriter<WebExcerpt> WRITER = new TabWriter<WebExcerpt>() {
+        @Override
+        public String asTabDelimStr(WebExcerpt value) {
+            return value.getUri().toASCIIString()
+                 + '\t'
+                 + value.getCardUri().toASCIIString()
+                 + '\t'
+                 + Excerpt.WRITER.asTabDelimStr(value.getExcerpt());
+        }
+
+        @Override
+        public Pair<WebExcerpt, Integer> fromTabDelimParts(String[] parts, int from) {
+            URI uri     = URI.create(parts[from + 0]);
+            URI cardUri = URI.create(parts[from + 1]);
+
+            Pair<Optional<Excerpt>, Integer> exPair = Excerpt.WRITER.optFromTabDelimParts(parts, from + 2);
+            return Pair.of (new WebExcerpt(uri, cardUri, exPair.getLeft()), exPair.getRight());
+        }
+    };
 }

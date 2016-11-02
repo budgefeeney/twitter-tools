@@ -281,8 +281,6 @@ implements JmxSelfNaming, Callable<Integer> {
   
   /**
    * Write all the tweets to a file.
-   * @param user the user we're currently considering, determines the 
-   * filename
    * @param tweets the user's tweets.
    * @throws IOException
    */
@@ -290,9 +288,7 @@ implements JmxSelfNaming, Callable<Integer> {
   { try (
       BufferedWriter wtr = Files.newBufferedWriter(userOutputPath, Charsets.UTF_8);
     )
-    { for (Tweet tweet : tweets)
-      { wtr.write(tweet.toShortTabDelimString());
-      }
+    { Tweet.WRITER.writeAllAsTabDelim(wtr, tweets.iterator());
       LOG.info("Wrote " + tweets.size() + " tweets to file " + userOutputPath.toFile().getName() + " in directory " + userOutputPath.toFile().getParentFile().getName());
     }
   }

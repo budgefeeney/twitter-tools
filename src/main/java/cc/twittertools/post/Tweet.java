@@ -3,6 +3,7 @@ package cc.twittertools.post;
 
 import cc.twittertools.post.embed.Retweet;
 import cc.twittertools.post.embed.WebExcerpt;
+import cc.twittertools.post.tabwriter.TabWriter;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 
@@ -61,18 +62,43 @@ public final class Tweet extends Retweet {
         return utcTime;
     }
 
+
     @Override
     public String toString() {
         return getLocalTime().toString() + super.toString();
     }
 
-    @Override
-    public String toShortTabDelimString() {
-        return super.toString()
-                + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getLocalTime())
-                + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(this.getUtcTime());
-    }
+    public final static TabWriter<Tweet> WRITER = new TabWriter<Tweet>() {
+        @Override
+        public String asTabDelimStr(Tweet value) {
+            return     ISODateTimeFormat.dateTimeNoMillis().print(value.getLocalTime())
+              + '\t' + ISODateTimeFormat.dateTimeNoMillis().print(value.getUtcTime())
+              + '\t' + Retweet.WRITER.asTabDelimStr(value);
+        }
 
-    // ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[3])
+        @Override
+        public Pair<Tweet, Integer> fromTabDelimParts(String[] parts, int from) {
+            DateTime localTime = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[from + 0]);
+            DateTime utcTime   = ISODateTimeFormat.dateTimeNoMillis().parseDateTime(parts[from + 1]);
+
+            // a bit of a hack this, the "retweet" is actually this "tweet"
+            // a good example of why inheritance is worse than composition. Oh well :-/
+            Pair<Retweet, Integer> rtPair = Retweet.WRITER.fromTabDelimParts(parts, from + 2);
+            Retweet rt = rtPair.getLeft();
+
+            return Pair.of (
+                new Tweet (
+                    rt.getId(),
+                    rt.getAuthor(),
+                    rt.getMsg(),
+                    utcTime,
+                    localTime,
+                    rt.getEmbeddedPage(),
+                    rt.getEmbeddedRetweet()
+                ),
+                rtPair.getRight()
+            );
+        }
+    };
 
 }

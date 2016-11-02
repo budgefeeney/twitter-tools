@@ -13,7 +13,7 @@ import cc.twittertools.spider.IndividualUserTweetsSpider;
  * also definitely different to the JSON format parsed by {@link TweetReader}
  * @author bryanfeeney
  */
-public class SavedTweetReader implements AutoCloseable, Iterator<cc.twittertools.post.old.Tweet>
+public class SavedTweetReader implements AutoCloseable, Iterator<Tweet>
 {
   private static final class TweetsFileIterator implements Iterator<Path>
   { private final Path dir;
@@ -58,7 +58,7 @@ public class SavedTweetReader implements AutoCloseable, Iterator<cc.twittertools
   private       Path       currentFile;
   private       String     currentAccount;
   
-  private cc.twittertools.post.old.Tweet nextTweet = null;
+  private       Tweet      nextTweet = null;
   private       Exception  nextError = null;
   
   public SavedTweetReader (Iterator<Path> files) throws IOException
@@ -92,7 +92,7 @@ public class SavedTweetReader implements AutoCloseable, Iterator<cc.twittertools
       	}
       
         if (line != null)
-          nextTweet = cc.twittertools.post.old.Tweet.fromShortTabDelimString(currentAccount, line);
+          nextTweet = Tweet.WRITER.fromTabDelimStr(line);
       }
     
       return nextTweet != null;
@@ -104,14 +104,14 @@ public class SavedTweetReader implements AutoCloseable, Iterator<cc.twittertools
   }
 
   @Override
-  public cc.twittertools.post.old.Tweet next() {
+  public Tweet next() {
     if (nextError != null)
     { Exception errVal = nextError;
       nextError        = null;
       throw new RuntimeException ("Error fetching next tweet : " + errVal.getMessage(), errVal);
     }
     
-    cc.twittertools.post.old.Tweet retVal = nextTweet;
+    Tweet retVal = nextTweet;
     nextTweet    = null;
     return retVal;
   }
