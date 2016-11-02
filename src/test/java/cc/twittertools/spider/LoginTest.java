@@ -18,10 +18,8 @@ import cc.twittertools.util.FutureImpl;
 import com.ning.http.client.AsyncCompletionHandler;
 import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.ProxyServer;
 import com.ning.http.client.Response;
 import com.ning.http.client.extra.ThrottleRequestFilter;
-import sun.util.logging.PlatformLogger;
 
 public class LoginTest 
 {
