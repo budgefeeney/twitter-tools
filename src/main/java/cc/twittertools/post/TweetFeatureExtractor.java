@@ -295,7 +295,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
   	
   	// We accept 5 corrupted lines per file before abandoning it and moving onto the next
   	// file. For this reason the next-file loop is labelled.
-  	cc.twittertools.post.old.Tweet tweet = null;
+  	Tweet tweet = null;
   	filesLoop:while (tweetFiles.hasNext())
   	{	
   		int corruptedTweetCount = 0;
@@ -308,7 +308,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			{	
 				try
 				{	tweet = rdr.next();
-					if (! isTweetsFromThisAccountIncluded(tweet.getAccount()))
+					if (! isTweetsFromThisAccountIncluded(tweet.getAuthor()))
 						continue filesLoop; // all tweets in a file belong to a single account
 	  		
 			  		// Do we include this tweet, or do we skip it.
@@ -325,7 +325,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 			  		// There are some duplicate tweets in the dataset. We <em>presume</em>
 			  		// files are sorted by name, and keep a track of each account's IDs
 			  		// so we can filter out already processed tweets.
-			  		String account = tweet.getAccount().trim().toLowerCase();
+			  		String account = tweet.getAuthor().trim().toLowerCase();
 			  		long   tweetId = tweet.getId();
 			  		if (! account.equals(lastAccount))
 			  		{	lastAccount = account;
@@ -384,14 +384,10 @@ public class TweetFeatureExtractor implements Callable<Integer>
 
 
   /**
-   * Checks is this a retweet. Uses three methods to infer this
-   * <ul><li>If the request ID and the tweet ID don't match, it's a retweet
-   *     <li>If the account (inferred from the filename) and the author don't match, it's retweet
-   *     <li>If the message contains a retweet marker ("RT") it's a retweet
-   * </ul>
+   * Checks is this a retweet, including manual copy & paste retweets.
    */
-	private boolean isRetweet(cc.twittertools.post.old.Tweet tweet)
-	{	return tweet.isRetweetFromId() || tweet.isRetweetFromMsg() || ! tweet.getAccount().equals(tweet.getAuthor());
+	private boolean isRetweet(Tweet tweet)
+	{	return tweet.containsRetweet() || tweet.isManualRetweet();
 	}
 
 
@@ -405,7 +401,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
    * @param eventFeatures the features extracted from other information about
    * the tweet, see {@link FeatureSpecification} for more on these.
    */
-	private void extractFeatures(cc.twittertools.post.old.Tweet tweet, FeatureDimension dim, Int2ShortMap wordFeatures, Int2ShortMap eventFeatures)
+	private void extractFeatures(Tweet tweet, FeatureDimension dim, Int2ShortMap wordFeatures, Int2ShortMap eventFeatures)
 	{	List<String> addressees = extractWordFeatures(tweet, wordFeatures);
 		extractEventFeatures(tweet, dim, addressees, eventFeatures);
 	}
@@ -476,7 +472,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	 * class's configuration. The given map is cleared and filled with the
 	 * encoded features.
 	 */
-	private void extractEventFeatures(cc.twittertools.post.old.Tweet tweet, FeatureDimension dim, List<String> addressees, Int2ShortMap eventFeatures)
+	private void extractEventFeatures(Tweet tweet, FeatureDimension dim, List<String> addressees, Int2ShortMap eventFeatures)
 	{	// NOTE Change eventFeatureSchema() whenever you change this method
 		
 		eventFeatures.clear();
@@ -498,10 +494,10 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		}
 		
 		if (featSpec.isAuthorInFeatures())
-		{	int authorId = userDict.toInt(tweet.getAccount());
+		{	int authorId = userDict.toInt(tweet.getAuthor());
 			if (authorId == Dictionary.UNMAPPABLE_WORD)
 				if (skipTweetOnUnmappableEventToken)
-					throw new ExcessUnmappableTokens (0.5, "Tweet contains the unmappable author identifier " + tweet.getAccount());
+					throw new ExcessUnmappableTokens (0.5, "Tweet contains the unmappable author identifier " + tweet.getAuthor());
 			
 			eventFeatures.put (step + authorId, one);
 			step += dim.getAuthorDim();
@@ -546,7 +542,7 @@ public class TweetFeatureExtractor implements Callable<Integer>
 		}
 		
 		if (featSpec.isRtInFeatures())
-		{	if (tweet.isRetweetFromId() || tweet.isRetweetFromMsg())
+		{	if (tweet.containsRetweet() || tweet.isManualRetweet())
 				eventFeatures.put (step, one);
 			step += dim.getRtDim();
 		}
@@ -568,10 +564,10 @@ public class TweetFeatureExtractor implements Callable<Integer>
 	 * @param wordFeatures the bag of word ID counts.
 	 * @return the list of addressees
 	 */
-	private List<String> extractWordFeatures(cc.twittertools.post.old.Tweet tweet, Int2ShortMap wordFeatures)
+	private List<String> extractWordFeatures(Tweet tweet, Int2ShortMap wordFeatures)
 	{ wordFeatures.clear();
 		
-		String text = tweet.getMsg();
+		String text = tweet.getAllText(/* includeWebExcerpts = */ false);
 		Pair<String, List<String>> textAndAddressees =
 				Sigil.ADDRESSEE.extractSigils(text);
 		
