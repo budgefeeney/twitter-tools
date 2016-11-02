@@ -4,10 +4,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -65,15 +69,29 @@ public class TweetsHtmlParserTest
     
     tweets = parser.parse(sampleUser, samplePageHtml);
     //assertThat(tweets, allOf(notNullValue(), hasSize(20)));
-    assertEquals(tweets.get(3).getAuthor(), "charlie_whiting");
-    assertEquals(tweets.get(3).getMsg(), "Cool as well as lump-in-throat inducing. @RoyalAirForceUK is tweeting the signals received from the #Dambusters70 on their 70th anniv.");
-    assertEquals(tweets.get(3).getMsgLessSigils(), "Cool as well as lump-in-throat inducing.  is tweeting the signals received from the  on their 70th anniv.");
-    assertEquals(tweets.get(3).getAddressees(), Sets.newHashSet("RoyalAirForceUK"));
-    assertEquals(tweets.get(3).getHashTags(), Sets.newHashSet("Dambusters70"));
-    assertFalse(tweets.get(3).containsRetweet());
-    assertFalse(tweets.get(3).isManualRetweet());
-    assertEquals(tweets.get(3).getId(), 335212126207619072L);
+//    assertEquals(tweets.get(3).getAuthor(), "charlie_whiting");
+//    assertEquals(tweets.get(3).getMsg(), "Cool as well as lump-in-throat inducing. @RoyalAirForceUK is tweeting the signals received from the #Dambusters70 on their 70th anniv.");
+//    assertEquals(tweets.get(3).getMsgLessSigils(), "Cool as well as lump-in-throat inducing.  is tweeting the signals received from the  on their 70th anniv.");
+//    assertEquals(tweets.get(3).getAddressees(), Sets.newHashSet("RoyalAirForceUK"));
+//    assertEquals(tweets.get(3).getHashTags(), Sets.newHashSet("Dambusters70"));
+//    assertFalse(tweets.get(3).containsRetweet());
+//    assertFalse(tweets.get(3).isManualRetweet());
+//    assertEquals(tweets.get(3).getId(), 335212126207619072L);
+
+    File tmpFile = File.createTempFile(USER + "-sample-tweets-", ".txt");
+    tmpFile.deleteOnExit();
+    Path tmpPath = Paths.get(tmpFile.getAbsolutePath());
+
+    try (BufferedWriter wtr = Files.newBufferedWriter(tmpPath, Charsets.UTF_8)) {
+      Tweet.WRITER.writeAllAsTabDelim(wtr, tweets.iterator());
+    }
+    final List<Tweet> readTweets;
+    try (BufferedReader rdr = Files.newBufferedReader(tmpPath, Charsets.UTF_8)) {
+      readTweets = Tweet.WRITER.readAllFromTabDelim(rdr);
+    }
     
     System.out.println (StringUtils.join(tweets, "\n\n"));
+    System.out.println ("\n-------------------------\n\n\n");
+    System.out.println (StringUtils.join(readTweets, "\n\n"));
   }
 }
