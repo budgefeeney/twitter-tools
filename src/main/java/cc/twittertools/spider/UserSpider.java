@@ -203,13 +203,15 @@ public class UserSpider
 
   private Twitter createTwitterConnection() {
     ConfigurationBuilder cb = new ConfigurationBuilder();
+
     cb.setDebugEnabled(true)
-      .setOAuthConsumerKey("t4qR0BK8bbKFreFBaay6A")
-      .setOAuthConsumerSecret("VZlOJwTXGwLXFgGrENJezeupUrnLfp1HljhiI1g")
-      .setOAuthAccessToken("410795438-GcSf98K1Of35QNHc31XDiO5k8eohccPblIWQ9i19")
-      .setOAuthAccessTokenSecret("Q6GTwlig5IGTA2edmfOEhiPsOKqUnW9Tg0HsDX62oA")
-      .setHttpProxyHost("cornillon.grenoble.xrce.xerox.com")
-      .setHttpProxyPort(8000);
+      .setOAuthConsumerKey("JT9JsiJthOpMeKUXa7z9jnKkZ")
+      .setOAuthConsumerSecret("ep7POBlAV5HrBWX2qP4ZbVOFf1gtLEIIXWcGxhDiDnti8TBJ6Q")
+      .setOAuthAccessToken("139781931-TjdloWfynXg589JdK2tD7y1lrbV4Hr4ekKteK086")
+      .setOAuthAccessTokenSecret("yAuB8R1vipw1qpXXNnC4lRo91Nffttkde4Q1oDQXr6QC8")
+      .setUseSSL(true);
+
+
     
     Twitter twitter = new TwitterFactory(cb.build()).getInstance();
     return twitter;
@@ -252,9 +254,9 @@ public class UserSpider
   /* history failed */
   public static void main (String[] args) throws Exception
   { 
-    Path input  = Paths.get(args.length >= 1 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/seedusers.csv");
-    Path output = Paths.get(args.length >= 2 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/fetchedusers.csv");
-    Path skips  = Paths.get(args.length >= 3 ? args[2] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/skippedusers.csv");
+    Path input  = Paths.get(args.length >= 1 ? args[0] : "/Users/bryanfeeney/Desktop/seedusers.csv");
+    Path output = Paths.get(args.length >= 2 ? args[1] : "/Users/bryanfeeney/Desktop/fetchedusers.csv");
+    Path skips  = Paths.get(args.length >= 3 ? args[2] : "/Users/bryanfeeney/Desktop/skippedusers.csv");
     
     UserSpider spider = new UserSpider (output, skips);
     spider.init(input);
