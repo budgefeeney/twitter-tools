@@ -6,6 +6,7 @@ import cc.twittertools.post.SavedTweetReader;
 import cc.twittertools.post.Tweet;
 import cc.twittertools.post.embed.Retweet;
 import cc.twittertools.spider.IndividualUserTweetsSpider;
+import cc.twittertools.spider.TweetsHtmlParser;
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import org.apache.commons.lang3.CharUtils;
@@ -338,11 +339,16 @@ public class RetweetFinder implements Callable<Boolean> {
         }
 
         // The message body
-        Elements tweetTextTag = tweetContainer.select("div.TweetDetail-text");
-        String tweetText =
-                tweetTextTag.isEmpty() ? "" : tweetTextTag.text().trim();
+        Elements tweetTextTags = tweetContainer.select("div.TweetDetail-text");
+        String tweetText = "";
+        if (! tweetTextTags.isEmpty()) {
+            Element tweetTextTag = tweetTextTags.first();
+            TweetsHtmlParser.placeEmoticonsInText(tweetTextTag);
+            tweetText = tweetTextTag.text().trim();
+        }
 
-        // TODO process emoticons
+        tweetText = TweetsHtmlParser.insertSpaceBeforeHttpInstances(tweetText);
+
 
         // TODO process embedded tweets
 

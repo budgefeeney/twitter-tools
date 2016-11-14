@@ -62,10 +62,7 @@ public class TweetsHtmlParser
       String idStr  = StringUtils.substringAfterLast(href, "/");
       long   id     = Long.parseLong(idStr);
 
-      Elements emoticons = tweet.select("img.Emoji");
-      for (Element emo : emoticons) {
-        emo.prependText(emo.attr("alt"));
-      }
+      placeEmoticonsInText(tweet);
 
       DateTime localDate = cc.twittertools.post.old.Tweet.TWITTER_FMT.parseDateTime(header.attr("title"));
       DateTime utcDate   = new DateTime(Long.parseLong(header.select("span.js-short-timestamp").attr("data-time-ms")));
@@ -116,9 +113,34 @@ public class TweetsHtmlParser
     return result;
   }
 
-  private String insertSpaceBeforeHttpInstances (String body) {
+  /**
+   * To support users of older operating systems, Twitter replaces emoticons,
+   * with IMG tags with graphical realisations of those emoticons. When you
+   * look at the text attribute of the enclosing tag consequently, you don't
+   * get to see the emoticons. Fortunately twitter does put the emoticon
+   * text in an ALT attribute of the IMG tag, so we simply prepend that ALT
+   * text to the image tag, so that the emoticons will be included in a call
+   * to text().
+   * @param tweetTextContainer
+   */
+  public static void placeEmoticonsInText(Element tweetTextContainer) {
+    Elements emoticons = tweetTextContainer.select("img.Emoji");
+    for (Element emo : emoticons) {
+      emo.prependText(emo.attr("alt"));
+    }
+  }
+
+  /**
+   * The use of &lt;span&gt; tags in tweets means that there is no
+   * space between URLs and the text that precedes them, when there
+   * should be. This simply fixes this by prepending spaces
+   * @param body
+   * @return
+   */
+  public static String insertSpaceBeforeHttpInstances (String body) {
     return body.replaceAll("https://", " https://")
-            .replaceAll("http://", " http://");
+               .replaceAll("http://", " http://")
+               .replaceAll("(?<!(?:https://|http://))pic\\.twitter\\.com", " pic.twitter.com");
   }
 
   private Optional<WebExcerpt> readOptionalWebpageExcerpt(Element parent, String body) {
