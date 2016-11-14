@@ -9,9 +9,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Callable;
 
 import org.apache.commons.httpclient.Header;
@@ -21,6 +19,7 @@ import org.apache.commons.httpclient.cookie.CookiePolicy;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.params.HttpClientParams;
 import org.apache.commons.lang.StringUtils;
+import org.apache.http.protocol.HttpContext;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Level;
 import org.joda.time.DateTime;
@@ -58,7 +57,7 @@ public class IndividualUserTweetsSpider
 extends BaseJmxSelfNaming
 implements JmxSelfNaming, Callable<Integer> {
   
-  private static final int HTTP_200_OK = 200;
+  public static final int HTTP_200_OK = 200;
 
   private final static Logger LOG = LoggerFactory.getLogger(IndividualUserTweetsSpider.class);
   
@@ -74,6 +73,15 @@ implements JmxSelfNaming, Callable<Integer> {
     = AVG_TWEETS_PER_DAY * DAYS_PER_MONTH * TIME_LIMIT_MONTHS;
   
   private final static long DOWNLOAD_ALL_AVAILABLE_TWEETS = -1;
+
+  public final static Map<String, String> DEFAULT_HEADERS;
+  static {
+    DEFAULT_HEADERS = new HashMap<>();
+    DEFAULT_HEADERS.put("Accept-Charset", "utf-8");
+    DEFAULT_HEADERS.put("Accept-Language", "en-US,en;q=0.8");
+    DEFAULT_HEADERS.put("Accept", "Accept\ttext/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    DEFAULT_HEADERS.put("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/601.7.8 (KHTML, like Gecko) Version/9.1.3 Safari/601.7.8");
+  }
   
   private final List<String> users;
   private final HttpClient httpClient;
@@ -150,7 +158,7 @@ implements JmxSelfNaming, Callable<Integer> {
 
         List<Tweet> tweets;
         final String pageUrl = "https://twitter.com/" + user;
-        responseBody = makeHttpRequest (pageUrl);
+        responseBody = IndividualUserTweetsSpider.requestHttpContent(httpClient, pageUrl);
         tweets = htmlParser.parse (user, responseBody);
         tweets = removeUndesireableTweets (tweets, lastTweetId);
         Tweet lastTweet = removeLastAuthoredTweet (user, tweets);
@@ -168,7 +176,7 @@ implements JmxSelfNaming, Callable<Integer> {
           // https://twitter.com/i/profiles/show/rtraister/timeline/tweets?composed_count=0&include_available_features=1&include_entities=1&include_new_items_bar=true&interval=30000&latent_count=0&min_position=793275015328329728
           // https://twitter.com/i/profiles/show/rtraister/timeline/tweets?include_available_features=1&include_entities=1&max_position=793210916678541312&reset_error_state=false
           String jsonUrl = jsonTweetsUrl(user, lastTweet.getId());
-          responseBody = makeHttpRequest (jsonUrl, pageUrl);
+          responseBody = requestHttpContent(httpClient, jsonUrl, pageUrl);
           tweets = jsonParser.parse(user, responseBody);
           tweets = removeUndesireableTweets(tweets, lastTweetId);
           if (tweets.size() != UserRanker.STD_TWEETS_PER_PAGE)
@@ -230,29 +238,35 @@ implements JmxSelfNaming, Callable<Integer> {
     return spideredUsers < MIN_USERS_SPIDERED || tweetsDownloaded < MIN_TWEETS_SPIDERED;
   }
 
-  private String makeHttpRequest(String url) throws IOException, HttpException {
-    return makeHttpRequest(url, null);
+  public static String requestHttpContent (HttpClient httpClient, String url) throws IOException {
+    return requestHttpContent(httpClient, url, null);
   }
 
 
-  private String makeHttpRequest(String url, String referrerUrl) throws IOException, HttpException {
-    String responseBody;
+  public static GetMethod requestHttpGet(HttpClient httpClient, String url, String referrerUrl) throws IOException {
+    GetMethod req = prepareGetRequest (url, referrerUrl);
+    int respStatusCode = httpClient.executeMethod(req);
+    if (respStatusCode != HTTP_200_OK)
+      throw new IOException("Failed to download page, received HTTP response code " + respStatusCode + ". Page was " + req.getURI().toString());
+
+    return req;
+  }
+
+  public static GetMethod prepareGetRequest (String url, String referrerUrl) throws IOException {
     GetMethod req = new GetMethod(url);
-    req.addRequestHeader(new Header("Accept-Charset", "utf-8"));
-    req.addRequestHeader(new Header("Accept-Language", "en-US,en;q=0.8"));
-    req.addRequestHeader(new Header("Accept", "Accept\ttext/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"));
-    req.addRequestHeader(new Header("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/601.7.8 (KHTML, like Gecko) Version/9.1.3 Safari/601.7.8"));
-    if (! StringUtils.isBlank(referrerUrl))
+    DEFAULT_HEADERS.entrySet().forEach(
+      header -> req.addRequestHeader(new Header(header.getKey(), header.getValue()))
+    );
+    if (!StringUtils.isBlank(referrerUrl))
       req.addRequestHeader(new Header("Referer", referrerUrl));
     req.setFollowRedirects(true);
     req.getParams().setCookiePolicy(CookiePolicy.BROWSER_COMPATIBILITY);
-    
-    int respStatusCode = httpClient.executeMethod(req);
-    if (respStatusCode != HTTP_200_OK)
-      throw new IOException ("Failed to download page, received HTTP response code " + respStatusCode);
-            
-    responseBody = req.getResponseBodyAsString();
-    return responseBody;
+
+    return req;
+  }
+
+  public static String requestHttpContent(HttpClient httpClient, String url, String referrerUrl) throws IOException {
+    return requestHttpGet(httpClient, url, referrerUrl).getResponseBodyAsString();
   }
 
   /**
@@ -378,7 +392,7 @@ implements JmxSelfNaming, Callable<Integer> {
     }
   }
 
-  private HttpClient createHttpClient()
+  public static HttpClient createHttpClient()
   { HttpClientParams params = new HttpClientParams();
     params.setConnectionManagerTimeout(CONNECTION_TIMEOUT);
     params.setSoTimeout(CONNECTION_TIMEOUT);
