@@ -4,10 +4,12 @@ package cc.twittertools.post;
 import cc.twittertools.post.embed.Retweet;
 import cc.twittertools.post.embed.WebExcerpt;
 import cc.twittertools.post.tabwriter.TabWriter;
+import org.apache.commons.lang.StringUtils;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 import org.joda.time.Period;
 
+import java.net.URI;
 import java.util.Optional;
 
 /**
@@ -112,5 +114,26 @@ public final class Tweet extends Retweet {
             );
         }
     };
+
+    /**
+     * Returns a new tweet with the given retweet embedded.
+     * The given URI, from which the embedded retweet was accessed, will be
+     * deleted from the message text if it occurs. Only the first occurrence is deleted.s
+     */
+    public Tweet withEmbeddedRetweet(URI embeddedRetweetUri, Retweet embeddedRetweet) {
+        if (this.containsRetweet()) {
+            throw new IllegalStateException("This tweet already contains a retweet");
+        }
+
+        return new Tweet (
+                getId(),
+                getAuthor(),
+                StringUtils.replaceOnce(getMsg(), embeddedRetweetUri.toASCIIString(), ""),
+                utcTime,
+                localTime,
+                Optional.empty(),
+                Optional.of(embeddedRetweet)
+        );
+    }
 
 }
