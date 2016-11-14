@@ -51,7 +51,7 @@ public class TweetsHtmlParser
       Elements possibleHeaderTags = tweet.select("a.tweet-timestamp");
       if (possibleHeaderTags.isEmpty()) {
         // we expect this to occur once, when we hit the scroll "bump" at the bottom, but not otherwise
-        if (tweet.select("div.ScrollBump-header").isEmpty()) {
+        if (! tweet.hasClass("scroll-bump-user-card") && tweet.select("div.ScrollBump-header").isEmpty()) {
           LOG.error("No tweet content in ostensible tweet HTML block:\n" + tweet.toString());
         }
         continue tweetloop;
