@@ -178,8 +178,8 @@ public class UserRanker
   
   public static void main (String[] args) throws IOException
   {
-    String inputFile  = args.length > 0 ? args[0] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/candidateuserlist.csv";
-    String outputFile = args.length > 1 ? args[1] : "/home/bfeeney/Workspace/twitter-tools/src/test/resources/rankedcandidateuserlist.csv";
+    String inputFile  = args.length > 0 ? args[0] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump.csv";
+    String outputFile = args.length > 1 ? args[1] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump-ranked.csv";
     
     UserRanker ranker = new UserRanker(Paths.get(inputFile), Paths.get(outputFile));
     ranker.init();

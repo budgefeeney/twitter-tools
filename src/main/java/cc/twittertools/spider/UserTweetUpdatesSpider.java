@@ -117,11 +117,12 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
   }
   
   public static void main (String[] args) throws JMException, InterruptedException, IOException
-  { BasicConfigurator.configure();
+  { System.out.println ("Starting spidering....");
+    BasicConfigurator.configure();
     
-    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/Users/bryanfeeney/opt-hillary/twitter-tools-spider/src/test/resources/spider");
-    Path chosenUsersPath     = Paths.get(args.length > 1 ? args[1] : "/Users/bryanfeeney/opt-hillary/twitter-tools-spider/src/test/resources/spider/updatedUserList.csv");
-    Path outputDirectoryPath = Paths.get(args.length > 2 ? args[2] : "/Users/bryanfeeney/opt-hillary/twitter-tools-spider/src/test/resources/spider");
+    Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/Users/bryanfeeney/Desktop/SpiderUpTest");
+    Path chosenUsersPath     = Paths.get(args.length > 1 ? args[1] : "/Users/bryanfeeney/Desktop/SpiderUpTest/updatedUserList.csv");
+    Path outputDirectoryPath = Paths.get(args.length > 2 ? args[2] : "/Users/bryanfeeney/Desktop/SpiderUpTest");
     Path excludedCatsPath    = args.length > 3 ? Paths.get(args[3]) : null;
     
     new UserTweetUpdatesSpider(
