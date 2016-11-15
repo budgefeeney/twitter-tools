@@ -9,6 +9,7 @@ import com.sun.org.apache.regexp.internal.RE;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.mutable.MutableInt;
 
+import java.net.URI;
 import java.util.Optional;
 import java.util.Set;
 
@@ -211,5 +212,23 @@ public class Retweet {
         }
     };
 
+    /**
+     * Returns a shallow copy of this retweet with the given tweet embedded within it
+     * as another retweet.
+     *
+     * If the given optional is empty, just return this as is.
+     */
+    public Retweet withEmbeddedRetweet(URI embeddedRetweetUri, Retweet embeddedRetweet) {
+        if (this.containsRetweet()) {
+            throw new IllegalStateException("This tweet already contains a retweet");
+        }
 
+        return new Retweet (
+            id,
+            author,
+            StringUtils.replaceOnce(msg, embeddedRetweetUri.toASCIIString(), ""),
+            embeddedPage,
+            Optional.of(embeddedRetweet)
+        );
+    }
 }

@@ -120,6 +120,7 @@ public final class Tweet extends Retweet {
      * The given URI, from which the embedded retweet was accessed, will be
      * deleted from the message text if it occurs. Only the first occurrence is deleted.s
      */
+    @Override
     public Tweet withEmbeddedRetweet(URI embeddedRetweetUri, Retweet embeddedRetweet) {
         if (this.containsRetweet()) {
             throw new IllegalStateException("This tweet already contains a retweet");
@@ -131,7 +132,7 @@ public final class Tweet extends Retweet {
                 StringUtils.replaceOnce(getMsg(), embeddedRetweetUri.toASCIIString(), ""),
                 utcTime,
                 localTime,
-                Optional.empty(),
+                getEmbeddedPage(),
                 Optional.of(embeddedRetweet)
         );
     }

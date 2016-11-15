@@ -11,6 +11,7 @@ import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import org.apache.commons.lang3.CharUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -37,9 +38,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static cc.twittertools.spider.IndividualUserTweetsSpider.*;
 
 /**
  * Given a list of tweet files, read {@link cc.twittertools.post.Tweet}s in from each,
@@ -53,6 +54,8 @@ public class RetweetFinder implements Callable<Boolean> {
     public static final String META_HTTP_EQUIV_REFRESH = "<meta http-equiv=\"refresh\"";
     public static final int MAX_HTML_REDIRECT_COUNT = 5;
     public static final int MIN_URL_LENGTH = "http://t.co/".length();
+    private final static Pattern FULL_TWEET_URL = Pattern.compile("https?://twitter.com/[^/]+/status/\\\\d+.*", Pattern.CASE_INSENSITIVE);
+    private final static Pattern TWITTER_SHORT_URL = Pattern.compile("https?://t\\.co.*", Pattern.CASE_INSENSITIVE);
 
 
     private interface Sink<T> extends AutoCloseable {
@@ -126,24 +129,55 @@ public class RetweetFinder implements Callable<Boolean> {
         }
     }
 
+    /**
+     * For each tweet, check each link. If a link points to another, different tweet, embed it as
+     * a retweet. Repeat the process once more for the embedded retweet, in case we have two-level
+     * embeds.
+     * @param inputs
+     * @param outputSink
+     * @throws IOException
+     */
     private final void processTweets (Iterator<Tweet> inputs, Sink<Tweet> outputSink) throws IOException {
         while (inputs.hasNext()) {
             final Tweet tweet = inputs.next();
-            Optional<Tweet> augmentedTweet = Optional.empty();
-            for (URI uri : urlsIn(tweet.getMsg())) {
-                augmentedTweet =
+            Optional<Pair<URI, Retweet>> embedM = tryFindFetchAndParse(tweet);
+            if (embedM.isPresent()) {
+                Optional<Pair<URI, Retweet>> eeM = tryFindFetchAndParse(embedM.get().getRight());
+                if (eeM.isPresent()) {
+                    Pair<URI, Retweet> ee = eeM.get();
+                    embedM = embedM.map(p ->
+                            Pair.of(p.getLeft(),
+                                    p.getRight().withEmbeddedRetweet(ee.getLeft(), ee.getRight())));
+                }
+            }
+
+            outputSink.put(embedM.map(p -> tweet.withEmbeddedRetweet(p.getLeft(), p.getRight()))
+                                 .orElse(tweet));
+        }
+
+        // TODO This two level thing _only_ happens for a pure retweet (as opposed to a quote-tweet)
+        // Need to think a bit harder about when to do this (and what it would look like in the pure
+        // output).
+    }
+
+    /**
+     * Fetch and parse the embedded tweet via a link
+     */
+    public Optional<Pair<URI, Retweet>> tryFindFetchAndParse(Retweet tweet) throws IOException {
+        for (URI uri : urlsIn(tweet.getMsg())) {
+            Optional<Retweet> embedM =
                     fetchContent(tweet.getAuthor(), tweet.getId(), uri)
                             .flatMap(p -> parseTweetPage(p))
                             .filter(t -> t.getId() != tweet.getId())
                             .map(t -> tweet.withEmbeddedRetweet(uri, t));
 
-                if (augmentedTweet.isPresent()) {
-                    break;
-                }
+            if (embedM.isPresent()) {
+                return Optional.of (Pair.of(uri, embedM.get()));
             }
-            outputSink.put(augmentedTweet.orElse(tweet));
         }
+        return Optional.empty()
     }
+
 
     /**
      * Splits a filename into a the name and the extension, adds the given
@@ -287,9 +321,9 @@ public class RetweetFinder implements Callable<Boolean> {
                 }
                 final String candidate = text.substring(pos);
 
-                if (candidate.matches("https?://twitter.com/[^/]+/status/\\d+.*")) {
+                if (FULL_TWEET_URL.matcher(candidate).matches()) {
                     return true;
-                } else if (candidate.matches("https?://t\\.co.*")) {
+                } else if (TWITTER_SHORT_URL.matcher(candidate).matches()) {
                     return true;
 //                        } else if (candidate.matches("https?://")) {
 //                            return true
@@ -349,9 +383,6 @@ public class RetweetFinder implements Callable<Boolean> {
 
         tweetText = TweetsHtmlParser.insertSpaceBeforeHttpInstances(tweetText);
 
-
-        // TODO process embedded tweets
-
         if (screenName.isEmpty() || tweetText.isEmpty()) {
             return Optional.empty();
         } else {
@@ -363,6 +394,7 @@ public class RetweetFinder implements Callable<Boolean> {
         final String USERNAME = "kylo_is_a_mole";
         final DateTime NOW = DateTime.now();
         List<Tweet> tweets = Arrays.asList(
+            new Tweet(5, USERNAME, "Politics is beneath me https://twitter.com/nhannahjones/status/797465108855275520", NOW, NOW),
             new Tweet(1, USERNAME, "*sigh* it's five or FEWER https://t.co/1clwMHbydl", NOW, NOW),
             new Tweet(2, USERNAME, "@AngryGenHux sorry arm \nI can't take anything you say seriously anymore", NOW, NOW),
             new Tweet(3, USERNAME, "freezing his ball mid-air was not cheating\\ni was sick of hearing \\\"who serves first? i serve first? you serve first?\\\" https://t.co/pKpAgq3zqO", NOW, NOW),
