@@ -5,10 +5,12 @@ import cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler;
 import cc.twittertools.post.SavedTweetReader;
 import cc.twittertools.post.Tweet;
 import cc.twittertools.post.embed.Retweet;
+import cc.twittertools.sink.ArraySink;
+import cc.twittertools.sink.Sink;
+import cc.twittertools.sink.FileSink;
 import cc.twittertools.spider.IndividualUserTweetsSpider;
 import cc.twittertools.spider.TweetsHtmlParser;
 import com.google.common.base.Charsets;
-import com.google.common.base.Function;
 import org.apache.commons.lang3.CharUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
@@ -33,11 +35,11 @@ import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -48,56 +50,28 @@ import java.util.stream.Collectors;
  * service, see if that link refers to a tweet. If it does go to the link, parse the
  * tweet, and embed it as an embedded retweet.
  */
-public class RetweetFinder implements Callable<Boolean> {
+public class RetweetFinder implements Function<Tweet, Tweet>, Callable<Boolean> {
 
     public static final Charset TWITTER_DEFAULT_CHARSET = Charsets.UTF_8;
     public static final String META_HTTP_EQUIV_REFRESH = "<meta http-equiv=\"refresh\"";
     public static final int MAX_HTML_REDIRECT_COUNT = 5;
     public static final int MIN_URL_LENGTH = "http://t.co/".length();
-    private final static Pattern FULL_TWEET_URL = Pattern.compile("https?://twitter.com/[^/]+/status/\\\\d+.*", Pattern.CASE_INSENSITIVE);
+    private final static Pattern FULL_TWEET_URL = Pattern.compile("https?://(?:www\\.)?twitter.com/[^/]+/status/\\d+.*", Pattern.CASE_INSENSITIVE);
     private final static Pattern TWITTER_SHORT_URL = Pattern.compile("https?://t\\.co.*", Pattern.CASE_INSENSITIVE);
 
 
-    private interface Sink<T> extends AutoCloseable {
-        void put(T value);
-        void close() throws IOException; // scope the exception
-    }
-    private static class ArraySink<T> implements Sink<T> {
-        private final List<T> values = new ArrayList<>();
-        @Override public void put (T value) {
-            values.add(value);
-        }
-        public List<T> values() {
-            return values;
-        }
-        @Override public void close() { }
-    }
-    private static class FileSink<T> implements Sink<T> {
-        private final BufferedWriter wtr;
-        private final Function<T, String> stringFunction;
-        public FileSink(Path outPath, Function<T, String> stringFunction) throws IOException {
-            this.wtr = Files.newBufferedWriter(outPath, Charsets.UTF_8);
-            this.stringFunction = stringFunction;
-        }
-        @Override public void put (T value) {
-            try {
-                wtr.write(stringFunction.apply(value));
-                wtr.newLine();
-            } catch (IOException ioe) {
-                throw new IllegalStateException(ioe.getMessage(), ioe);
-            }
-        }
-        @Override public void close() throws IOException {
-            wtr.close();
-        }
-    }
-
     private final static Logger log = Logger.getLogger(RetweetFinder.class);
     private final Iterator<Path> inPaths;
+    private final Optional<Iterator<Path>> outPaths;
     private final HttpClient httpClient;
 
     public RetweetFinder(Iterator<Path> inPaths) {
+        this(inPaths, Optional.empty());
+    }
+
+    public RetweetFinder(Iterator<Path> inPaths, Optional<Iterator<Path>> outPaths) {
         this.inPaths    = inPaths;
+        this.outPaths   = outPaths;
 
         List<Header> defaultHeaders = IndividualUserTweetsSpider.DEFAULT_HEADERS
                 .entrySet().stream()
@@ -112,21 +86,57 @@ public class RetweetFinder implements Callable<Boolean> {
 
     public Boolean call() throws IOException {
         while (inPaths.hasNext()) {
-            Path inPath = inPaths.next();
+            final Path inPath = inPaths.next();
+            Path outPath = outPaths.map(Iterator::next)
+                                   .orElse(inPath.getParent().resolve(withSuffix(inPath.getFileName(), "-out")));
             if (log.isInfoEnabled()) {
                 log.info("Processing file: " + inPath.toAbsolutePath().toString());
             }
-            processFile(inPath);
+            processFile(inPath, outPath);
         }
         return true;
     }
 
-    private final void processFile (Path inFile) throws IOException {
-        final Path outPath = inFile.getParent().resolve(withSuffix(inFile.getFileName(), "-out"));
+    public final void processFile (Path inFile, Path outFile) throws IOException {
         try (SavedTweetReader rdr = new SavedTweetReader(inFile);
-             Sink<Tweet> wtr = new FileSink<>(outPath, t -> Tweet.WRITER.asTabDelimStr(t)) ) {
+             Sink<Tweet> wtr = new FileSink<>(outFile, t -> Tweet.WRITER.asTabDelimStr(t)) ) {
             processTweets (rdr, wtr);
         }
+    }
+
+    /**
+     * Looks at the links in a given tweet. If one of them references another tweet, add
+     * it in as a retweet.
+     *
+     * If the link has no content at all, but does have a retweet, and that retweet has
+     * an embedded link, this does the same.
+     */
+    public Tweet apply (final Tweet tweet) {
+        try {
+            return applyOrThrow(tweet);
+        } catch (IOException ioe) {
+            throw new IllegalStateException(ioe.getMessage(), ioe);
+        }
+    }
+
+    /**
+     * Same as {@link #apply(Object)} but throws the actual exception, instead of
+     * wrapping it in a Runtime exception
+     */
+    public Tweet applyOrThrow (final Tweet tweet) throws IOException {
+        Optional<Pair<URI, Retweet>> embedM = tryFindFetchAndParse(tweet);
+        if (embedM.isPresent()) {
+            Optional<Pair<URI, Retweet>> eeM = tryFindFetchAndParse(embedM.get().getRight());
+            if (eeM.isPresent()) {
+                Pair<URI, Retweet> ee = eeM.get();
+                embedM = embedM.map(p ->
+                        Pair.of(p.getLeft(),
+                                p.getRight().withEmbeddedRetweet(ee.getLeft(), ee.getRight())));
+            }
+        }
+
+        return embedM.map(p -> tweet.withEmbeddedRetweet(p.getLeft(), p.getRight()))
+                .orElse(tweet);
     }
 
     /**
@@ -139,20 +149,7 @@ public class RetweetFinder implements Callable<Boolean> {
      */
     private final void processTweets (Iterator<Tweet> inputs, Sink<Tweet> outputSink) throws IOException {
         while (inputs.hasNext()) {
-            final Tweet tweet = inputs.next();
-            Optional<Pair<URI, Retweet>> embedM = tryFindFetchAndParse(tweet);
-            if (embedM.isPresent()) {
-                Optional<Pair<URI, Retweet>> eeM = tryFindFetchAndParse(embedM.get().getRight());
-                if (eeM.isPresent()) {
-                    Pair<URI, Retweet> ee = eeM.get();
-                    embedM = embedM.map(p ->
-                            Pair.of(p.getLeft(),
-                                    p.getRight().withEmbeddedRetweet(ee.getLeft(), ee.getRight())));
-                }
-            }
-
-            outputSink.put(embedM.map(p -> tweet.withEmbeddedRetweet(p.getLeft(), p.getRight()))
-                                 .orElse(tweet));
+            outputSink.put(applyOrThrow (inputs.next()));
         }
 
         // TODO This two level thing _only_ happens for a pure retweet (as opposed to a quote-tweet)
@@ -175,7 +172,7 @@ public class RetweetFinder implements Callable<Boolean> {
                 return Optional.of (Pair.of(uri, embedM.get()));
             }
         }
-        return Optional.empty()
+        return Optional.empty();
     }
 
 
