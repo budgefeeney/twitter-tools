@@ -21,7 +21,9 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
+import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
 import cc.twittertools.post.Tweet;
@@ -47,22 +49,22 @@ public class UserRanker
   private final static Logger LOG = Logger.getLogger(UserRanker.class);
   
   public static final int STD_TWEETS_PER_PAGE = 20;
-  private final static int UPDATE_OUTPUT_INTERVAL = 500;
+  private final static int UPDATE_OUTPUT_INTERVAL = 100;
   
   private final Path inputFile;
   private final Path outputFile;
   private final TweetsHtmlParser htmlParser;
   private final Set<String> distinctUsers;
-  private final List<TwitterUser> twitterUsers;
-  private       List<TwitterUser> sortedUsers;
+  private final List<TwitterUser> seedUsers;
+  private       List<TwitterUser> annotatedUsers;
   private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(1);
   
   public UserRanker(Path inputFile, Path outputFile) {
     super();
     this.inputFile     = inputFile;
     this.outputFile    = outputFile;
-    this.twitterUsers  = new LinkedList<>();
-    this.sortedUsers   = new LinkedList<>();
+    this.seedUsers = new LinkedList<>();
+    this.annotatedUsers = new LinkedList<>();
     this.htmlParser    = new TweetsHtmlParser();
     this.distinctUsers = new HashSet<>();
   }
@@ -82,7 +84,7 @@ public class UserRanker
           if (distinctUsers.contains(user.getName()))
             continue; // many seed users may have followed the one fetched user
                       // this is the point where we weed those dupes out.
-          sortedUsers.add(user);
+          annotatedUsers.add(user);
           distinctUsers.add (user.getName());
         }
       }
@@ -101,7 +103,7 @@ public class UserRanker
           continue; // many seed users may have followed the one fetched user
                     // this is the point where we weed those dupes out.
                     // This is also where we avoid making requests for already processed users.
-        twitterUsers.add (user);
+        seedUsers.add (user);
         distinctUsers.add (user.getName());
       }
     }
@@ -114,7 +116,7 @@ public class UserRanker
   public void call() throws IOException
   { AsyncHttpClient  client = createHttpClient();
     int userCount = 0;
-    for (TwitterUser user : twitterUsers)
+    for (TwitterUser user : seedUsers)
     { ++userCount;
       try
       {
@@ -128,18 +130,20 @@ public class UserRanker
         List<Tweet> tweets = htmlParser.parse(user.getName(), htmlBody);
         
         // Time period covered by the most recent 20 tweets
-        Duration interTweetDuration = tweets.size() < STD_TWEETS_PER_PAGE
+        DateTime now = DateTime.now();
+        Duration interTweetDuration = tweets.size() < (STD_TWEETS_PER_PAGE  - 2) // allow footer and header.
             ? new Duration(Long.MAX_VALUE)
-            : new Duration(tweets.get(19).getLocalTime(), tweets.get(0).getLocalTime());
+            : new Duration(tweets.get(tweets.size() - 1).getLocalTime(),
+                           tweets.get(1).getLocalTime());
             
         user.setRecent20TweetInterval(interTweetDuration);
-        sortedUsers.add (user);
+        annotatedUsers.add (user);
         Thread.sleep(interRequestWaitMs);
         
-        LOG.debug ("User " + user.getName() + " is " + user.getAgeInMonths() + " months old and has posted 20 tweets in " + interTweetDuration.getStandardHours());
+        LOG.info ("User " + user.getName() + " is " + user.getAgeInMonths() + " months old and has posted 20 tweets in " + interTweetDuration.getStandardHours());
         
         if (userCount % UPDATE_OUTPUT_INTERVAL == 0)
-        { Collections.sort(sortedUsers);
+        { Collections.sort(annotatedUsers);
           writeUsersToFile();
         }
       }
@@ -148,7 +152,7 @@ public class UserRanker
       }
     }
     
-    Collections.sort(sortedUsers);
+    Collections.sort(annotatedUsers);
     writeUsersToFile();
   }
   
@@ -157,7 +161,7 @@ public class UserRanker
     try (
       BufferedWriter wtr = Files.newBufferedWriter(outputFile, Charsets.UTF_8, CREATE, APPEND);
     )
-    { for (TwitterUser user : sortedUsers)
+    { for (TwitterUser user : annotatedUsers)
       { wtr.write(user.toTabDelimLine());
       }
     }
@@ -178,6 +182,7 @@ public class UserRanker
   
   public static void main (String[] args) throws IOException
   {
+    BasicConfigurator.configure();
     String inputFile  = args.length > 0 ? args[0] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump.csv";
     String outputFile = args.length > 1 ? args[1] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump-ranked.csv";
     
