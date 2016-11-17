@@ -4,6 +4,7 @@ import static cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler.CONNE
 import static cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler.IDLE_CONNECTION_TIMEOUT;
 import static cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler.MAX_CONNECTIONS;
 import static cc.twittertools.download.AsyncEmbeddedJsonStatusBlockCrawler.REQUEST_TIMEOUT;
+import static cc.twittertools.spider.UserRanker.toTwitterUserList;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
@@ -13,14 +14,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 
+import cc.twittertools.sink.FileSink;
+import cc.twittertools.sink.Sink;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
@@ -33,6 +31,7 @@ import com.ning.http.client.AsyncHttpClient;
 import com.ning.http.client.AsyncHttpClientConfig;
 import com.ning.http.client.Response;
 import com.ning.http.client.extra.ThrottleRequestFilter;
+import twitter4j.Twitter;
 
 /**
  * Takes in a list of users by category. Re-ranks users within 
@@ -44,80 +43,64 @@ import com.ning.http.client.extra.ThrottleRequestFilter;
  * @author bfeeney
  *
  */
-public class UserRanker
+public class UserRanker implements Callable<Integer>
 {
   private final static Logger LOG = Logger.getLogger(UserRanker.class);
   
   public static final int STD_TWEETS_PER_PAGE = 20;
   private final static int UPDATE_OUTPUT_INTERVAL = 100;
   
-  private final Path inputFile;
-  private final Path outputFile;
+  private final Iterable<TwitterUser> inputs;
+  private final Sink<TwitterUser> outputSink;
   private final TweetsHtmlParser htmlParser;
   private final Set<String> distinctUsers;
-  private final List<TwitterUser> seedUsers;
-  private       List<TwitterUser> annotatedUsers;
   private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(1);
   
-  public UserRanker(Path inputFile, Path outputFile) {
+  public UserRanker(Iterable<TwitterUser> input, Sink<TwitterUser> output) throws IOException {
     super();
-    this.inputFile     = inputFile;
-    this.outputFile    = outputFile;
-    this.seedUsers = new LinkedList<>();
-    this.annotatedUsers = new LinkedList<>();
+    this.inputs        = input;
+    this.outputSink    = output;
     this.htmlParser    = new TweetsHtmlParser();
     this.distinctUsers = new HashSet<>();
   }
-  
-  public void init() throws IOException
-  { // First look at the output file to see which users we've already worked on.
-    if (Files.exists(outputFile))
-    { try (
-        BufferedReader rdr = Files.newBufferedReader(outputFile, Charsets.UTF_8);
-      )
-      { String line = null;
-        while ((line = rdr.readLine()) != null)
-        { if ((line = line.trim()).isEmpty() || isHeaderRow (line))
-            continue;
-        
-          TwitterUser user = new TwitterUser (line);
-          if (distinctUsers.contains(user.getName()))
-            continue; // many seed users may have followed the one fetched user
-                      // this is the point where we weed those dupes out.
-          annotatedUsers.add(user);
-          distinctUsers.add (user.getName());
+
+  public UserRanker(Path inputFile, Path outputFile) throws IOException {
+    this (toTwitterUserList(inputFile),
+          new FileSink<>(outputFile, TwitterUser::toTabDelimLine, /* flushOnPut = */ true));
+  }
+
+  private final static List<TwitterUser> toTwitterUserList(Path inputFile) throws IOException {
+    List<TwitterUser> inputs = new ArrayList<>();
+    try (BufferedReader rdr = Files.newBufferedReader(inputFile)) {
+      String line;
+      while ((line = rdr.readLine()) != null) {
+        if (! (line = line.trim()).isEmpty() && ! isHeaderRow(line)) {
+          inputs.add(new TwitterUser(line));
         }
       }
     }
-    
-    try (
-      BufferedReader rdr = Files.newBufferedReader(inputFile, Charsets.UTF_8);
-    )
-    { String line = null;
-      while ((line = rdr.readLine()) != null)
-      { if ((line = line.trim()).isEmpty() || isHeaderRow (line))
-          continue;
-        
-        TwitterUser user = new TwitterUser (line);
-        if (distinctUsers.contains(user.getName()))
-          continue; // many seed users may have followed the one fetched user
-                    // this is the point where we weed those dupes out.
-                    // This is also where we avoid making requests for already processed users.
-        seedUsers.add (user);
-        distinctUsers.add (user.getName());
-      }
-    }
+    return inputs;
   }
+
   
   /* pkg */ final static boolean isHeaderRow (String line)
   { return line.trim().startsWith("Topic\tUsers");
   }
-  
-  public void call() throws IOException
+
+  @Override
+  public Integer call() throws IOException
   { AsyncHttpClient  client = createHttpClient();
+
     int userCount = 0;
-    for (TwitterUser user : seedUsers)
-    { ++userCount;
+    for (TwitterUser user : inputs)
+    { // avoid redoing the same person twice
+      if (distinctUsers.contains(user.getName())) {
+        continue;
+      }
+      distinctUsers.add(user.getName());
+
+      // Get the user's webpage
+      ++userCount;
       try
       {
         Future<Response> resp 
@@ -129,43 +112,32 @@ public class UserRanker
         String htmlBody = resp.get().getResponseBody();
         List<Tweet> tweets = htmlParser.parse(user.getName(), htmlBody);
         
-        // Time period covered by the most recent 20 tweets
+        // Determine period covered by the most recent 20 tweets
         DateTime now = DateTime.now();
         Duration interTweetDuration = tweets.size() < (STD_TWEETS_PER_PAGE  - 2) // allow footer and header.
             ? new Duration(Long.MAX_VALUE)
             : new Duration(tweets.get(tweets.size() - 1).getLocalTime(),
                            tweets.get(1).getLocalTime());
-            
         user.setRecent20TweetInterval(interTweetDuration);
-        annotatedUsers.add (user);
+
+        // Write the user out to file
+        LOG.info ("User " + user.getName() + " (#" + userCount + ") is " + user.getAgeInMonths() + " months old and has posted 20 tweets in " + interTweetDuration.getStandardHours());
+        outputSink.put(user);
+
+
+        // Sleep a bit before hitting twitter.com again, so we don't get blocked
         Thread.sleep(interRequestWaitMs);
         
-        LOG.info ("User " + user.getName() + " is " + user.getAgeInMonths() + " months old and has posted 20 tweets in " + interTweetDuration.getStandardHours());
-        
-        if (userCount % UPDATE_OUTPUT_INTERVAL == 0)
-        { Collections.sort(annotatedUsers);
-          writeUsersToFile();
-        }
       }
       catch (Exception e)
       { LOG.error ("Could not download tweets page for user " + user + " : " + e.getMessage(), e);
       }
     }
-    
-    Collections.sort(annotatedUsers);
-    writeUsersToFile();
+
+    outputSink.close();
+    return userCount;
   }
-  
-  private void writeUsersToFile() throws IOException
-  {
-    try (
-      BufferedWriter wtr = Files.newBufferedWriter(outputFile, Charsets.UTF_8, CREATE, APPEND);
-    )
-    { for (TwitterUser user : annotatedUsers)
-      { wtr.write(user.toTabDelimLine());
-      }
-    }
-  }
+
 
   /* pkg */ static AsyncHttpClient createHttpClient() 
   { AsyncHttpClientConfig config = new AsyncHttpClientConfig.Builder()
@@ -180,14 +152,40 @@ public class UserRanker
     return new AsyncHttpClient(config);
   }
   
-  public static void main (String[] args) throws IOException
+  public static void main (String[] args) throws Exception
   {
     BasicConfigurator.configure();
+
+    // Read in the configuration, then the inputs.
     String inputFile  = args.length > 0 ? args[0] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump.csv";
     String outputFile = args.length > 1 ? args[1] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump-ranked.csv";
-    
-    UserRanker ranker = new UserRanker(Paths.get(inputFile), Paths.get(outputFile));
-    ranker.init();
-    ranker.call();
+    int jobCount      = args.length > 2 ? Integer.parseInt(args[2]) : 4;
+
+    List<TwitterUser> users = toTwitterUserList(Paths.get(inputFile));
+    Sink<TwitterUser> output = new FileSink<>(Paths.get(outputFile), TwitterUser::toTabDelimLine, true);
+
+    // Prepare to execute things in parallel
+    ExecutorService exec = Executors.newFixedThreadPool(jobCount);
+    List<List<TwitterUser>> lists = splitIntoSubLists(users, jobCount);
+    List<Future<Boolean>> tasks = new ArrayList<>(jobCount);
+    for (int j = 0; j < jobCount; j++) {
+      exec.submit(new UserRanker(lists.get(j), output));
+    }
+
+    // Wait for them all to finish
+    for (int j = 0; j < jobCount; j++) {
+      System.out.println ("Job #" + j + " processed " + tasks.get(j).get() + " users out of a total of " + lists.get(j).size());
+    }
+  }
+
+  private static <T> List<List<T>> splitIntoSubLists(List<T> list, int count) {
+    List<List<T>> lists = new ArrayList<>(count);
+    int segmentSize = list.size() / count;
+    for (int i = 0; i < count - 1; i++) {
+      int offset = i * segmentSize;
+      lists.add (list.subList(offset, offset + segmentSize));
+    }
+    lists.add(list.subList((count - 1) * segmentSize, list.size()));
+    return lists;
   }
 }
