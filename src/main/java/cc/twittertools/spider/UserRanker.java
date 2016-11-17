@@ -43,20 +43,24 @@ public class UserRanker implements Callable<Integer>
   private final static Logger LOG = Logger.getLogger(UserRanker.class);
   
   public static final int STD_TWEETS_PER_PAGE = 20;
-  private final static int UPDATE_OUTPUT_INTERVAL = 100;
   
   private final Iterable<TwitterUser> inputs;
   private final Sink<TwitterUser> outputSink;
   private final TweetsHtmlParser htmlParser;
-  private final Set<String> distinctUsers;
   private       long interRequestWaitMs = TimeUnit.SECONDS.toMillis(1);
-  
+  private final ConcurrentMap<String, Boolean> visitedUsers;
+
   public UserRanker(Iterable<TwitterUser> input, Sink<TwitterUser> output) throws IOException {
+    this (input, output, new ConcurrentHashMap<>());
+  }
+
+
+  public UserRanker(Iterable<TwitterUser> input, Sink<TwitterUser> output, ConcurrentMap<String, Boolean> visitedUsers) throws IOException {
     super();
     this.inputs        = input;
     this.outputSink    = output;
     this.htmlParser    = new TweetsHtmlParser();
-    this.distinctUsers = new HashSet<>();
+    this.visitedUsers  = visitedUsers;
   }
 
   public UserRanker(Path inputFile, Path outputFile) throws IOException {
@@ -89,10 +93,10 @@ public class UserRanker implements Callable<Integer>
     int userCount = 0;
     for (TwitterUser user : inputs)
     { // avoid redoing the same person twice
-      if (distinctUsers.contains(user.getName())) {
+      if (isAlreadyVisited(user)) {
         continue;
       }
-      distinctUsers.add(user.getName());
+      visitedUsers.put(user.getName(), Boolean.TRUE);
 
       // Get the user's webpage
       ++userCount;
@@ -133,6 +137,10 @@ public class UserRanker implements Callable<Integer>
     return userCount;
   }
 
+  private Boolean isAlreadyVisited(TwitterUser user) {
+    return visitedUsers.getOrDefault(user.getName(), false);
+  }
+
 
   /* pkg */ static AsyncHttpClient createHttpClient() 
   { AsyncHttpClientConfig config = new AsyncHttpClientConfig.Builder()
@@ -162,10 +170,13 @@ public class UserRanker implements Callable<Integer>
     // Prepare to execute things in parallel
     ExecutorService exec = Executors.newFixedThreadPool(jobCount);
     List<List<TwitterUser>> lists = splitIntoSubLists(users, jobCount);
-    List<Future<Boolean>> tasks = new ArrayList<>(jobCount);
+    ConcurrentMap<String, Boolean> visitedUsers = new ConcurrentHashMap<>();
+
+    List<Future<Integer>> tasks = new ArrayList<>(jobCount);
     for (int j = 0; j < jobCount; j++) {
-      exec.submit(new UserRanker(lists.get(j), output));
+      tasks.add (exec.submit(new UserRanker(lists.get(j), output, visitedUsers)));
     }
+    exec.shutdown();
 
     // Wait for them all to finish
     for (int j = 0; j < jobCount; j++) {
