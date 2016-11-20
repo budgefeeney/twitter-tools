@@ -184,20 +184,23 @@ public class UserRanker implements Callable<Integer>
       output = new FileSink<>(outputFile, TwitterUser::toTabDelimLine, true);
     }
 
-    // Prepare to execute things in parallel
-    ExecutorService exec = Executors.newFixedThreadPool(jobCount);
-    List<List<TwitterUser>> lists = splitIntoSubLists(inputUsers, jobCount);
-    ConcurrentMap<String, Boolean> visitedUsers = new ConcurrentHashMap<>();
+    try { // Prepare to execute things in parallel
+      ExecutorService exec = Executors.newFixedThreadPool(jobCount);
+      List<List<TwitterUser>> lists = splitIntoSubLists(inputUsers, jobCount);
+      ConcurrentMap<String, Boolean> visitedUsers = new ConcurrentHashMap<>();
 
-    List<Future<Integer>> tasks = new ArrayList<>(jobCount);
-    for (int j = 0; j < jobCount; j++) {
-      tasks.add (exec.submit(new UserRanker(lists.get(j), output, visitedUsers)));
-    }
-    exec.shutdown();
+      List<Future<Integer>> tasks = new ArrayList<>(jobCount);
+      for (int j = 0; j < jobCount; j++) {
+        tasks.add(exec.submit(new UserRanker(lists.get(j), output, visitedUsers)));
+      }
+      exec.shutdown();
 
-    // Wait for them all to finish
-    for (int j = 0; j < jobCount; j++) {
-      System.out.println ("Job #" + j + " processed " + tasks.get(j).get() + " users out of a total of " + lists.get(j).size());
+      // Wait for them all to finish
+      for (int j = 0; j < jobCount; j++) {
+        System.out.println("Job #" + j + " processed " + tasks.get(j).get() + " users out of a total of " + lists.get(j).size());
+      }
+    } finally {
+      output.close();
     }
   }
 
