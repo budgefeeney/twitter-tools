@@ -10,11 +10,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.*;
 
 import cc.twittertools.sink.FileSink;
 import cc.twittertools.sink.Sink;
+import org.apache.commons.io.Charsets;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
@@ -126,13 +128,12 @@ public class UserRanker implements Callable<Integer>
 
         // Sleep a bit before hitting twitter.com again, so we don't get blocked
         Thread.sleep(interRequestWaitMs);
-        
+
       }
       catch (Exception e)
       { LOG.error ("Could not download tweets page for user " + user + " : " + e.getMessage(), e);
       }
     }
-
     outputSink.close();
     return userCount;
   }
@@ -159,17 +160,34 @@ public class UserRanker implements Callable<Integer>
   {
     BasicConfigurator.configure();
 
-    // Read in the configuration, then the inputs.
-    String inputFile  = args.length > 0 ? args[0] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump.csv";
-    String outputFile = args.length > 1 ? args[1] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump-ranked.csv";
-    int jobCount      = args.length > 2 ? Integer.parseInt(args[2]) : 4;
+    // Read in the configuration.
+    String inputFileName  = args.length > 0 ? args[0] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump.csv";
+    String outputFileName = args.length > 1 ? args[1] : "/Users/bryanfeeney/Dropbox/Seeds2016/fetchedusers-trump-ranked.csv";
+    int jobCount      =    args.length > 2 ? Integer.parseInt(args[2]) : 4;
 
-    List<TwitterUser> users = toTwitterUserList(Paths.get(inputFile));
-    Sink<TwitterUser> output = new FileSink<>(Paths.get(outputFile), TwitterUser::toTabDelimLine, true);
+    // Set up the input and output files. Make sure to skip already processed users
+    Path outputFile = Paths.get(outputFileName);
+    List<TwitterUser> inputUsers = toTwitterUserList(Paths.get(inputFileName));
+    Sink<TwitterUser> output;
+    if (Files.exists(outputFile)) {
+      List<TwitterUser> processedUsers = toTwitterUserList(outputFile);
+      int originalSize = inputUsers.size();
+      inputUsers.removeAll(processedUsers);
+      System.out.println ("" + inputUsers.size() + " users of the original input of " + originalSize + " remain to be updated");
+      output = new FileSink<>(
+              Files.newBufferedWriter(
+                      outputFile,
+                      Charsets.UTF_8,
+                      StandardOpenOption.APPEND),
+              TwitterUser::toTabDelimLine,
+              true);
+    } else {
+      output = new FileSink<>(outputFile, TwitterUser::toTabDelimLine, true);
+    }
 
     // Prepare to execute things in parallel
     ExecutorService exec = Executors.newFixedThreadPool(jobCount);
-    List<List<TwitterUser>> lists = splitIntoSubLists(users, jobCount);
+    List<List<TwitterUser>> lists = splitIntoSubLists(inputUsers, jobCount);
     ConcurrentMap<String, Boolean> visitedUsers = new ConcurrentHashMap<>();
 
     List<Future<Integer>> tasks = new ArrayList<>(jobCount);

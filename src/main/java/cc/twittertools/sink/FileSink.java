@@ -30,6 +30,13 @@ public class FileSink<T> implements Sink<T> {
         this.stringFunction = stringFunction;
         this.flushOnPut = flushOnPut;
     }
+
+    public FileSink(BufferedWriter wtr, Function<T, String> stringFunction, boolean flushOnPut) throws IOException {
+        this.wtr = wtr;
+        this.stringFunction = stringFunction;
+        this.flushOnPut = flushOnPut;
+    }
+
     @Override public synchronized void put (T value) {
         try {
             wtr.write(stringFunction.apply(value));
