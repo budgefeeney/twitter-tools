@@ -134,7 +134,6 @@ public class UserRanker implements Callable<Integer>
       { LOG.error ("Could not download tweets page for user " + user + " : " + e.getMessage(), e);
       }
     }
-    outputSink.close();
     return userCount;
   }
 
