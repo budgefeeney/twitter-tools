@@ -47,76 +47,79 @@ public class TweetsHtmlParser
     Elements tweets = document.select("li.js-stream-item");
 
     List<Tweet> result = new ArrayList<>();
-    tweetloop:for (Element tweet : tweets)
-    {
-      Elements possibleHeaderTags = tweet.select("a.tweet-timestamp");
-      if (possibleHeaderTags.isEmpty()) {
-        // we expect this to occur once, when we hit the scroll "bump" at the bottom, but not otherwise
-        if (! tweet.hasClass("scroll-bump-user-card")
-                && tweet.select("div.follow-bar").isEmpty()
-                && tweet.select("div.ScrollBump-header").isEmpty()) {
-          LOG.error("No tweet content in ostensible tweet HTML block:\n" + tweet.toString());
+    tweetloop:for (Element tweet : tweets) {
+      try {
+        Elements possibleHeaderTags = tweet.select("a.tweet-timestamp");
+        if (possibleHeaderTags.isEmpty()) {
+          // we expect this to occur once, when we hit the scroll "bump" at the bottom, but not otherwise
+          if (!tweet.hasClass("scroll-bump-user-card")
+                  && tweet.select("div.follow-bar").isEmpty()
+                  && tweet.select("div.ScrollBump-header").isEmpty()) {
+            LOG.error("No tweet content in ostensible tweet HTML block:\n" + tweet.toString());
+          }
+          continue tweetloop;
         }
-        continue tweetloop;
-      }
-      Element header = possibleHeaderTags.get(0);
-      String href   = header.attr("href");
-      String author = StringUtils.substringBefore(href.substring(1), "/");
-      String idStr  = StringUtils.substringAfterLast(href, "/");
-      long   id     = Long.parseLong(idStr);
+        Element header = possibleHeaderTags.get(0);
+        String href = header.attr("href");
+        String author = StringUtils.substringBefore(href.substring(1), "/");
+        String idStr = StringUtils.substringAfterLast(href, "/");
+        long id = Long.parseLong(idStr);
 
-      placeEmoticonsInText(tweet);
+        placeEmoticonsInText(tweet);
 
-      DateTime localDate = cc.twittertools.post.old.Tweet.TWITTER_FMT.parseDateTime(header.attr("title"));
-      DateTime utcDate   = new DateTime(Long.parseLong(header.select("span.js-short-timestamp").attr("data-time-ms")));
+        DateTime localDate = cc.twittertools.post.old.Tweet.TWITTER_FMT.parseDateTime(header.attr("title"));
+        DateTime utcDate = new DateTime(Long.parseLong(header.select("span.js-short-timestamp").attr("data-time-ms")));
 
-      final String body;
-      Elements bodyTags = tweet.select("p.tweet-text");
-      if (bodyTags.isEmpty()) {
-        body = "";
-      }else {
-        Element bodyTag = bodyTags.get(0);
-        bodyTag.select("span.u-hidden").remove();
-        body = insertSpaceBeforeHttpInstances(bodyTag.text());
-      }
-
-
-      // Check if there's an embedded retweet
-      Elements embeds = tweet.select("div.QuoteTweet-innerContainer");
-      Retweet embeddedTweet = null;
-      if (! embeds.isEmpty()) {
-        Element embed = embeds.get(0);
-
-        String eHref  = embed.attr("href");
-        String eAuthor = StringUtils.substringBefore(eHref.substring(1), "/");
-        String eIdStr  = StringUtils.substringAfterLast(eHref, "/");
-        long   eId     = Long.parseLong(eIdStr);
-
-        Element eBodyTag = embed.select("div.QuoteTweet-text").get(0);
-        eBodyTag.select("span.u-hidden").remove();
-        String eBody = insertSpaceBeforeHttpInstances(eBodyTag.text());
-
-        embeddedTweet = new Retweet(eId, eAuthor, eBody, readOptionalWebpageExcerpt(embed, body), Optional.empty());
-      }
-
-      if (author.equalsIgnoreCase(account)) {
-        result.add(new Tweet(id, author, body, utcDate, localDate, readOptionalWebpageExcerpt(tweet, body), Optional.ofNullable(embeddedTweet)));
-      } else {
-        Retweet outerRetweet = new Retweet(
-                id, author, body, readOptionalWebpageExcerpt(tweet, body), Optional.ofNullable(embeddedTweet));
-
-        // The ID we read in earlier is actually the ID of the retweeted tweet.
-        // We have to look into another tag to find the ID of the account-holder's retweet.
-        Elements primeTweetIdTags = tweet.select("div.tweet");
-        final long primeTweetId;
-        if (primeTweetIdTags.isEmpty() || ! primeTweetIdTags.get(0).hasAttr("data-retweet-id")) {
-          primeTweetId = 1L;
-          LOG.error("Can't find a parent data-retweet-id for @" + account + " retweeting " + " @" + author + ": " + body);
+        final String body;
+        Elements bodyTags = tweet.select("p.tweet-text");
+        if (bodyTags.isEmpty()) {
+          body = "";
         } else {
-          primeTweetId = Long.parseLong(primeTweetIdTags.get(0).attr("data-retweet-id"));
+          Element bodyTag = bodyTags.get(0);
+          bodyTag.select("span.u-hidden").remove();
+          body = insertSpaceBeforeHttpInstances(bodyTag.text());
         }
 
-        result.add(new Tweet(primeTweetId, account, "", utcDate, localDate, Optional.empty(), Optional.of(outerRetweet)));
+
+        // Check if there's an embedded retweet
+        Elements embeds = tweet.select("div.QuoteTweet-innerContainer");
+        Retweet embeddedTweet = null;
+        if (!embeds.isEmpty()) {
+          Element embed = embeds.get(0);
+
+          String eHref = embed.attr("href");
+          String eAuthor = StringUtils.substringBefore(eHref.substring(1), "/");
+          String eIdStr = StringUtils.substringAfterLast(eHref, "/");
+          long eId = Long.parseLong(eIdStr);
+
+          Element eBodyTag = embed.select("div.QuoteTweet-text").get(0);
+          eBodyTag.select("span.u-hidden").remove();
+          String eBody = insertSpaceBeforeHttpInstances(eBodyTag.text());
+
+          embeddedTweet = new Retweet(eId, eAuthor, eBody, readOptionalWebpageExcerpt(embed, body), Optional.empty());
+        }
+
+        if (author.equalsIgnoreCase(account)) {
+          result.add(new Tweet(id, author, body, utcDate, localDate, readOptionalWebpageExcerpt(tweet, body), Optional.ofNullable(embeddedTweet)));
+        } else {
+          Retweet outerRetweet = new Retweet(
+                  id, author, body, readOptionalWebpageExcerpt(tweet, body), Optional.ofNullable(embeddedTweet));
+
+          // The ID we read in earlier is actually the ID of the retweeted tweet.
+          // We have to look into another tag to find the ID of the account-holder's retweet.
+          Elements primeTweetIdTags = tweet.select("div.tweet");
+          final long primeTweetId;
+          if (primeTweetIdTags.isEmpty() || !primeTweetIdTags.get(0).hasAttr("data-retweet-id")) {
+            primeTweetId = 1L;
+            LOG.error("Can't find a parent data-retweet-id for @" + account + " retweeting " + " @" + author + ": " + body);
+          } else {
+            primeTweetId = Long.parseLong(primeTweetIdTags.get(0).attr("data-retweet-id"));
+          }
+
+          result.add(new Tweet(primeTweetId, account, "", utcDate, localDate, Optional.empty(), Optional.of(outerRetweet)));
+        }
+      } catch (Exception e) {
+        LOG.error("Can't parse a single tweet due to " + e.getMessage(), e);
       }
     }
 
