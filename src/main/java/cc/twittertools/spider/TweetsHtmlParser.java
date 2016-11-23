@@ -70,9 +70,16 @@ public class TweetsHtmlParser
       DateTime localDate = cc.twittertools.post.old.Tweet.TWITTER_FMT.parseDateTime(header.attr("title"));
       DateTime utcDate   = new DateTime(Long.parseLong(header.select("span.js-short-timestamp").attr("data-time-ms")));
 
-      Element bodyTag = tweet.select("p.tweet-text").get(0);
-      bodyTag.select("span.u-hidden").remove();
-      String body = insertSpaceBeforeHttpInstances(bodyTag.text());
+      final String body;
+      Elements bodyTags = tweet.select("p.tweet-text");
+      if (bodyTags.isEmpty()) {
+        body = "";
+      }else {
+        Element bodyTag = bodyTags.get(0);
+        bodyTag.select("span.u-hidden").remove();
+        body = insertSpaceBeforeHttpInstances(bodyTag.text());
+      }
+
 
       // Check if there's an embedded retweet
       Elements embeds = tweet.select("div.QuoteTweet-innerContainer");
