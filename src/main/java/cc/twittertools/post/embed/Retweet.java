@@ -72,15 +72,11 @@ public class Retweet {
     }
 
     public static String removeFirstCaseInsensitive (String haystack, String needle) {
-        String lwrHaystack = haystack.toLowerCase();
-        String lwrNeedle   = needle.toLowerCase();
-
-        int pos = lwrHaystack.indexOf(lwrNeedle);
-        if (pos > 0) {
-            haystack = haystack.substring(0, pos)
-                     + haystack.substring(Math.min(pos + lwrNeedle.length(), haystack.length()));
-        }
-        return haystack;
+        int pos = org.apache.commons.lang3.StringUtils.indexOfIgnoreCase(haystack, needle);
+        return pos > 0
+             ? haystack.substring(0, pos)
+               + haystack.substring(Math.min(pos + needle.length(), haystack.length()))
+             : haystack;
     }
 
     public Set<String> getHashTags() {
