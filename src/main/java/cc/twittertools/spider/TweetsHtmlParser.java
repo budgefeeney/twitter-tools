@@ -1,6 +1,7 @@
 package cc.twittertools.spider;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -164,8 +165,13 @@ public class TweetsHtmlParser
       ++end;
     }
 
-    URI uri = URI.create(body.substring(start, end));
-    URI cardUri = URI.create("https://twitter.com" + embeddedUrls.get(0).attr("data-src"));
+    final URI uri, cardUri;
+    try {
+      uri     = new URI(body.substring(start, end));
+      cardUri = new URI("https://twitter.com" + embeddedUrls.get(0).attr("data-src"));
+    } catch (URISyntaxException ue) {
+      return Optional.empty();
+    }
 
     return Optional.of(new WebExcerpt(uri, cardUri));
   }
