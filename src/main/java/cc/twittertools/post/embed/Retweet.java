@@ -78,7 +78,7 @@ public class Retweet {
         int pos = lwrHaystack.indexOf(lwrNeedle);
         if (pos > 0) {
             haystack = haystack.substring(0, pos)
-                     + haystack.substring(pos + needle.length());
+                     + haystack.substring(Math.min(pos + lwrNeedle.length(), haystack.length()));
         }
         return haystack;
     }
