@@ -96,6 +96,7 @@ public class UserRanker implements Callable<Integer>
     for (TwitterUser user : inputs)
     { // avoid redoing the same person twice
       if (isAlreadyVisited(user)) {
+        if (LOG.isInfoEnabled()) LOG.info("Already processed user " + user);
         continue;
       }
       visitedUsers.put(user.getName(), Boolean.TRUE);
