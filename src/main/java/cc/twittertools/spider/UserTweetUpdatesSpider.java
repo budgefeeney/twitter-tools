@@ -117,7 +117,7 @@ public class UserTweetUpdatesSpider extends UserTweetsSpider
   }
   
   public static void main (String[] args) throws JMException, InterruptedException, IOException
-  { System.out.println ("Starting spidering....");
+  { System.out.println ("Starting spidering...");
     BasicConfigurator.configure();
     
     Path inputPath           = Paths.get(args.length > 0 ? args[0] : "/Users/bryanfeeney/Desktop/SpiderUpTest");
