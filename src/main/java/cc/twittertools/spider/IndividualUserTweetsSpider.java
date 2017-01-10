@@ -320,10 +320,13 @@ implements JmxSelfNaming, Callable<Integer> {
     try (
       SavedTweetReader rdr = new SavedTweetReader (path);
     )
-    { if (! rdr.hasNext())
-        return DOWNLOAD_ALL_AVAILABLE_TWEETS;
-      else
-        return rdr.next().getId();
+    { while (rdr.hasNext())
+      { long id = rdr.next().getId();
+        if (id != TweetsHtmlParser.SUSPECTED_ADVERT_TWEET_ID) {
+          return id;
+        }
+      }
+      return DOWNLOAD_ALL_AVAILABLE_TWEETS;
     }
   }
   

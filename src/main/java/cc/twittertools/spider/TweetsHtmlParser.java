@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 public class TweetsHtmlParser
 {
   private final static Logger LOG = LoggerFactory.getLogger(TweetsHtmlParser.class);
+  public static final long SUSPECTED_ADVERT_TWEET_ID = 1L;
 
   public List<Tweet> parse (String account, String pageHtml)
   { Preconditions.checkNotNull(pageHtml, "Page HTML in parse was null");
@@ -110,7 +111,7 @@ public class TweetsHtmlParser
           Elements primeTweetIdTags = tweet.select("div.tweet");
           final long primeTweetId;
           if (primeTweetIdTags.isEmpty() || !primeTweetIdTags.get(0).hasAttr("data-retweet-id")) {
-            primeTweetId = 1L;
+            primeTweetId = SUSPECTED_ADVERT_TWEET_ID;
             LOG.error("Can't find a parent data-retweet-id for @" + account + " retweeting " + " @" + author + ": " + body);
           } else {
             primeTweetId = Long.parseLong(primeTweetIdTags.get(0).attr("data-retweet-id"));
