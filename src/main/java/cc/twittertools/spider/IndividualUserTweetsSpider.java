@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
@@ -75,6 +76,9 @@ implements JmxSelfNaming, Callable<Integer> {
   private final static long DOWNLOAD_ALL_AVAILABLE_TWEETS = -1;
 
   public final static Map<String, String> DEFAULT_HEADERS;
+  public static final int HTTP_429_TOO_MANY_REQUESTS = 429;
+  public static final int RETRY_ATTEMPT_COUNT = 4;
+
   static {
     DEFAULT_HEADERS = new HashMap<>();
     DEFAULT_HEADERS.put("Accept-Charset", "utf-8");
@@ -115,8 +119,8 @@ implements JmxSelfNaming, Callable<Integer> {
   
   private final Throttle throttle;
   private final ProgressMonitor progress;
-  
-  
+
+
   public IndividualUserTweetsSpider(Throttle throttle, ProgressMonitor progress, String category, List<String> users, Path outputDirectory)
   { super();
     this.category        = category;
@@ -242,10 +246,25 @@ implements JmxSelfNaming, Callable<Integer> {
     return requestHttpContent(httpClient, url, null);
   }
 
-
   public static GetMethod requestHttpGet(HttpClient httpClient, String url, String referrerUrl) throws IOException {
+    return requestHttpGet(httpClient, url, referrerUrl, 0);
+  }
+
+  public static GetMethod requestHttpGet(HttpClient httpClient, String url, String referrerUrl, long attempt) throws IOException {
     GetMethod req = prepareGetRequest (url, referrerUrl);
     int respStatusCode = httpClient.executeMethod(req);
+    if (respStatusCode == HTTP_429_TOO_MANY_REQUESTS) {
+      if (attempt >= RETRY_ATTEMPT_COUNT) {
+        throw new IOException("Failed to download page, received HTTP response code 429 after " + RETRY_ATTEMPT_COUNT + " attempts");
+      } else {
+        try {
+          Thread.sleep(TimeUnit.MINUTES.toMillis(16));
+          return requestHttpGet(httpClient, url, referrerUrl, attempt + 1);
+        } catch (InterruptedException e) {
+          throw new IOException("Failed to download page, interrupted when backing out on the " + attempt + "-th attempt");
+        }
+      }
+    }
     if (respStatusCode != HTTP_200_OK)
       throw new IOException("Failed to download page, received HTTP response code " + respStatusCode + ". Page was " + req.getURI().toString());
 
